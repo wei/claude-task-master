@@ -1,6 +1,23 @@
 #!/usr/bin/env node
 
 /**
+ * Task Master AI
+ * https://github.com/eyaltoledano/claude-task-master
+ *
+ * Copyright (c) 2025 Eyal Toledano and Ralph Khreish
+ *
+ * This source code is licensed under a dual license:
+ * - Business Source License 1.1 (BSL 1.1) for commercial use of Task Master itself
+ * - Apache License 2.0 for all other uses
+ *
+ * See LICENSE.md for details.
+ *
+ * You may use this software to create and commercialize your own projects,
+ * but you may not create competing products or sell Task Master itself as a service
+ * without explicit permission from the copyright holders.
+ */
+
+/**
  * Claude Task Master
  * A task management system for AI-driven development with Claude
  */

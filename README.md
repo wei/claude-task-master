@@ -4,6 +4,15 @@
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
+## Licensing
+
+Task Master is available under a dual license:
+
+- **Business Source License 1.1 (BSL 1.1)** for commercial use of Task Master itself
+- **Apache License 2.0** for all other uses
+
+You can freely use Task Master to create and commercialize your own projects, but you cannot create competing products or sell Task Master itself as a service without explicit permission. See [LICENSING.md](LICENSING.md) for detailed terms and FAQs.
+
 ## Requirements
 
 - Node.js 14.0.0 or higher
@@ -385,7 +394,7 @@ task-master update-subtask --id=5.2 --prompt="Add rate limiting of 100 requests 
 task-master update-subtask --id=<parentId.subtaskId> --prompt="<prompt>" --research
 ```
 
-Unlike the `update-task` command which replaces task information, the `update-subtask` command *appends* new information to the existing subtask details, marking it with a timestamp. This is useful for iteratively enhancing subtasks while preserving the original content.
+Unlike the `update-task` command which replaces task information, the `update-subtask` command _appends_ new information to the existing subtask details, marking it with a timestamp. This is useful for iteratively enhancing subtasks while preserving the original content.
 
 ### Generate Task Files
 
