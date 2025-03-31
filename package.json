@@ -1,6 +1,6 @@
 {
   "name": "task-master-ai",
-  "version": "0.9.30",
+  "version": "0.10.0",
   "description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
   "main": "index.js",
   "type": "module",
@@ -34,7 +34,7 @@
     "context"
   ],
   "author": "Eyal Toledano",
-  "license": "MIT",
+  "license": "MIT WITH Commons-Clause",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "boxen": "^8.0.1",
