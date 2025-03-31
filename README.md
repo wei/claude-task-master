@@ -6,12 +6,22 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Licensing
 
-Task Master is available under a dual license:
+Task Master is licensed under the MIT License with Commons Clause. This means you can:
 
-- **Business Source License 1.1 (BSL 1.1)** for commercial use of Task Master itself
-- **Apache License 2.0** for all other uses
+✅ **Allowed**:
 
-You can freely use Task Master to create and commercialize your own projects, but you cannot create competing products or sell Task Master itself as a service without explicit permission. See [LICENSING.md](LICENSING.md) for detailed terms and FAQs.
+- Use Task Master for any purpose (personal, commercial, academic)
+- Modify the code
+- Distribute copies
+- Create and sell products built using Task Master
+
+❌ **Not Allowed**:
+
+- Sell Task Master itself
+- Offer Task Master as a hosted service
+- Create competing products based on Task Master
+
+See the [LICENSE](LICENSE) file for the complete license text.
 
 ## Requirements
 
