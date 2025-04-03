@@ -34,7 +34,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit --verbose
+          npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
         env:
           NODE_ENV: test
           CI: true
