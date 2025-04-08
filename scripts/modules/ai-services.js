@@ -17,11 +17,11 @@ dotenv.config();
 
 // Configure Anthropic client
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  // Add beta header for 128k token output
-  defaultHeaders: {
-    'anthropic-beta': 'output-128k-2025-02-19'
-  }
+	apiKey: process.env.ANTHROPIC_API_KEY,
+	// Add beta header for 128k token output
+	defaultHeaders: {
+		'anthropic-beta': 'output-128k-2025-02-19'
+	}
 });
 
 // Lazy-loaded Perplexity client
@@ -32,16 +32,18 @@ let perplexity = null;
  * @returns {OpenAI} Perplexity client
  */
 function getPerplexityClient() {
-  if (!perplexity) {
-    if (!process.env.PERPLEXITY_API_KEY) {
-      throw new Error("PERPLEXITY_API_KEY environment variable is missing. Set it to use research-backed features.");
-    }
-    perplexity = new OpenAI({
-      apiKey: process.env.PERPLEXITY_API_KEY,
-      baseURL: 'https://api.perplexity.ai',
-    });
-  }
-  return perplexity;
+	if (!perplexity) {
+		if (!process.env.PERPLEXITY_API_KEY) {
+			throw new Error(
+				'PERPLEXITY_API_KEY environment variable is missing. Set it to use research-backed features.'
+			);
+		}
+		perplexity = new OpenAI({
+			apiKey: process.env.PERPLEXITY_API_KEY,
+			baseURL: 'https://api.perplexity.ai'
+		});
+	}
+	return perplexity;
 }
 
 /**
@@ -52,46 +54,51 @@ function getPerplexityClient() {
  * @returns {Object} Selected model info with type and client
  */
 function getAvailableAIModel(options = {}) {
-  const { claudeOverloaded = false, requiresResearch = false } = options;
-  
-  // First choice: Perplexity if research is required and it's available
-  if (requiresResearch && process.env.PERPLEXITY_API_KEY) {
-    try {
-      const client = getPerplexityClient();
-      return { type: 'perplexity', client };
-    } catch (error) {
-      log('warn', `Perplexity not available: ${error.message}`);
-      // Fall through to Claude
-    }
-  }
-  
-  // Second choice: Claude if not overloaded
-  if (!claudeOverloaded && process.env.ANTHROPIC_API_KEY) {
-    return { type: 'claude', client: anthropic };
-  }
-  
-  // Third choice: Perplexity as Claude fallback (even if research not required)
-  if (process.env.PERPLEXITY_API_KEY) {
-    try {
-      const client = getPerplexityClient();
-      log('info', 'Claude is overloaded, falling back to Perplexity');
-      return { type: 'perplexity', client };
-    } catch (error) {
-      log('warn', `Perplexity fallback not available: ${error.message}`);
-      // Fall through to Claude anyway with warning
-    }
-  }
-  
-  // Last resort: Use Claude even if overloaded (might fail)
-  if (process.env.ANTHROPIC_API_KEY) {
-    if (claudeOverloaded) {
-      log('warn', 'Claude is overloaded but no alternatives are available. Proceeding with Claude anyway.');
-    }
-    return { type: 'claude', client: anthropic };
-  }
-  
-  // No models available
-  throw new Error('No AI models available. Please set ANTHROPIC_API_KEY and/or PERPLEXITY_API_KEY.');
+	const { claudeOverloaded = false, requiresResearch = false } = options;
+
+	// First choice: Perplexity if research is required and it's available
+	if (requiresResearch && process.env.PERPLEXITY_API_KEY) {
+		try {
+			const client = getPerplexityClient();
+			return { type: 'perplexity', client };
+		} catch (error) {
+			log('warn', `Perplexity not available: ${error.message}`);
+			// Fall through to Claude
+		}
+	}
+
+	// Second choice: Claude if not overloaded
+	if (!claudeOverloaded && process.env.ANTHROPIC_API_KEY) {
+		return { type: 'claude', client: anthropic };
+	}
+
+	// Third choice: Perplexity as Claude fallback (even if research not required)
+	if (process.env.PERPLEXITY_API_KEY) {
+		try {
+			const client = getPerplexityClient();
+			log('info', 'Claude is overloaded, falling back to Perplexity');
+			return { type: 'perplexity', client };
+		} catch (error) {
+			log('warn', `Perplexity fallback not available: ${error.message}`);
+			// Fall through to Claude anyway with warning
+		}
+	}
+
+	// Last resort: Use Claude even if overloaded (might fail)
+	if (process.env.ANTHROPIC_API_KEY) {
+		if (claudeOverloaded) {
+			log(
+				'warn',
+				'Claude is overloaded but no alternatives are available. Proceeding with Claude anyway.'
+			);
+		}
+		return { type: 'claude', client: anthropic };
+	}
+
+	// No models available
+	throw new Error(
+		'No AI models available. Please set ANTHROPIC_API_KEY and/or PERPLEXITY_API_KEY.'
+	);
 }
 
 /**
@@ -100,34 +107,34 @@ function getAvailableAIModel(options = {}) {
  * @returns {string} User-friendly error message
  */
 function handleClaudeError(error) {
-  // Check if it's a structured error response
-  if (error.type === 'error' && error.error) {
-    switch (error.error.type) {
-      case 'overloaded_error':
-        // Check if we can use Perplexity as a fallback
-        if (process.env.PERPLEXITY_API_KEY) {
-          return 'Claude is currently overloaded. Trying to fall back to Perplexity AI.';
-        }
-        return 'Claude is currently experiencing high demand and is overloaded. Please wait a few minutes and try again.';
-      case 'rate_limit_error':
-        return 'You have exceeded the rate limit. Please wait a few minutes before making more requests.';
-      case 'invalid_request_error':
-        return 'There was an issue with the request format. If this persists, please report it as a bug.';
-      default:
-        return `Claude API error: ${error.error.message}`;
-    }
-  }
-  
-  // Check for network/timeout errors
-  if (error.message?.toLowerCase().includes('timeout')) {
-    return 'The request to Claude timed out. Please try again.';
-  }
-  if (error.message?.toLowerCase().includes('network')) {
-    return 'There was a network error connecting to Claude. Please check your internet connection and try again.';
-  }
-  
-  // Default error message
-  return `Error communicating with Claude: ${error.message}`;
+	// Check if it's a structured error response
+	if (error.type === 'error' && error.error) {
+		switch (error.error.type) {
+			case 'overloaded_error':
+				// Check if we can use Perplexity as a fallback
+				if (process.env.PERPLEXITY_API_KEY) {
+					return 'Claude is currently overloaded. Trying to fall back to Perplexity AI.';
+				}
+				return 'Claude is currently experiencing high demand and is overloaded. Please wait a few minutes and try again.';
+			case 'rate_limit_error':
+				return 'You have exceeded the rate limit. Please wait a few minutes before making more requests.';
+			case 'invalid_request_error':
+				return 'There was an issue with the request format. If this persists, please report it as a bug.';
+			default:
+				return `Claude API error: ${error.error.message}`;
+		}
+	}
+
+	// Check for network/timeout errors
+	if (error.message?.toLowerCase().includes('timeout')) {
+		return 'The request to Claude timed out. Please try again.';
+	}
+	if (error.message?.toLowerCase().includes('network')) {
+		return 'There was a network error connecting to Claude. Please check your internet connection and try again.';
+	}
+
+	// Default error message
+	return `Error communicating with Claude: ${error.message}`;
 }
 
 /**
@@ -139,11 +146,11 @@ function handleClaudeError(error) {
  * @returns {Object} Claude's response
  */
 async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
-  try {
-    log('info', 'Calling Claude...');
-    
-    // Build the system prompt
-    const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
+	try {
+		log('info', 'Calling Claude...');
+
+		// Build the system prompt
+		const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
 Your goal is to create ${numTasks} well-structured, actionable development tasks based on the PRD provided.
 
 Each task should follow this JSON structure:
@@ -189,32 +196,42 @@ Expected output format:
 
 Important: Your response must be valid JSON only, with no additional explanation or comments.`;
 
-    // Use streaming request to handle large responses and show progress
-    return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt);
-  } catch (error) {
-    // Get user-friendly error message
-    const userMessage = handleClaudeError(error);
-    log('error', userMessage);
+		// Use streaming request to handle large responses and show progress
+		return await handleStreamingRequest(
+			prdContent,
+			prdPath,
+			numTasks,
+			CONFIG.maxTokens,
+			systemPrompt
+		);
+	} catch (error) {
+		// Get user-friendly error message
+		const userMessage = handleClaudeError(error);
+		log('error', userMessage);
 
-    // Retry logic for certain errors
-    if (retryCount < 2 && (
-      error.error?.type === 'overloaded_error' || 
-      error.error?.type === 'rate_limit_error' ||
-      error.message?.toLowerCase().includes('timeout') ||
-      error.message?.toLowerCase().includes('network')
-    )) {
-      const waitTime = (retryCount + 1) * 5000; // 5s, then 10s
-      log('info', `Waiting ${waitTime/1000} seconds before retry ${retryCount + 1}/2...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      return await callClaude(prdContent, prdPath, numTasks, retryCount + 1);
-    } else {
-      console.error(chalk.red(userMessage));
-      if (CONFIG.debug) {
-        log('debug', 'Full error:', error);
-      }
-      throw new Error(userMessage);
-    }
-  }
+		// Retry logic for certain errors
+		if (
+			retryCount < 2 &&
+			(error.error?.type === 'overloaded_error' ||
+				error.error?.type === 'rate_limit_error' ||
+				error.message?.toLowerCase().includes('timeout') ||
+				error.message?.toLowerCase().includes('network'))
+		) {
+			const waitTime = (retryCount + 1) * 5000; // 5s, then 10s
+			log(
+				'info',
+				`Waiting ${waitTime / 1000} seconds before retry ${retryCount + 1}/2...`
+			);
+			await new Promise((resolve) => setTimeout(resolve, waitTime));
+			return await callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+		} else {
+			console.error(chalk.red(userMessage));
+			if (CONFIG.debug) {
+				log('debug', 'Full error:', error);
+			}
+			throw new Error(userMessage);
+		}
+	}
 }
 
 /**
@@ -226,64 +243,80 @@ Important: Your response must be valid JSON only, with no additional explanation
  * @param {string} systemPrompt - System prompt
  * @returns {Object} Claude's response
  */
-async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
-  const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
-  let responseText = '';
-  let streamingInterval = null;
-  
-  try {
-    // Use streaming for handling large responses
-    const stream = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
-        }
-      ],
-      stream: true
-    });
-    
-    // Update loading indicator to show streaming progress
-    let dotCount = 0;
-    const readline = await import('readline');
-    streamingInterval = setInterval(() => {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-      dotCount = (dotCount + 1) % 4;
-    }, 500);
-    
-    // Process the stream
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-        responseText += chunk.delta.text;
-      }
-    }
-    
-    if (streamingInterval) clearInterval(streamingInterval);
-    stopLoadingIndicator(loadingIndicator);
-    
-    log('info', "Completed streaming response from Claude API!");
-    
-    return processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath);
-  } catch (error) {
-    if (streamingInterval) clearInterval(streamingInterval);
-    stopLoadingIndicator(loadingIndicator);
-    
-    // Get user-friendly error message
-    const userMessage = handleClaudeError(error);
-    log('error', userMessage);
-    console.error(chalk.red(userMessage));
-    
-    if (CONFIG.debug) {
-      log('debug', 'Full error:', error);
-    }
-    
-    throw new Error(userMessage);
-  }
+async function handleStreamingRequest(
+	prdContent,
+	prdPath,
+	numTasks,
+	maxTokens,
+	systemPrompt
+) {
+	const loadingIndicator = startLoadingIndicator(
+		'Generating tasks from PRD...'
+	);
+	let responseText = '';
+	let streamingInterval = null;
+
+	try {
+		// Use streaming for handling large responses
+		const stream = await anthropic.messages.create({
+			model: CONFIG.model,
+			max_tokens: maxTokens,
+			temperature: CONFIG.temperature,
+			system: systemPrompt,
+			messages: [
+				{
+					role: 'user',
+					content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
+				}
+			],
+			stream: true
+		});
+
+		// Update loading indicator to show streaming progress
+		let dotCount = 0;
+		const readline = await import('readline');
+		streamingInterval = setInterval(() => {
+			readline.cursorTo(process.stdout, 0);
+			process.stdout.write(
+				`Receiving streaming response from Claude${'.'.repeat(dotCount)}`
+			);
+			dotCount = (dotCount + 1) % 4;
+		}, 500);
+
+		// Process the stream
+		for await (const chunk of stream) {
+			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+				responseText += chunk.delta.text;
+			}
+		}
+
+		if (streamingInterval) clearInterval(streamingInterval);
+		stopLoadingIndicator(loadingIndicator);
+
+		log('info', 'Completed streaming response from Claude API!');
+
+		return processClaudeResponse(
+			responseText,
+			numTasks,
+			0,
+			prdContent,
+			prdPath
+		);
+	} catch (error) {
+		if (streamingInterval) clearInterval(streamingInterval);
+		stopLoadingIndicator(loadingIndicator);
+
+		// Get user-friendly error message
+		const userMessage = handleClaudeError(error);
+		log('error', userMessage);
+		console.error(chalk.red(userMessage));
+
+		if (CONFIG.debug) {
+			log('debug', 'Full error:', error);
+		}
+
+		throw new Error(userMessage);
+	}
 }
 
 /**
@@ -295,58 +328,73 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
  * @param {string} prdPath - Path to the PRD file
  * @returns {Object} Processed response
  */
-function processClaudeResponse(textContent, numTasks, retryCount, prdContent, prdPath) {
-  try {
-    // Attempt to parse the JSON response
-    let jsonStart = textContent.indexOf('{');
-    let jsonEnd = textContent.lastIndexOf('}');
-    
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error("Could not find valid JSON in Claude's response");
-    }
-    
-    let jsonContent = textContent.substring(jsonStart, jsonEnd + 1);
-    let parsedData = JSON.parse(jsonContent);
-    
-    // Validate the structure of the generated tasks
-    if (!parsedData.tasks || !Array.isArray(parsedData.tasks)) {
-      throw new Error("Claude's response does not contain a valid tasks array");
-    }
-    
-    // Ensure we have the correct number of tasks
-    if (parsedData.tasks.length !== numTasks) {
-      log('warn', `Expected ${numTasks} tasks, but received ${parsedData.tasks.length}`);
-    }
-    
-    // Add metadata if missing
-    if (!parsedData.metadata) {
-      parsedData.metadata = {
-        projectName: "PRD Implementation",
-        totalTasks: parsedData.tasks.length,
-        sourceFile: prdPath,
-        generatedAt: new Date().toISOString().split('T')[0]
-      };
-    }
-    
-    return parsedData;
-  } catch (error) {
-    log('error', "Error processing Claude's response:", error.message);
-    
-    // Retry logic
-    if (retryCount < 2) {
-      log('info', `Retrying to parse response (${retryCount + 1}/2)...`);
-      
-      // Try again with Claude for a cleaner response
-      if (retryCount === 1) {
-        log('info', "Calling Claude again for a cleaner response...");
-        return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
-      }
-      
-      return processClaudeResponse(textContent, numTasks, retryCount + 1, prdContent, prdPath);
-    } else {
-      throw error;
-    }
-  }
+function processClaudeResponse(
+	textContent,
+	numTasks,
+	retryCount,
+	prdContent,
+	prdPath
+) {
+	try {
+		// Attempt to parse the JSON response
+		let jsonStart = textContent.indexOf('{');
+		let jsonEnd = textContent.lastIndexOf('}');
+
+		if (jsonStart === -1 || jsonEnd === -1) {
+			throw new Error("Could not find valid JSON in Claude's response");
+		}
+
+		let jsonContent = textContent.substring(jsonStart, jsonEnd + 1);
+		let parsedData = JSON.parse(jsonContent);
+
+		// Validate the structure of the generated tasks
+		if (!parsedData.tasks || !Array.isArray(parsedData.tasks)) {
+			throw new Error("Claude's response does not contain a valid tasks array");
+		}
+
+		// Ensure we have the correct number of tasks
+		if (parsedData.tasks.length !== numTasks) {
+			log(
+				'warn',
+				`Expected ${numTasks} tasks, but received ${parsedData.tasks.length}`
+			);
+		}
+
+		// Add metadata if missing
+		if (!parsedData.metadata) {
+			parsedData.metadata = {
+				projectName: 'PRD Implementation',
+				totalTasks: parsedData.tasks.length,
+				sourceFile: prdPath,
+				generatedAt: new Date().toISOString().split('T')[0]
+			};
+		}
+
+		return parsedData;
+	} catch (error) {
+		log('error', "Error processing Claude's response:", error.message);
+
+		// Retry logic
+		if (retryCount < 2) {
+			log('info', `Retrying to parse response (${retryCount + 1}/2)...`);
+
+			// Try again with Claude for a cleaner response
+			if (retryCount === 1) {
+				log('info', 'Calling Claude again for a cleaner response...');
+				return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+			}
+
+			return processClaudeResponse(
+				textContent,
+				numTasks,
+				retryCount + 1,
+				prdContent,
+				prdPath
+			);
+		} else {
+			throw error;
+		}
+	}
 }
 
 /**
@@ -357,15 +405,25 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
  * @param {string} additionalContext - Additional context
  * @returns {Array} Generated subtasks
  */
-async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext = '') {
-  try {
-    log('info', `Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`);
-    
-    const loadingIndicator = startLoadingIndicator(`Generating subtasks for task ${task.id}...`);
-    let streamingInterval = null;
-    let responseText = '';
-    
-    const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
+async function generateSubtasks(
+	task,
+	numSubtasks,
+	nextSubtaskId,
+	additionalContext = ''
+) {
+	try {
+		log(
+			'info',
+			`Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`
+		);
+
+		const loadingIndicator = startLoadingIndicator(
+			`Generating subtasks for task ${task.id}...`
+		);
+		let streamingInterval = null;
+		let responseText = '';
+
+		const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
 
 Subtasks should:
@@ -384,10 +442,11 @@ For each subtask, provide:
 
 Each subtask should be implementable in a focused coding session.`;
 
-    const contextPrompt = additionalContext ? 
-      `\n\nAdditional context to consider: ${additionalContext}` : '';
-    
-    const userPrompt = `Please break down this task into ${numSubtasks} specific, actionable subtasks:
+		const contextPrompt = additionalContext
+			? `\n\nAdditional context to consider: ${additionalContext}`
+			: '';
+
+		const userPrompt = `Please break down this task into ${numSubtasks} specific, actionable subtasks:
 
 Task ID: ${task.id}
 Title: ${task.title}
@@ -409,53 +468,60 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    try {
-      // Update loading indicator to show streaming progress
-      let dotCount = 0;
-      const readline = await import('readline');
-      streamingInterval = setInterval(() => {
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(`Generating subtasks for task ${task.id}${'.'.repeat(dotCount)}`);
-        dotCount = (dotCount + 1) % 4;
-      }, 500);
-      
-      // Use streaming API call
-      const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        stream: true
-      });
-      
-      // Process the stream
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-          responseText += chunk.delta.text;
-        }
-      }
-      
-      if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
-      
-      log('info', `Completed generating subtasks for task ${task.id}`);
-      
-      return parseSubtasksFromText(responseText, nextSubtaskId, numSubtasks, task.id);
-    } catch (error) {
-      if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
-      throw error;
-    }
-  } catch (error) {
-    log('error', `Error generating subtasks: ${error.message}`);
-    throw error;
-  }
+		try {
+			// Update loading indicator to show streaming progress
+			let dotCount = 0;
+			const readline = await import('readline');
+			streamingInterval = setInterval(() => {
+				readline.cursorTo(process.stdout, 0);
+				process.stdout.write(
+					`Generating subtasks for task ${task.id}${'.'.repeat(dotCount)}`
+				);
+				dotCount = (dotCount + 1) % 4;
+			}, 500);
+
+			// Use streaming API call
+			const stream = await anthropic.messages.create({
+				model: CONFIG.model,
+				max_tokens: CONFIG.maxTokens,
+				temperature: CONFIG.temperature,
+				system: systemPrompt,
+				messages: [
+					{
+						role: 'user',
+						content: userPrompt
+					}
+				],
+				stream: true
+			});
+
+			// Process the stream
+			for await (const chunk of stream) {
+				if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+					responseText += chunk.delta.text;
+				}
+			}
+
+			if (streamingInterval) clearInterval(streamingInterval);
+			stopLoadingIndicator(loadingIndicator);
+
+			log('info', `Completed generating subtasks for task ${task.id}`);
+
+			return parseSubtasksFromText(
+				responseText,
+				nextSubtaskId,
+				numSubtasks,
+				task.id
+			);
+		} catch (error) {
+			if (streamingInterval) clearInterval(streamingInterval);
+			stopLoadingIndicator(loadingIndicator);
+			throw error;
+		}
+	} catch (error) {
+		log('error', `Error generating subtasks: ${error.message}`);
+		throw error;
+	}
 }
 
 /**
@@ -466,50 +532,64 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
  * @param {string} additionalContext - Additional context
  * @returns {Array} Generated subtasks
  */
-async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtaskId = 1, additionalContext = '') {
-  try {
-    // First, perform research to get context
-    log('info', `Researching context for task ${task.id}: ${task.title}`);
-    const perplexityClient = getPerplexityClient();
-    
-    const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
-    const researchLoadingIndicator = startLoadingIndicator('Researching best practices with Perplexity AI...');
-    
-    // Formulate research query based on task
-    const researchQuery = `I need to implement "${task.title}" which involves: "${task.description}". 
+async function generateSubtasksWithPerplexity(
+	task,
+	numSubtasks = 3,
+	nextSubtaskId = 1,
+	additionalContext = ''
+) {
+	try {
+		// First, perform research to get context
+		log('info', `Researching context for task ${task.id}: ${task.title}`);
+		const perplexityClient = getPerplexityClient();
+
+		const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
+		const researchLoadingIndicator = startLoadingIndicator(
+			'Researching best practices with Perplexity AI...'
+		);
+
+		// Formulate research query based on task
+		const researchQuery = `I need to implement "${task.title}" which involves: "${task.description}". 
 What are current best practices, libraries, design patterns, and implementation approaches? 
 Include concrete code examples and technical considerations where relevant.`;
-    
-    // Query Perplexity for research
-    const researchResponse = await perplexityClient.chat.completions.create({
-      model: PERPLEXITY_MODEL,
-      messages: [{
-        role: 'user',
-        content: researchQuery
-      }],
-      temperature: 0.1 // Lower temperature for more factual responses
-    });
-    
-    const researchResult = researchResponse.choices[0].message.content;
-    
-    stopLoadingIndicator(researchLoadingIndicator);
-    log('info', 'Research completed, now generating subtasks with additional context');
-    
-    // Use the research result as additional context for Claude to generate subtasks
-    const combinedContext = `
+
+		// Query Perplexity for research
+		const researchResponse = await perplexityClient.chat.completions.create({
+			model: PERPLEXITY_MODEL,
+			messages: [
+				{
+					role: 'user',
+					content: researchQuery
+				}
+			],
+			temperature: 0.1 // Lower temperature for more factual responses
+		});
+
+		const researchResult = researchResponse.choices[0].message.content;
+
+		stopLoadingIndicator(researchLoadingIndicator);
+		log(
+			'info',
+			'Research completed, now generating subtasks with additional context'
+		);
+
+		// Use the research result as additional context for Claude to generate subtasks
+		const combinedContext = `
 RESEARCH FINDINGS:
 ${researchResult}
 
 ADDITIONAL CONTEXT PROVIDED BY USER:
-${additionalContext || "No additional context provided."}
+${additionalContext || 'No additional context provided.'}
 `;
-    
-    // Now generate subtasks with Claude
-    const loadingIndicator = startLoadingIndicator(`Generating research-backed subtasks for task ${task.id}...`);
-    let streamingInterval = null;
-    let responseText = '';
-    
-    const systemPrompt = `You are an AI assistant helping with task breakdown for software development.
+
+		// Now generate subtasks with Claude
+		const loadingIndicator = startLoadingIndicator(
+			`Generating research-backed subtasks for task ${task.id}...`
+		);
+		let streamingInterval = null;
+		let responseText = '';
+
+		const systemPrompt = `You are an AI assistant helping with task breakdown for software development.
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
 
 You have been provided with research on current best practices and implementation approaches.
@@ -531,7 +611,7 @@ For each subtask, provide:
 
 Each subtask should be implementable in a focused coding session.`;
 
-    const userPrompt = `Please break down this task into ${numSubtasks} specific, well-researched, actionable subtasks:
+		const userPrompt = `Please break down this task into ${numSubtasks} specific, well-researched, actionable subtasks:
 
 Task ID: ${task.id}
 Title: ${task.title}
@@ -554,53 +634,63 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    try {
-      // Update loading indicator to show streaming progress
-      let dotCount = 0;
-      const readline = await import('readline');
-      streamingInterval = setInterval(() => {
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(`Generating research-backed subtasks for task ${task.id}${'.'.repeat(dotCount)}`);
-        dotCount = (dotCount + 1) % 4;
-      }, 500);
-      
-      // Use streaming API call
-      const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        stream: true
-      });
-      
-      // Process the stream
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-          responseText += chunk.delta.text;
-        }
-      }
-      
-      if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
-      
-      log('info', `Completed generating research-backed subtasks for task ${task.id}`);
-      
-      return parseSubtasksFromText(responseText, nextSubtaskId, numSubtasks, task.id);
-    } catch (error) {
-      if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
-      throw error;
-    }
-  } catch (error) {
-    log('error', `Error generating research-backed subtasks: ${error.message}`);
-    throw error;
-  }
+		try {
+			// Update loading indicator to show streaming progress
+			let dotCount = 0;
+			const readline = await import('readline');
+			streamingInterval = setInterval(() => {
+				readline.cursorTo(process.stdout, 0);
+				process.stdout.write(
+					`Generating research-backed subtasks for task ${task.id}${'.'.repeat(dotCount)}`
+				);
+				dotCount = (dotCount + 1) % 4;
+			}, 500);
+
+			// Use streaming API call
+			const stream = await anthropic.messages.create({
+				model: CONFIG.model,
+				max_tokens: CONFIG.maxTokens,
+				temperature: CONFIG.temperature,
+				system: systemPrompt,
+				messages: [
+					{
+						role: 'user',
+						content: userPrompt
+					}
+				],
+				stream: true
+			});
+
+			// Process the stream
+			for await (const chunk of stream) {
+				if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+					responseText += chunk.delta.text;
+				}
+			}
+
+			if (streamingInterval) clearInterval(streamingInterval);
+			stopLoadingIndicator(loadingIndicator);
+
+			log(
+				'info',
+				`Completed generating research-backed subtasks for task ${task.id}`
+			);
+
+			return parseSubtasksFromText(
+				responseText,
+				nextSubtaskId,
+				numSubtasks,
+				task.id
+			);
+		} catch (error) {
+			if (streamingInterval) clearInterval(streamingInterval);
+			stopLoadingIndicator(loadingIndicator);
+			throw error;
+		}
+	} catch (error) {
+		log('error', `Error generating research-backed subtasks: ${error.message}`);
+		throw error;
+	}
 }
 
 /**
@@ -612,78 +702,89 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
  * @returns {Array} Parsed subtasks
  */
 function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
-  try {
-    // Locate JSON array in the text
-    const jsonStartIndex = text.indexOf('[');
-    const jsonEndIndex = text.lastIndexOf(']');
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1 || jsonEndIndex < jsonStartIndex) {
-      throw new Error("Could not locate valid JSON array in the response");
-    }
-    
-    // Extract and parse the JSON
-    const jsonText = text.substring(jsonStartIndex, jsonEndIndex + 1);
-    let subtasks = JSON.parse(jsonText);
-    
-    // Validate
-    if (!Array.isArray(subtasks)) {
-      throw new Error("Parsed content is not an array");
-    }
-    
-    // Log warning if count doesn't match expected
-    if (subtasks.length !== expectedCount) {
-      log('warn', `Expected ${expectedCount} subtasks, but parsed ${subtasks.length}`);
-    }
-    
-    // Normalize subtask IDs if they don't match
-    subtasks = subtasks.map((subtask, index) => {
-      // Assign the correct ID if it doesn't match
-      if (subtask.id !== startId + index) {
-        log('warn', `Correcting subtask ID from ${subtask.id} to ${startId + index}`);
-        subtask.id = startId + index;
-      }
-      
-      // Convert dependencies to numbers if they are strings
-      if (subtask.dependencies && Array.isArray(subtask.dependencies)) {
-        subtask.dependencies = subtask.dependencies.map(dep => {
-          return typeof dep === 'string' ? parseInt(dep, 10) : dep;
-        });
-      } else {
-        subtask.dependencies = [];
-      }
-      
-      // Ensure status is 'pending'
-      subtask.status = 'pending';
-      
-      // Add parentTaskId
-      subtask.parentTaskId = parentTaskId;
-      
-      return subtask;
-    });
-    
-    return subtasks;
-  } catch (error) {
-    log('error', `Error parsing subtasks: ${error.message}`);
-    
-    // Create a fallback array of empty subtasks if parsing fails
-    log('warn', 'Creating fallback subtasks');
-    
-    const fallbackSubtasks = [];
-    
-    for (let i = 0; i < expectedCount; i++) {
-      fallbackSubtasks.push({
-        id: startId + i,
-        title: `Subtask ${startId + i}`,
-        description: "Auto-generated fallback subtask",
-        dependencies: [],
-        details: "This is a fallback subtask created because parsing failed. Please update with real details.",
-        status: 'pending',
-        parentTaskId: parentTaskId
-      });
-    }
-    
-    return fallbackSubtasks;
-  }
+	try {
+		// Locate JSON array in the text
+		const jsonStartIndex = text.indexOf('[');
+		const jsonEndIndex = text.lastIndexOf(']');
+
+		if (
+			jsonStartIndex === -1 ||
+			jsonEndIndex === -1 ||
+			jsonEndIndex < jsonStartIndex
+		) {
+			throw new Error('Could not locate valid JSON array in the response');
+		}
+
+		// Extract and parse the JSON
+		const jsonText = text.substring(jsonStartIndex, jsonEndIndex + 1);
+		let subtasks = JSON.parse(jsonText);
+
+		// Validate
+		if (!Array.isArray(subtasks)) {
+			throw new Error('Parsed content is not an array');
+		}
+
+		// Log warning if count doesn't match expected
+		if (subtasks.length !== expectedCount) {
+			log(
+				'warn',
+				`Expected ${expectedCount} subtasks, but parsed ${subtasks.length}`
+			);
+		}
+
+		// Normalize subtask IDs if they don't match
+		subtasks = subtasks.map((subtask, index) => {
+			// Assign the correct ID if it doesn't match
+			if (subtask.id !== startId + index) {
+				log(
+					'warn',
+					`Correcting subtask ID from ${subtask.id} to ${startId + index}`
+				);
+				subtask.id = startId + index;
+			}
+
+			// Convert dependencies to numbers if they are strings
+			if (subtask.dependencies && Array.isArray(subtask.dependencies)) {
+				subtask.dependencies = subtask.dependencies.map((dep) => {
+					return typeof dep === 'string' ? parseInt(dep, 10) : dep;
+				});
+			} else {
+				subtask.dependencies = [];
+			}
+
+			// Ensure status is 'pending'
+			subtask.status = 'pending';
+
+			// Add parentTaskId
+			subtask.parentTaskId = parentTaskId;
+
+			return subtask;
+		});
+
+		return subtasks;
+	} catch (error) {
+		log('error', `Error parsing subtasks: ${error.message}`);
+
+		// Create a fallback array of empty subtasks if parsing fails
+		log('warn', 'Creating fallback subtasks');
+
+		const fallbackSubtasks = [];
+
+		for (let i = 0; i < expectedCount; i++) {
+			fallbackSubtasks.push({
+				id: startId + i,
+				title: `Subtask ${startId + i}`,
+				description: 'Auto-generated fallback subtask',
+				dependencies: [],
+				details:
+					'This is a fallback subtask created because parsing failed. Please update with real details.',
+				status: 'pending',
+				parentTaskId: parentTaskId
+			});
+		}
+
+		return fallbackSubtasks;
+	}
 }
 
 /**
@@ -692,16 +793,20 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
  * @returns {string} Generated prompt
  */
 function generateComplexityAnalysisPrompt(tasksData) {
-  return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
+	return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
 
-${tasksData.tasks.map(task => `
+${tasksData.tasks
+	.map(
+		(task) => `
 Task ID: ${task.id}
 Title: ${task.title}
 Description: ${task.description}
 Details: ${task.details}
 Dependencies: ${JSON.stringify(task.dependencies || [])}
 Priority: ${task.priority || 'medium'}
-`).join('\n---\n')}
+`
+	)
+	.join('\n---\n')}
 
 Analyze each task and return a JSON array with the following structure for each task:
 [
@@ -722,14 +827,14 @@ IMPORTANT: Make sure to include an analysis for EVERY task listed above, with th
 
 // Export AI service functions
 export {
-  getPerplexityClient,
-  callClaude,
-  handleStreamingRequest,
-  processClaudeResponse,
-  generateSubtasks,
-  generateSubtasksWithPerplexity,
-  parseSubtasksFromText,
-  generateComplexityAnalysisPrompt,
-  handleClaudeError,
-  getAvailableAIModel
-}; 
+	getPerplexityClient,
+	callClaude,
+	handleStreamingRequest,
+	processClaudeResponse,
+	generateSubtasks,
+	generateSubtasksWithPerplexity,
+	parseSubtasksFromText,
+	generateComplexityAnalysisPrompt,
+	handleClaudeError,
+	getAvailableAIModel
+};
