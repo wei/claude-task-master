@@ -37,7 +37,7 @@ jobs:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
 
-  format:
+  format-check:
     needs: setup
     runs-on: ubuntu-latest
     steps:
