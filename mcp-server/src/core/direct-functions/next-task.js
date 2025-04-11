@@ -19,11 +19,11 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
-export async function nextTaskDirect(args, log) {
+export async function nextTaskDirect(args, log, { session }) {
 	let tasksPath;
 	try {
 		// Find the tasks path first - needed for cache key and execution
-		tasksPath = findTasksJsonPath(args, log);
+		tasksPath = findTasksJsonPath(args, log, session);
 	} catch (error) {
 		log.error(`Tasks file not found: ${error.message}`);
 		return {

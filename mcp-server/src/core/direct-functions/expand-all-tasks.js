@@ -26,9 +26,7 @@ import fs from 'fs';
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function expandAllTasksDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-
+export async function expandAllTasksDirect(args, log, { session }) {
 	try {
 		log.info(`Expanding all tasks with args: ${JSON.stringify(args)}`);
 
@@ -37,7 +35,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 
 		try {
 			// Find the tasks.json path
-			const tasksPath = findTasksJsonPath(args, log);
+			const tasksPath = findTasksJsonPath(args, log, session);
 
 			// Parse parameters
 			const numSubtasks = args.num ? parseInt(args.num, 10) : undefined;

@@ -18,12 +18,12 @@ import fs from 'fs';
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function fixDependenciesDirect(args, log) {
+export async function fixDependenciesDirect(args, log, { session }) {
 	try {
 		log.info(`Fixing invalid dependencies in tasks...`);
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Verify the file exists
 		if (!fs.existsSync(tasksPath)) {

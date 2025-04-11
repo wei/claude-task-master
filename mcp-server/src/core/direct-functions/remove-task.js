@@ -17,12 +17,12 @@ import { findTasksJsonPath } from '../utils/path-utils.js';
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: false }
  */
-export async function removeTaskDirect(args, log) {
+export async function removeTaskDirect(args, log, { session }) {
 	try {
 		// Find the tasks path first
 		let tasksPath;
 		try {
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksJsonPath(args, log, session);
 		} catch (error) {
 			log.error(`Tasks file not found: ${error.message}`);
 			return {

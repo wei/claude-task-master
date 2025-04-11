@@ -20,7 +20,7 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function removeSubtaskDirect(args, log) {
+export async function removeSubtaskDirect(args, log, { session }) {
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
@@ -50,7 +50,7 @@ export async function removeSubtaskDirect(args, log) {
 		}
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Convert convertToTask to a boolean
 		const convertToTask = args.convert === true;

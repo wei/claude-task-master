@@ -9,10 +9,7 @@ import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 
 // Import path utilities to ensure consistent path resolution
-import {
-	lastFoundProjectRoot,
-	PROJECT_MARKERS
-} from '../core/utils/path-utils.js';
+import { PROJECT_MARKERS } from '../core/utils/path-utils.js';
 
 /**
  * Get normalized project root path

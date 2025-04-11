@@ -37,13 +37,13 @@ import {
  * @param {Object} context - Additional context (reportProgress, session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function addTaskDirect(args, log, context = {}) {
+export async function addTaskDirect(args, log, { session }) {
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Check if this is manual task creation or AI-driven task creation
 		const isManualCreation = args.title && args.description;
@@ -74,9 +74,6 @@ export async function addTaskDirect(args, log, context = {}) {
 						.map((id) => parseInt(id.trim(), 10))
 				: [];
 		const priority = args.priority || 'medium';
-
-		// Extract context parameters for advanced functionality
-		const { session } = context;
 
 		let manualTaskData = null;
 

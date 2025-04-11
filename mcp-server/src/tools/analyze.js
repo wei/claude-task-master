@@ -6,8 +6,8 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	createErrorResponse,
-	getProjectRootFromSession
+	createErrorResponse
+	// getProjectRootFromSession // No longer needed here
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js';
 
@@ -19,19 +19,18 @@ export function registerAnalyzeTool(server) {
 	server.addTool({
 		name: 'analyze_project_complexity',
 		description:
-			'Analyze task complexity and generate expansion recommendations',
+			'Analyze task complexity and generate expansion recommendations. Requires the project root path.',
 		parameters: z.object({
+			projectRoot: z
+				.string()
+				.describe(
+					'Required. Absolute path to the root directory of the project being analyzed.'
+				),
 			output: z
 				.string()
 				.optional()
 				.describe(
-					'Output file path for the report (default: scripts/task-complexity-report.json)'
-				),
-			model: z
-				.string()
-				.optional()
-				.describe(
-					'LLM model to use for analysis (defaults to configured model)'
+					'Output file path for the report, relative to projectRoot (default: scripts/task-complexity-report.json)'
 				),
 			threshold: z.coerce
 				.number()
@@ -39,62 +38,43 @@ export function registerAnalyzeTool(server) {
 				.max(10)
 				.optional()
 				.describe(
-					'Minimum complexity score to recommend expansion (1-10) (default: 5)'
-				),
-			file: z
-				.string()
-				.optional()
-				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
+					'Minimum complexity score to recommend expansion (1-10) (default: 5). If the complexity score is below this threshold, the tool will not recommend adding subtasks.'
 				),
 			research: z
 				.boolean()
 				.optional()
-				.describe('Use Perplexity AI for research-backed complexity analysis'),
-			projectRoot: z
-				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('Use Perplexity AI for research-backed complexity analysis')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
 				log.info(
-					`Analyzing task complexity with args: ${JSON.stringify(args)}`
+					`Analyzing task complexity with required projectRoot: ${args.projectRoot}, other args: ${JSON.stringify(args)}`
 				);
 
-				let rootFolder = getProjectRootFromSession(session, log);
+				const result = await analyzeTaskComplexityDirect(args, log, {
+					session
+				});
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
-
-				const result = await analyzeTaskComplexityDirect(
-					{
-						projectRoot: rootFolder,
-						...args
-					},
-					log,
-					{ session }
-				);
-
-				if (result.success) {
+				if (result.success && result.data) {
 					log.info(`Task complexity analysis complete: ${result.data.message}`);
 					log.info(
 						`Report summary: ${JSON.stringify(result.data.reportSummary)}`
 					);
-				} else {
+				} else if (!result.success && result.error) {
 					log.error(
-						`Failed to analyze task complexity: ${result.error.message}`
+						`Failed to analyze task complexity: ${result.error.message} (Code: ${result.error.code})`
 					);
 				}
 
 				return handleApiResult(result, log, 'Error analyzing task complexity');
 			} catch (error) {
-				log.error(`Error in analyze tool: ${error.message}`);
-				return createErrorResponse(error.message);
+				log.error(
+					`Unexpected error in analyze tool execute method: ${error.message}`,
+					{ stack: error.stack }
+				);
+				return createErrorResponse(
+					`Unexpected error in analyze tool: ${error.message}`
+				);
 			}
 		}
 	});

@@ -27,9 +27,7 @@ import fs from 'fs';
  * @param {Object} context - Context object containing session and reportProgress
  * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
-export async function expandTaskDirect(args, log, context = {}) {
-	const { session } = context;
-
+export async function expandTaskDirect(args, log, { session }) {
 	// Log session root data for debugging
 	log.info(
 		`Session data in expandTaskDirect: ${JSON.stringify({
@@ -53,7 +51,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			log.info(
 				`[expandTaskDirect] No direct file path provided or file not found at ${args.file}, searching using findTasksJsonPath`
 			);
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksJsonPath(args, log, session);
 		}
 	} catch (error) {
 		log.error(

@@ -25,7 +25,7 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
-export async function addSubtaskDirect(args, log) {
+export async function addSubtaskDirect(args, log, { session }) {
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 
@@ -51,7 +51,7 @@ export async function addSubtaskDirect(args, log) {
 		}
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Parse dependencies if provided
 		let dependencies = [];

@@ -21,7 +21,7 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
-export async function addDependencyDirect(args, log) {
+export async function addDependencyDirect(args, log, { session }) {
 	try {
 		log.info(`Adding dependency with args: ${JSON.stringify(args)}`);
 
@@ -47,7 +47,7 @@ export async function addDependencyDirect(args, log) {
 		}
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Format IDs for the core function
 		const taskId =

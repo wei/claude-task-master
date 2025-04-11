@@ -3,7 +3,11 @@
  */
 
 import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
+import {
+	findTasksJsonPath,
+	resolveProjectPath,
+	ensureDirectoryExists
+} from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
@@ -26,23 +30,33 @@ import path from 'path';
  * @param {Object} [context={}] - Context object containing session data
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-
+export async function analyzeTaskComplexityDirect(args, log, { session }) {
 	try {
 		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		// Find the tasks.json path AND get the validated project root
+		const { tasksPath, validatedProjectRoot } = findTasksJsonPath(
+			args,
+			log,
+			session
+		);
+		log.info(
+			`Using tasks file: ${tasksPath} located within project root: ${validatedProjectRoot}`
+		);
 
-		// Determine output path
-		let outputPath = args.output || 'scripts/task-complexity-report.json';
-		if (!path.isAbsolute(outputPath) && args.projectRoot) {
-			outputPath = path.join(args.projectRoot, outputPath);
-		}
+		// Determine and resolve the output path using the VALIDATED root
+		const relativeOutputPath =
+			args.output || 'scripts/task-complexity-report.json';
+		const absoluteOutputPath = resolveProjectPath(
+			relativeOutputPath,
+			validatedProjectRoot,
+			log
+		);
 
-		log.info(`Analyzing task complexity from: ${tasksPath}`);
-		log.info(`Output report will be saved to: ${outputPath}`);
+		// Ensure the output directory exists
+		ensureDirectoryExists(path.dirname(absoluteOutputPath), log);
+
+		log.info(`Output report will be saved to: ${absoluteOutputPath}`);
 
 		if (args.research) {
 			log.info('Using Perplexity AI for research-backed complexity analysis');
@@ -51,7 +65,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		// Create options object for analyzeTaskComplexity
 		const options = {
 			file: tasksPath,
-			output: outputPath,
+			output: absoluteOutputPath,
 			model: args.model,
 			threshold: args.threshold,
 			research: args.research === true
@@ -95,7 +109,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		}
 
 		// Verify the report file was created
-		if (!fs.existsSync(outputPath)) {
+		if (!fs.existsSync(absoluteOutputPath)) {
 			return {
 				success: false,
 				error: {
@@ -108,7 +122,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		// Read the report file
 		let report;
 		try {
-			report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+			report = JSON.parse(fs.readFileSync(absoluteOutputPath, 'utf8'));
 
 			// Important: Handle different report formats
 			// The core function might return an array or an object with a complexityAnalysis property
@@ -130,8 +144,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${outputPath}`,
-					reportPath: outputPath,
+					message: `Task complexity analysis complete. Report saved to ${absoluteOutputPath}`,
+					reportPath: absoluteOutputPath,
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,
@@ -151,18 +165,23 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			};
 		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
+		// Centralized error catching for issues like invalid root, file not found, core errors etc.
 		if (isSilentMode()) {
 			disableSilentMode();
 		}
 
-		log.error(`Error in analyzeTaskComplexityDirect: ${error.message}`);
+		log.error(`Error in analyzeTaskComplexityDirect: ${error.message}`, {
+			code: error.code,
+			details: error.details,
+			stack: error.stack
+		});
 		return {
 			success: false,
 			error: {
-				code: 'CORE_FUNCTION_ERROR',
+				code: error.code || 'ANALYZE_COMPLEXITY_ERROR',
 				message: error.message
-			}
+			},
+			fromCache: false // Assume errors are not from cache
 		};
 	}
 }

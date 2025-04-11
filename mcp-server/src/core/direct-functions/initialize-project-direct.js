@@ -16,8 +16,7 @@ import os from 'os'; // Import os module for home directory check
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
  */
-export async function initializeProjectDirect(args, log, context = {}) {
-	const { session } = context;
+export async function initializeProjectDirect(args, log, { session }) {
 	const homeDir = os.homedir();
 	let targetDirectory = null;
 

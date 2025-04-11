@@ -18,7 +18,7 @@ import {
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function setTaskStatusDirect(args, log) {
+export async function setTaskStatusDirect(args, log, { session }) {
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
 
@@ -49,7 +49,7 @@ export async function setTaskStatusDirect(args, log) {
 		let tasksPath;
 		try {
 			// The enhanced findTasksJsonPath will now search in parent directories if needed
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksJsonPath(args, log, session);
 			log.info(`Found tasks file at: ${tasksPath}`);
 		} catch (error) {
 			log.error(`Error finding tasks file: ${error.message}`);

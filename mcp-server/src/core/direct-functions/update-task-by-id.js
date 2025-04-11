@@ -22,9 +22,7 @@ import {
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function updateTaskByIdDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-
+export async function updateTaskByIdDirect(args, log, { session }) {
 	try {
 		log.info(`Updating task with args: ${JSON.stringify(args)}`);
 
@@ -77,7 +75,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		// Get tasks file path
 		let tasksPath;
 		try {
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksJsonPath(args, log, session);
 		} catch (error) {
 			log.error(`Error finding tasks file: ${error.message}`);
 			return {

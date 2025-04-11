@@ -12,11 +12,11 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import os from 'os';
+// Removed lastFoundProjectRoot as it's not suitable for MCP server
+// Assuming getProjectRootFromSession is available
+import { getProjectRootFromSession } from '../../tools/utils.js';
 
-// Store last found project root to improve performance on subsequent calls (primarily for CLI)
-export let lastFoundProjectRoot = null;
-
-// Project marker files that indicate a potential project root
+// Project marker files that indicate a potential project root (can be kept for potential future use or logging)
 export const PROJECT_MARKERS = [
 	// Task Master specific
 	'tasks.json',
@@ -75,109 +75,142 @@ export function getPackagePath() {
 }
 
 /**
- * Finds the absolute path to the tasks.json file based on project root and arguments.
+ * Finds the absolute path to the tasks.json file and returns the validated project root.
+ * Determines the project root using args and session, validates it, searches for tasks.json.
+ *
  * @param {Object} args - Command arguments, potentially including 'projectRoot' and 'file'.
  * @param {Object} log - Logger object.
- * @returns {string} - Absolute path to the tasks.json file.
- * @throws {Error} - If tasks.json cannot be found.
+ * @param {Object} session - MCP session object.
+ * @returns {Promise<{tasksPath: string, validatedProjectRoot: string}>} - Object containing absolute path to tasks.json and the validated root.
+ * @throws {Error} - If a valid project root cannot be determined or tasks.json cannot be found.
  */
-export function findTasksJsonPath(args, log) {
-	// PRECEDENCE ORDER for finding tasks.json:
-	// 1. Explicitly provided `projectRoot` in args (Highest priority, expected in MCP context)
-	// 2. Previously found/cached `lastFoundProjectRoot` (primarily for CLI performance)
-	// 3. Search upwards from current working directory (`process.cwd()`) - CLI usage
+export function findTasksJsonPath(args, log, session) {
+	const homeDir = os.homedir();
+	let targetDirectory = null;
+	let rootSource = 'unknown';
 
-	// 1. If project root is explicitly provided (e.g., from MCP session), use it directly
-	if (args.projectRoot) {
-		const projectRoot = args.projectRoot;
-		log.info(`Using explicitly provided project root: ${projectRoot}`);
-		try {
-			// This will throw if tasks.json isn't found within this root
-			return findTasksJsonInDirectory(projectRoot, args.file, log);
-		} catch (error) {
-			// Include debug info in error
-			const debugInfo = {
-				projectRoot,
-				currentDir: process.cwd(),
-				serverDir: path.dirname(process.argv[1]),
-				possibleProjectRoot: path.resolve(
-					path.dirname(process.argv[1]),
-					'../..'
-				),
-				lastFoundProjectRoot,
-				searchedPaths: error.message
-			};
-
-			error.message = `Tasks file not found in any of the expected locations relative to project root "${projectRoot}" (from session).\nDebug Info: ${JSON.stringify(debugInfo, null, 2)}`;
-			throw error;
-		}
-	}
-
-	// --- Fallback logic primarily for CLI or when projectRoot isn't passed ---
-
-	// 2. If we have a last known project root that worked, try it first
-	if (lastFoundProjectRoot) {
-		log.info(`Trying last known project root: ${lastFoundProjectRoot}`);
-		try {
-			// Use the cached root
-			const tasksPath = findTasksJsonInDirectory(
-				lastFoundProjectRoot,
-				args.file,
-				log
-			);
-			return tasksPath; // Return if found in cached root
-		} catch (error) {
-			log.info(
-				`Task file not found in last known project root, continuing search.`
-			);
-			// Continue with search if not found in cache
-		}
-	}
-
-	// 3. Start search from current directory (most common CLI scenario)
-	const startDir = process.cwd();
 	log.info(
-		`Searching for tasks.json starting from current directory: ${startDir}`
+		`Finding tasks.json path. Args: ${JSON.stringify(args)}, Session available: ${!!session}`
 	);
 
-	// Try to find tasks.json by walking up the directory tree from cwd
+	// --- Determine Target Directory ---
+	if (
+		args.projectRoot &&
+		args.projectRoot !== '/' &&
+		args.projectRoot !== homeDir
+	) {
+		log.info(`Using projectRoot directly from args: ${args.projectRoot}`);
+		targetDirectory = args.projectRoot;
+		rootSource = 'args.projectRoot';
+	} else {
+		log.warn(
+			`args.projectRoot ('${args.projectRoot}') is missing or invalid. Attempting to derive from session.`
+		);
+		const sessionDerivedPath = getProjectRootFromSession(session, log);
+		if (
+			sessionDerivedPath &&
+			sessionDerivedPath !== '/' &&
+			sessionDerivedPath !== homeDir
+		) {
+			log.info(
+				`Using project root derived from session: ${sessionDerivedPath}`
+			);
+			targetDirectory = sessionDerivedPath;
+			rootSource = 'session';
+		} else {
+			log.error(
+				`Could not derive a valid project root from session. Session path='${sessionDerivedPath}'`
+			);
+		}
+	}
+
+	// --- Validate the final targetDirectory ---
+	if (!targetDirectory) {
+		const error = new Error(
+			`Cannot find tasks.json: Could not determine a valid project root directory. Please ensure a workspace/folder is open or specify projectRoot.`
+		);
+		error.code = 'INVALID_PROJECT_ROOT';
+		error.details = {
+			attemptedArgsProjectRoot: args.projectRoot,
+			sessionAvailable: !!session,
+			// Add session derived path attempt for better debugging
+			attemptedSessionDerivedPath: getProjectRootFromSession(session, {
+				info: () => {},
+				warn: () => {},
+				error: () => {}
+			}), // Call again silently for details
+			finalDeterminedRoot: targetDirectory // Will be null here
+		};
+		log.error(`Validation failed: ${error.message}`, error.details);
+		throw error;
+	}
+
+	// --- Verify targetDirectory exists ---
+	if (!fs.existsSync(targetDirectory)) {
+		const error = new Error(
+			`Determined project root directory does not exist: ${targetDirectory}`
+		);
+		error.code = 'PROJECT_ROOT_NOT_FOUND';
+		error.details = {
+			/* ... add details ... */
+		};
+		log.error(error.message, error.details);
+		throw error;
+	}
+	if (!fs.statSync(targetDirectory).isDirectory()) {
+		const error = new Error(
+			`Determined project root path is not a directory: ${targetDirectory}`
+		);
+		error.code = 'PROJECT_ROOT_NOT_A_DIRECTORY';
+		error.details = {
+			/* ... add details ... */
+		};
+		log.error(error.message, error.details);
+		throw error;
+	}
+
+	// --- Search within the validated targetDirectory ---
+	log.info(
+		`Validated project root (${rootSource}): ${targetDirectory}. Searching for tasks file.`
+	);
 	try {
-		// This will throw if not found in the CWD tree
-		return findTasksJsonWithParentSearch(startDir, args.file, log);
+		const tasksPath = findTasksJsonInDirectory(targetDirectory, args.file, log);
+		// Return both the tasks path and the validated root
+		return { tasksPath: tasksPath, validatedProjectRoot: targetDirectory };
 	} catch (error) {
-		// If all attempts fail, augment and throw the original error from CWD search
-		error.message = `${error.message}\n\nPossible solutions:\n1. Run the command from your project directory containing tasks.json\n2. Use --project-root=/path/to/project to specify the project location (if using CLI)\n3. Ensure the project root is correctly passed from the client (if using MCP)\n\nCurrent working directory: ${startDir}\nLast known project root: ${lastFoundProjectRoot}\nProject root from args: ${args.projectRoot}`;
+		// Augment the error
+		error.message = `Tasks file not found within validated project root "${targetDirectory}" (source: ${rootSource}). Ensure 'tasks.json' exists at the root or in a 'tasks/' subdirectory.\nOriginal Error: ${error.message}`;
+		error.details = {
+			...(error.details || {}), // Keep original details if any
+			validatedProjectRoot: targetDirectory,
+			rootSource: rootSource,
+			attemptedArgsProjectRoot: args.projectRoot,
+			sessionAvailable: !!session
+		};
+		log.error(`Search failed: ${error.message}`, error.details);
 		throw error;
 	}
 }
 
 /**
- * Check if a directory contains any project marker files or directories
- * @param {string} dirPath - Directory to check
- * @returns {boolean} - True if the directory contains any project markers
- */
-function hasProjectMarkers(dirPath) {
-	return PROJECT_MARKERS.some((marker) => {
-		const markerPath = path.join(dirPath, marker);
-		// Check if the marker exists as either a file or directory
-		return fs.existsSync(markerPath);
-	});
-}
-
-/**
- * Search for tasks.json in a specific directory
- * @param {string} dirPath - Directory to search in
- * @param {string} explicitFilePath - Optional explicit file path relative to dirPath
+ * Search for tasks.json in a specific directory (now assumes dirPath is a validated project root)
+ * @param {string} dirPath - The validated project root directory to search in.
+ * @param {string} explicitFilePath - Optional explicit file path relative to dirPath (e.g., args.file)
  * @param {Object} log - Logger object
  * @returns {string} - Absolute path to tasks.json
- * @throws {Error} - If tasks.json cannot be found
+ * @throws {Error} - If tasks.json cannot be found in the standard locations within dirPath.
  */
 function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 	const possiblePaths = [];
 
-	// 1. If a file is explicitly provided relative to dirPath
+	// 1. If an explicit file path is provided (relative to dirPath)
 	if (explicitFilePath) {
-		possiblePaths.push(path.resolve(dirPath, explicitFilePath));
+		// Ensure it's treated as relative to the project root if not absolute
+		const resolvedExplicitPath = path.isAbsolute(explicitFilePath)
+			? explicitFilePath
+			: path.resolve(dirPath, explicitFilePath);
+		possiblePaths.push(resolvedExplicitPath);
+		log.info(`Explicit file path provided, checking: ${resolvedExplicitPath}`);
 	}
 
 	// 2. Check the standard locations relative to dirPath
@@ -186,108 +219,152 @@ function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 		path.join(dirPath, 'tasks', 'tasks.json')
 	);
 
-	log.info(`Checking potential task file paths: ${possiblePaths.join(', ')}`);
+	// Deduplicate paths in case explicitFilePath matches a standard location
+	const uniquePaths = [...new Set(possiblePaths)];
+
+	log.info(
+		`Checking for tasks file in validated root ${dirPath}. Potential paths: ${uniquePaths.join(', ')}`
+	);
 
 	// Find the first existing path
-	for (const p of possiblePaths) {
-		log.info(`Checking if exists: ${p}`);
+	for (const p of uniquePaths) {
+		// log.info(`Checking if exists: ${p}`); // Can reduce verbosity
 		const exists = fs.existsSync(p);
-		log.info(`Path ${p} exists: ${exists}`);
+		// log.info(`Path ${p} exists: ${exists}`); // Can reduce verbosity
 
 		if (exists) {
 			log.info(`Found tasks file at: ${p}`);
-			// Store the project root for future use
-			lastFoundProjectRoot = dirPath;
+			// No need to set lastFoundProjectRoot anymore
 			return p;
 		}
 	}
 
 	// If no file was found, throw an error
 	const error = new Error(
-		`Tasks file not found in any of the expected locations relative to ${dirPath}: ${possiblePaths.join(', ')}`
+		`Tasks file not found in any of the expected locations within directory ${dirPath}: ${uniquePaths.join(', ')}`
 	);
-	error.code = 'TASKS_FILE_NOT_FOUND';
+	error.code = 'TASKS_FILE_NOT_FOUND_IN_ROOT';
+	error.details = { searchedDirectory: dirPath, checkedPaths: uniquePaths };
 	throw error;
+}
+
+// Removed findTasksJsonWithParentSearch, hasProjectMarkers, and findTasksWithNpmConsideration
+// as the project root is now determined upfront and validated.
+
+/**
+ * Resolves a relative path against the project root, ensuring it's within the project.
+ * @param {string} relativePath - The relative path (e.g., 'scripts/report.json').
+ * @param {string} projectRoot - The validated absolute path to the project root.
+ * @param {Object} log - Logger object.
+ * @returns {string} - The absolute path.
+ * @throws {Error} - If the resolved path is outside the project root or resolution fails.
+ */
+export function resolveProjectPath(relativePath, projectRoot, log) {
+	if (!projectRoot || !path.isAbsolute(projectRoot)) {
+		log.error(
+			`Cannot resolve project path: Invalid projectRoot provided: ${projectRoot}`
+		);
+		throw new Error(
+			`Internal Error: Cannot resolve project path due to invalid projectRoot: ${projectRoot}`
+		);
+	}
+	if (!relativePath || typeof relativePath !== 'string') {
+		log.error(
+			`Cannot resolve project path: Invalid relativePath provided: ${relativePath}`
+		);
+		throw new Error(
+			`Internal Error: Cannot resolve project path due to invalid relativePath: ${relativePath}`
+		);
+	}
+
+	// If relativePath is already absolute, check if it's within the project root
+	if (path.isAbsolute(relativePath)) {
+		if (!relativePath.startsWith(projectRoot)) {
+			log.error(
+				`Path Security Violation: Absolute path \"${relativePath}\" provided is outside the project root \"${projectRoot}\"`
+			);
+			throw new Error(
+				`Provided absolute path is outside the project directory: ${relativePath}`
+			);
+		}
+		log.info(
+			`Provided path is already absolute and within project root: ${relativePath}`
+		);
+		return relativePath; // Return as is if valid absolute path within project
+	}
+
+	// Resolve relative path against project root
+	const absolutePath = path.resolve(projectRoot, relativePath);
+
+	// Security check: Ensure the resolved path is still within the project root boundary
+	// Normalize paths to handle potential .. usages properly before comparison
+	const normalizedAbsolutePath = path.normalize(absolutePath);
+	const normalizedProjectRoot = path.normalize(projectRoot + path.sep); // Ensure trailing separator for accurate startsWith check
+
+	if (
+		!normalizedAbsolutePath.startsWith(normalizedProjectRoot) &&
+		normalizedAbsolutePath !== path.normalize(projectRoot)
+	) {
+		log.error(
+			`Path Security Violation: Resolved path \"${normalizedAbsolutePath}\" is outside project root \"${normalizedProjectRoot}\"`
+		);
+		throw new Error(
+			`Resolved path is outside the project directory: ${relativePath}`
+		);
+	}
+
+	log.info(`Resolved project path: \"${relativePath}\" -> \"${absolutePath}\"`);
+	return absolutePath;
 }
 
 /**
- * Recursively search for tasks.json in the given directory and parent directories
- * Also looks for project markers to identify potential project roots
- * @param {string} startDir - Directory to start searching from
- * @param {string} explicitFilePath - Optional explicit file path
- * @param {Object} log - Logger object
- * @returns {string} - Absolute path to tasks.json
- * @throws {Error} - If tasks.json cannot be found in any parent directory
+ * Ensures a directory exists, creating it if necessary.
+ * Also verifies that if the path already exists, it is indeed a directory.
+ * @param {string} dirPath - The absolute path to the directory.
+ * @param {Object} log - Logger object.
  */
-function findTasksJsonWithParentSearch(startDir, explicitFilePath, log) {
-	let currentDir = startDir;
-	const rootDir = path.parse(currentDir).root;
-
-	// Keep traversing up until we hit the root directory
-	while (currentDir !== rootDir) {
-		// First check for tasks.json directly
-		try {
-			return findTasksJsonInDirectory(currentDir, explicitFilePath, log);
-		} catch (error) {
-			// If tasks.json not found but the directory has project markers,
-			// log it as a potential project root (helpful for debugging)
-			if (hasProjectMarkers(currentDir)) {
-				log.info(`Found project markers in ${currentDir}, but no tasks.json`);
-			}
-
-			// Move up to parent directory
-			const parentDir = path.dirname(currentDir);
-
-			// Check if we've reached the root
-			if (parentDir === currentDir) {
-				break;
-			}
-
-			log.info(
-				`Tasks file not found in ${currentDir}, searching in parent directory: ${parentDir}`
-			);
-			currentDir = parentDir;
-		}
+export function ensureDirectoryExists(dirPath, log) {
+	// Validate dirPath is an absolute path before proceeding
+	if (!path.isAbsolute(dirPath)) {
+		log.error(
+			`Cannot ensure directory: Path provided is not absolute: ${dirPath}`
+		);
+		throw new Error(
+			`Internal Error: ensureDirectoryExists requires an absolute path.`
+		);
 	}
 
-	// If we've searched all the way to the root and found nothing
-	const error = new Error(
-		`Tasks file not found in ${startDir} or any parent directory.`
-	);
-	error.code = 'TASKS_FILE_NOT_FOUND';
-	throw error;
-}
-
-// Note: findTasksWithNpmConsideration is not used by findTasksJsonPath and might be legacy or used elsewhere.
-// If confirmed unused, it could potentially be removed in a separate cleanup.
-function findTasksWithNpmConsideration(startDir, log) {
-	// First try our recursive parent search from cwd
-	try {
-		return findTasksJsonWithParentSearch(startDir, null, log);
-	} catch (error) {
-		// If that fails, try looking relative to the executable location
-		const execPath = process.argv[1];
-		const execDir = path.dirname(execPath);
-		log.info(`Looking for tasks file relative to executable at: ${execDir}`);
-
+	if (!fs.existsSync(dirPath)) {
+		log.info(`Directory does not exist, creating recursively: ${dirPath}`);
 		try {
-			return findTasksJsonWithParentSearch(execDir, null, log);
-		} catch (secondError) {
-			// If that also fails, check standard locations in user's home directory
-			const homeDir = os.homedir();
-			log.info(`Looking for tasks file in home directory: ${homeDir}`);
-
-			try {
-				// Check standard locations in home dir
-				return findTasksJsonInDirectory(
-					path.join(homeDir, '.task-master'),
-					null,
-					log
+			fs.mkdirSync(dirPath, { recursive: true });
+			log.info(`Successfully created directory: ${dirPath}`);
+		} catch (error) {
+			log.error(`Failed to create directory ${dirPath}: ${error.message}`);
+			// Re-throw the error after logging
+			throw new Error(
+				`Could not create directory: ${dirPath}. Reason: ${error.message}`
+			);
+		}
+	} else {
+		// Path exists, verify it's a directory
+		try {
+			const stats = fs.statSync(dirPath);
+			if (!stats.isDirectory()) {
+				log.error(`Path exists but is not a directory: ${dirPath}`);
+				throw new Error(
+					`Expected directory but found file at path: ${dirPath}`
 				);
-			} catch (thirdError) {
-				// If all approaches fail, throw the original error
-				throw error;
 			}
+			log.info(`Directory already exists and is valid: ${dirPath}`);
+		} catch (error) {
+			// Handle potential errors from statSync (e.g., permissions) or the explicit throw above
+			log.error(
+				`Error checking existing directory ${dirPath}: ${error.message}`
+			);
+			throw new Error(
+				`Error verifying existing directory: ${dirPath}. Reason: ${error.message}`
+			);
 		}
 	}
 }

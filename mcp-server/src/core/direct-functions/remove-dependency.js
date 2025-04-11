@@ -19,7 +19,7 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function removeDependencyDirect(args, log) {
+export async function removeDependencyDirect(args, log, { session }) {
 	try {
 		log.info(`Removing dependency with args: ${JSON.stringify(args)}`);
 
@@ -45,7 +45,7 @@ export async function removeDependencyDirect(args, log) {
 		}
 
 		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		const tasksPath = findTasksJsonPath(args, log, session);
 
 		// Format IDs for the core function
 		const taskId =

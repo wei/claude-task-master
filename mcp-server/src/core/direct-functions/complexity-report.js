@@ -19,14 +19,14 @@ import path from 'path';
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
-export async function complexityReportDirect(args, log) {
+export async function complexityReportDirect(args, log, { session }) {
 	try {
 		log.info(`Getting complexity report with args: ${JSON.stringify(args)}`);
 
 		// Get tasks file path to determine project root for the default report location
 		let tasksPath;
 		try {
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksJsonPath(args, log, session);
 		} catch (error) {
 			log.warn(
 				`Tasks file not found, using current directory: ${error.message}`
