@@ -280,14 +280,14 @@ function findTaskById(tasks, taskId) {
 	if (taskResult) {
 		// Try to read complexity report
 		const complexityReport = readComplexityReport();
-		
+
 		if (complexityReport && complexityReport.complexityAnalysis) {
 			// For a main task, look for a direct match
 			if (!taskResult.isSubtask) {
 				const taskAnalysis = complexityReport.complexityAnalysis.find(
-					analysis => analysis.taskId === taskResult.id
+					(analysis) => analysis.taskId === taskResult.id
 				);
-				
+
 				if (taskAnalysis) {
 					taskResult.complexityScore = taskAnalysis.complexityScore;
 				}
@@ -421,6 +421,23 @@ function detectCamelCaseFlags(args) {
 
 // Export all utility functions and configuration
 export {
-	CONFIG, detectCamelCaseFlags, disableSilentMode, enableSilentMode, findCycles, findTaskById, findTaskInComplexityReport, formatTaskId, getTaskManager, isSilentMode, log, LOG_LEVELS, readComplexityReport, readJSON, sanitizePrompt, taskExists, toKebabCase, truncate, writeJSON
+	CONFIG,
+	detectCamelCaseFlags,
+	disableSilentMode,
+	enableSilentMode,
+	findCycles,
+	findTaskById,
+	findTaskInComplexityReport,
+	formatTaskId,
+	getTaskManager,
+	isSilentMode,
+	log,
+	LOG_LEVELS,
+	readComplexityReport,
+	readJSON,
+	sanitizePrompt,
+	taskExists,
+	toKebabCase,
+	truncate,
+	writeJSON
 };
-

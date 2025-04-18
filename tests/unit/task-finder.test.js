@@ -11,7 +11,7 @@ const mockReadComplexityReport = jest.fn().mockReturnValue(null);
 jest.mock('../../scripts/modules/utils.js', () => {
 	// Get the original module
 	const originalModule = jest.requireActual('../../scripts/modules/utils.js');
-	
+
 	// Return a modified version
 	return {
 		...originalModule,
@@ -97,7 +97,7 @@ describe('Task Finder', () => {
 			});
 
 			const task = findTaskById(sampleTasks.tasks, 2);
-			
+
 			expect(task).toBeDefined();
 			expect(task.id).toBe(2);
 			expect(task.complexityScore).toBe(8);
@@ -108,9 +108,9 @@ describe('Task Finder', () => {
 			mockReadComplexityReport.mockReturnValue({
 				complexityAnalysis: [{ taskId: 999, complexityScore: 5 }]
 			});
-			
+
 			const task = findTaskById(sampleTasks.tasks, 2);
-			
+
 			expect(task).toBeDefined();
 			expect(task.id).toBe(2);
 			expect(task.complexityScore).toBeUndefined();
@@ -119,9 +119,9 @@ describe('Task Finder', () => {
 		test('should work correctly when no complexity report exists', () => {
 			// Set up mock implementation for this test
 			mockReadComplexityReport.mockReturnValue(null);
-			
+
 			const task = findTaskById(sampleTasks.tasks, 2);
-			
+
 			expect(task).toBeDefined();
 			expect(task.id).toBe(2);
 			expect(task.complexityScore).toBeUndefined();
