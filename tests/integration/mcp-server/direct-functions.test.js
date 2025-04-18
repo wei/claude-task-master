@@ -417,8 +417,6 @@ describe('MCP Server Direct Functions', () => {
 
 			// Act
 			const result = await testListTasks(args, mockLogger);
-
-			console.dir(result, { depth: 5 });
 			// Assert
 			expect(result.success).toBe(true);
 
