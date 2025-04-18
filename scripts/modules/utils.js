@@ -3,9 +3,9 @@
  * Utility functions for the Task Master CLI
  */
 
+import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
 
 // Global silent mode flag
 let silentMode = false;
@@ -247,6 +247,8 @@ function findTaskById(tasks, taskId) {
 		return null;
 	}
 
+	let taskResult = null;
+
 	// Check if it's a subtask ID (e.g., "1.2")
 	if (typeof taskId === 'string' && taskId.includes('.')) {
 		const [parentId, subtaskId] = taskId
@@ -267,13 +269,33 @@ function findTaskById(tasks, taskId) {
 				status: parentTask.status
 			};
 			subtask.isSubtask = true;
+			taskResult = subtask;
 		}
-
-		return subtask || null;
+	} else {
+		const id = parseInt(taskId, 10);
+		taskResult = tasks.find((t) => t.id === id) || null;
 	}
 
-	const id = parseInt(taskId, 10);
-	return tasks.find((t) => t.id === id) || null;
+	// If we found a task, check for complexity data
+	if (taskResult) {
+		// Try to read complexity report
+		const complexityReport = readComplexityReport();
+		
+		if (complexityReport && complexityReport.complexityAnalysis) {
+			// For a main task, look for a direct match
+			if (!taskResult.isSubtask) {
+				const taskAnalysis = complexityReport.complexityAnalysis.find(
+					analysis => analysis.taskId === taskResult.id
+				);
+				
+				if (taskAnalysis) {
+					taskResult.complexityScore = taskAnalysis.complexityScore;
+				}
+			}
+		}
+	}
+
+	return taskResult;
 }
 
 /**
@@ -399,23 +421,6 @@ function detectCamelCaseFlags(args) {
 
 // Export all utility functions and configuration
 export {
-	CONFIG,
-	LOG_LEVELS,
-	log,
-	readJSON,
-	writeJSON,
-	sanitizePrompt,
-	readComplexityReport,
-	findTaskInComplexityReport,
-	taskExists,
-	formatTaskId,
-	findTaskById,
-	truncate,
-	findCycles,
-	toKebabCase,
-	detectCamelCaseFlags,
-	enableSilentMode,
-	disableSilentMode,
-	isSilentMode,
-	getTaskManager
+	CONFIG, detectCamelCaseFlags, disableSilentMode, enableSilentMode, findCycles, findTaskById, findTaskInComplexityReport, formatTaskId, getTaskManager, isSilentMode, log, LOG_LEVELS, readComplexityReport, readJSON, sanitizePrompt, taskExists, toKebabCase, truncate, writeJSON
 };
+
