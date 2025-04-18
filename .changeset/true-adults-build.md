@@ -2,4 +2,4 @@
 'task-master-ai': patch
 ---
 
-fixing bug can not run task-master in linux container
+Fixed a bug that prevented the task-master from running in a Linux container
