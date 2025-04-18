@@ -3,9 +3,9 @@
  * Utility functions for the Task Master CLI
  */
 
-import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
+import chalk from 'chalk';
 
 // Global silent mode flag
 let silentMode = false;

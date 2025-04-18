@@ -5,8 +5,8 @@
 
 import { listTasks } from '../../../../scripts/modules/task-manager.js';
 import {
-	disableSilentMode,
-	enableSilentMode
+	enableSilentMode,
+	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
 
