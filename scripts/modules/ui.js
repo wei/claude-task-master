@@ -672,7 +672,7 @@ function truncateString(str, maxLength) {
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
  */
-async function displayNextTask(tasksPath) {
+async function displayNextTask(tasksPath, complexityReportPath = null) {
 	displayBanner();
 
 	// Read the tasks file
@@ -683,7 +683,7 @@ async function displayNextTask(tasksPath) {
 	}
 
 	// Read complexity report once
-	const complexityReport = readComplexityReport();
+	const complexityReport = readComplexityReport(complexityReportPath);
 
 	// Find the next task
 	const nextTask = findNextTask(data.tasks);
@@ -929,7 +929,7 @@ async function displayNextTask(tasksPath) {
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string|number} taskId - The ID of the task to display
  */
-async function displayTaskById(tasksPath, taskId) {
+async function displayTaskById(tasksPath, taskId, complexityReportPath = null) {
 	displayBanner();
 
 	// Read the tasks file
@@ -940,7 +940,7 @@ async function displayTaskById(tasksPath, taskId) {
 	}
 
 	// Read complexity report once
-	const complexityReport = readComplexityReport();
+	const complexityReport = readComplexityReport(complexityReportPath);
 
 	// Find the task by ID, passing the complexity report
 	const task = findTaskById(data.tasks, taskId, complexityReport);

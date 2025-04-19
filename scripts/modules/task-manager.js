@@ -705,6 +705,7 @@ async function updateTaskById(
 	tasksPath,
 	taskId,
 	prompt,
+	complexityReportPath = null,
 	useResearch = false,
 	{ reportProgress, mcpLog, session } = {}
 ) {
@@ -768,7 +769,7 @@ async function updateTaskById(
 
 		// Read the tasks file and complexity report
 		const data = readJSON(tasksPath);
-		const complexityReport = readComplexityReport();
+		const complexityReport = readComplexityReport(complexityReportPath);
 		if (!data || !data.tasks) {
 			throw new Error(
 				`No valid tasks found in ${tasksPath}. The file may be corrupted or have an invalid format.`
@@ -1364,13 +1365,18 @@ Return only the updated task as a valid JSON object.`
  * @param {Object} options - Additional options (mcpLog for MCP mode)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-function generateTaskFiles(tasksPath, outputDir, options = {}) {
+function generateTaskFiles(
+	tasksPath,
+	outputDir,
+	complexityReportPath = null,
+	options = {}
+) {
 	try {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 
 		// Read complexity report once
-		const complexityReport = readComplexityReport();
+		const complexityReport = readComplexityReport(complexityReportPath);
 
 		log('info', `Reading tasks from ${tasksPath}...`);
 
@@ -1516,7 +1522,13 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
  * @param {Object} options - Additional options (mcpLog for MCP mode)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
+async function setTaskStatus(
+	tasksPath,
+	taskIdInput,
+	newStatus,
+	complexityReportPath = null,
+	options = {}
+) {
 	try {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
@@ -1583,7 +1595,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		}
 
 		// Read complexity report once
-		const complexityReport = readComplexityReport();
+		const complexityReport = readComplexityReport(complexityReportPath);
 
 		// Return success value for programmatic use
 		return {
@@ -2996,7 +3008,7 @@ async function expandAllTasks(
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIds - Task IDs to clear subtasks from
  */
-function clearSubtasks(tasksPath, taskIds) {
+function clearSubtasks(tasksPath, taskIds, complexityReportPath = null) {
 	displayBanner();
 
 	log('info', `Reading tasks from ${tasksPath}...`);
@@ -3007,7 +3019,7 @@ function clearSubtasks(tasksPath, taskIds) {
 	}
 
 	// Read complexity report once
-	const complexityReport = readComplexityReport();
+	const complexityReport = readComplexityReport(complexityReportPath);
 
 	console.log(
 		boxen(chalk.white.bold('Clearing Subtasks'), {
