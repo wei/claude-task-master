@@ -240,9 +240,10 @@ function formatTaskId(id) {
  * Finds a task by ID in the tasks array
  * @param {Array} tasks - The tasks array
  * @param {string|number} taskId - The task ID to find
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
  * @returns {Object|null} The task object or null if not found
  */
-function findTaskById(tasks, taskId) {
+function findTaskById(tasks, taskId, complexityReport = null) {
 	if (!taskId || !tasks || !Array.isArray(tasks)) {
 		return null;
 	}
@@ -277,10 +278,7 @@ function findTaskById(tasks, taskId) {
 	}
 
 	// If we found a task, check for complexity data
-	if (taskResult) {
-		// Try to read complexity report
-		const complexityReport = readComplexityReport();
-
+	if (taskResult && complexityReport) {
 		if (complexityReport && complexityReport.complexityAnalysis) {
 			// For a main task, look for a direct match
 			if (!taskResult.isSubtask) {
