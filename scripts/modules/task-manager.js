@@ -2393,7 +2393,8 @@ function listTasks(
 						) +
 						'\n\n' +
 						`${chalk.white('Priority:')} ${priorityColors[nextTask.priority || 'medium'](nextTask.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextTask.status, true)}\n` +
-						`${chalk.white('Dependencies:')} ${nextTask.dependencies && nextTask.dependencies.length > 0 ? formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true) : chalk.gray('None')}\n\n` +
+						`${chalk.white('Dependencies:')} ${nextTask.dependencies && nextTask.dependencies.length > 0 ? formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true) : chalk.gray('None')}\n` +
+						`${chalk.white('Complexity:')} ${nextTask.complexityScore ? getComplexityWithColor(nextTask.complexityScore) : chalk.gray('N/A')}\n` +
 						`${chalk.white('Description:')} ${nextTask.description}` +
 						subtasksSection +
 						'\n\n' +
