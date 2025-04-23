@@ -1005,6 +1005,12 @@ async function displayTaskById(tasksPath, taskId, complexityReportPath = null) {
 				getStatusWithColor(task.status || 'pending', true)
 			],
 			[
+				chalk.cyan.bold('Complexity:'),
+				task.complexityScore
+					? getComplexityWithColor(task.complexityScore)
+					: chalk.gray('N/A')
+			],
+			[
 				chalk.cyan.bold('Description:'),
 				task.description || 'No description provided.'
 			]
@@ -1176,6 +1182,12 @@ async function displayTaskById(tasksPath, taskId, complexityReportPath = null) {
 				true,
 				complexityReport
 			) // Pass complexityReport
+		],
+		[
+			chalk.cyan.bold('Complexity:'),
+			task.complexityScore
+				? getComplexityWithColor(task.complexityScore)
+				: chalk.gray('N/A')
 		],
 		[chalk.cyan.bold('Description:'), task.description]
 	);

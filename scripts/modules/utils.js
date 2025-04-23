@@ -281,14 +281,16 @@ function findTaskById(tasks, taskId, complexityReport = null) {
 	if (taskResult && complexityReport) {
 		if (complexityReport && complexityReport.complexityAnalysis) {
 			// For a main task, look for a direct match
-			if (!taskResult.isSubtask) {
-				const taskAnalysis = complexityReport.complexityAnalysis.find(
-					(analysis) => analysis.taskId === taskResult.id
-				);
+			const taskId = taskResult.isSubtask
+				? taskResult.parentTask.id
+				: taskResult.id;
 
-				if (taskAnalysis) {
-					taskResult.complexityScore = taskAnalysis.complexityScore;
-				}
+			const taskAnalysis = complexityReport.complexityAnalysis.find(
+				(analysis) => analysis.taskId === taskId
+			);
+
+			if (taskAnalysis) {
+				taskResult.complexityScore = taskAnalysis.complexityScore;
 			}
 		}
 	}
