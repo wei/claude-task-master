@@ -596,10 +596,16 @@ function registerCommands(programInstance) {
 		.command('list')
 		.description('List all tasks')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 
@@ -611,7 +617,7 @@ function registerCommands(programInstance) {
 				console.log(chalk.blue('Including subtasks in listing'));
 			}
 
-			await listTasks(tasksPath, statusFilter, withSubtasks);
+			await listTasks(tasksPath, statusFilter, reportPath, withSubtasks);
 		});
 
 	// expand command
@@ -914,9 +920,15 @@ function registerCommands(programInstance) {
 			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			await displayNextTask(tasksPath);
+			const reportPath = options.report;
+			await displayNextTask(tasksPath, reportPath);
 		});
 
 	// show command
@@ -928,6 +940,11 @@ function registerCommands(programInstance) {
 		.argument('[id]', 'Task ID to show')
 		.option('-i, --id <id>', 'Task ID to show')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
 
@@ -937,7 +954,8 @@ function registerCommands(programInstance) {
 			}
 
 			const tasksPath = options.file;
-			await displayTaskById(tasksPath, idArg);
+			const reportPath = options.report;
+			await displayTaskById(tasksPath, idArg, reportPath);
 		});
 
 	// add-dependency command
