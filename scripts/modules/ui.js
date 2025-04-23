@@ -757,7 +757,7 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 				data.tasks,
 				true,
 				complexityReport
-			) // Pass complexityReport
+			)
 		],
 		[
 			chalk.cyan.bold('Complexity:'),
@@ -1187,7 +1187,7 @@ async function displayTaskById(tasksPath, taskId, complexityReportPath = null) {
 				data.tasks,
 				true,
 				complexityReport
-			) // Pass complexityReport
+			)
 		],
 		[
 			chalk.cyan.bold('Complexity:'),
