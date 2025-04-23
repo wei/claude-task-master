@@ -686,7 +686,7 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 	const complexityReport = readComplexityReport(complexityReportPath);
 
 	// Find the next task
-	const nextTask = findNextTask(data.tasks);
+	const nextTask = findNextTask(data.tasks, complexityReport);
 
 	if (!nextTask) {
 		console.log(
@@ -758,6 +758,12 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 				true,
 				complexityReport
 			) // Pass complexityReport
+		],
+		[
+			chalk.cyan.bold('Complexity:'),
+			nextTask.complexityScore
+				? getComplexityWithColor(nextTask.complexityScore)
+				: chalk.gray('N/A')
 		],
 		[chalk.cyan.bold('Description:'), nextTask.description]
 	);

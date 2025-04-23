@@ -190,6 +190,15 @@ function findTaskInComplexityReport(report, taskId) {
 	return report.complexityAnalysis.find((task) => task.taskId === taskId);
 }
 
+function addComplexityToTask(task, complexityReport) {
+	const taskId = task.isSubtask ? task.parentTask.id : task.id;
+
+	const taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
+	if (taskAnalysis) {
+		task.complexityScore = taskAnalysis.complexityScore;
+	}
+}
+
 /**
  * Checks if a task exists in the tasks array
  * @param {Array} tasks - The tasks array
@@ -279,20 +288,7 @@ function findTaskById(tasks, taskId, complexityReport = null) {
 
 	// If we found a task, check for complexity data
 	if (taskResult && complexityReport) {
-		if (complexityReport && complexityReport.complexityAnalysis) {
-			// For a main task, look for a direct match
-			const taskId = taskResult.isSubtask
-				? taskResult.parentTask.id
-				: taskResult.id;
-
-			const taskAnalysis = complexityReport.complexityAnalysis.find(
-				(analysis) => analysis.taskId === taskId
-			);
-
-			if (taskAnalysis) {
-				taskResult.complexityScore = taskAnalysis.complexityScore;
-			}
-		}
+		addComplexityToTask(taskResult, complexityReport);
 	}
 
 	return taskResult;
@@ -434,6 +430,7 @@ export {
 	log,
 	LOG_LEVELS,
 	readComplexityReport,
+	addComplexityToTask,
 	readJSON,
 	sanitizePrompt,
 	taskExists,

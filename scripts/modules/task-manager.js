@@ -21,7 +21,7 @@ import {
 	sanitizePrompt,
 	findTaskById,
 	readComplexityReport,
-	findTaskInComplexityReport,
+	addComplexityToTask,
 	truncate,
 	enableSilentMode,
 	disableSilentMode,
@@ -4543,7 +4543,7 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
  * @param {Object[]} tasks - The array of tasks
  * @returns {Object|null} The next task to work on or null if no eligible tasks
  */
-function findNextTask(tasks) {
+function findNextTask(tasks, complexityReport = null) {
 	// Get all completed task IDs
 	const completedTaskIds = new Set(
 		tasks
@@ -4590,6 +4590,9 @@ function findNextTask(tasks) {
 		// If dependency count is the same, sort by ID
 		return a.id - b.id; // Lower ID first
 	})[0]; // Return the first (highest priority) task
+
+	// Add complexity to the task
+	addComplexityToTask(nextTask, complexityReport);
 
 	return nextTask;
 }
