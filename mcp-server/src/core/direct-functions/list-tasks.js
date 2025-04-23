@@ -51,6 +51,7 @@ export async function listTasksDirect(args, log) {
 			const resultData = listTasks(
 				tasksJsonPath,
 				statusFilter,
+				reportPath,
 				withSubtasksFilter,
 				'json'
 			);
@@ -64,20 +65,6 @@ export async function listTasksDirect(args, log) {
 						message: 'Invalid or empty response from listTasks core function'
 					}
 				};
-			}
-
-			// Add complexity scores to tasks if report exists
-			const complexityReport = readComplexityReport(reportPath);
-			if (complexityReport && complexityReport.complexityAnalysis) {
-				resultData.tasks = resultData.tasks.map((task) => {
-					const analysis = complexityReport.complexityAnalysis.find(
-						(a) => a.taskId === task.id
-					);
-					if (analysis) {
-						return { ...task, complexityScore: analysis.complexityScore };
-					}
-					return task;
-				});
 			}
 
 			log.info(
