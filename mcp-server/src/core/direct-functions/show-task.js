@@ -3,7 +3,10 @@
  * Direct function implementation for showing task details
  */
 
-import { findTaskById } from '../../../../scripts/modules/utils.js';
+import {
+	findTaskById,
+	readComplexityReport
+} from '../../../../scripts/modules/utils.js';
 import { readJSON } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
 import {
@@ -17,12 +20,13 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID of the task or subtask to show.
+ * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
 export async function showTaskDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+	const { tasksJsonPath, reportPath, id } = args;
 
 	if (!tasksJsonPath) {
 		log.error('showTaskDirect called without tasksJsonPath');
@@ -51,7 +55,7 @@ export async function showTaskDirect(args, log) {
 	}
 
 	// Generate cache key using the provided task path and ID
-	const cacheKey = `showTask:${tasksJsonPath}:${taskId}`;
+	const cacheKey = `showTask:${tasksJsonPath}:${taskId}:${reportPath}`;
 
 	// Define the action function to be executed on cache miss
 	const coreShowTaskAction = async () => {
@@ -76,8 +80,11 @@ export async function showTaskDirect(args, log) {
 				};
 			}
 
+			// Read the complexity report
+			const complexityReport = readComplexityReport(reportPath);
+
 			// Find the specific task
-			const task = findTaskById(data.tasks, taskId);
+			const task = findTaskById(data.tasks, taskId, complexityReport);
 
 			if (!task) {
 				disableSilentMode(); // Disable before returning

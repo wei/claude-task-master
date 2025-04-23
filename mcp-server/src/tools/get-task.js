@@ -10,7 +10,10 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	findTasksJsonPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -41,6 +44,12 @@ export function registerShowTaskTool(server) {
 		parameters: z.object({
 			id: z.string().describe('Task ID to get'),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
+			complexityReport: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the complexity report file (relative to project root or absolute)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -89,10 +98,22 @@ export function registerShowTaskTool(server) {
 
 				log.info(`Attempting to use tasks file path: ${tasksJsonPath}`);
 
+				// Resolve the path to complexity report
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						rootFolder,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
 				const result = await showTaskDirect(
 					{
 						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
+						reportPath: complexityReportPath,
 						// Pass other relevant args
 						id: args.id
 					},

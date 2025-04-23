@@ -91,9 +91,6 @@ export function registerListTasksTool(server) {
 					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find complexity report: ${error.message}`
-					);
 				}
 				const result = await listTasksDirect(
 					{
