@@ -23,7 +23,9 @@ export function registerRemoveTaskTool(server) {
 		parameters: z.object({
 			id: z
 				.string()
-				.describe("ID of the task or subtask to remove (e.g., '5' or '5.2')"),
+				.describe(
+					"ID of the task or subtask to remove (e.g., '5' or '5.2'). Can be comma-separated to update multiple tasks/subtasks at once."
+				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
@@ -35,7 +37,7 @@ export function registerRemoveTaskTool(server) {
 		}),
 		execute: async (args, { log, session }) => {
 			try {
-				log.info(`Removing task with ID: ${args.id}`);
+				log.info(`Removing task(s) with ID(s): ${args.id}`);
 
 				// Get project root from args or session
 				const rootFolder =
