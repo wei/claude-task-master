@@ -7,7 +7,7 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
-
+import { withSessionEnv } from '../core/utils/env-utils.js';
 // Import path utilities to ensure consistent path resolution
 import {
 	lastFoundProjectRoot,
@@ -471,6 +471,85 @@ function createLogWrapper(log) {
 			log.debug ? log.debug(message, ...args) : null,
 		// Map success to info as a common fallback
 		success: (message, ...args) => log.info(message, ...args)
+	};
+}
+
+/**
+ * Resolves and normalizes a project root path
+ * @param {string} rawPath - The raw project root path that might be URI encoded
+ * @returns {string} Normalized absolute path
+ */
+function normalizeProjectRoot(rawPath) {
+	if (!rawPath) return null;
+
+	try {
+		// Handle URI encoded paths (e.g. /c%20/path/with%20spaces)
+		const decoded = decodeURIComponent(rawPath);
+
+		// Convert Windows-style paths if needed
+		const normalized = decoded.replace(/\\/g, '/');
+
+		// Remove any file:// prefix
+		const withoutProtocol = normalized.replace(/^file:\/\//, '');
+
+		// Ensure absolute path
+		return path.resolve(withoutProtocol);
+	} catch (error) {
+		return null;
+	}
+}
+
+/**
+ * Higher-order function that wraps an MCP tool's execute method to provide:
+ * 1. Normalized project root resolution
+ * 2. Environment variable setup from both .env and session
+ * 3. Error handling
+ *
+ * @param {Function} executeFn - The original execute function to wrap
+ * @returns {Function} Wrapped execute function with project context
+ */
+export function withProjectContext(executeFn) {
+	return async (args, context) => {
+		const { log, session } = context;
+
+		try {
+			// 1. Resolve and normalize project root
+			const rawRoot =
+				args.projectRoot || getProjectRootFromSession(session, log);
+			const projectRoot = normalizeProjectRoot(rawRoot);
+
+			if (!projectRoot) {
+				return createErrorResponse(
+					'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+				);
+			}
+
+			// 2. Load .env from project root if it exists
+			const envPath = path.join(projectRoot, '.env');
+			let localEnv = {};
+
+			if (fs.existsSync(envPath)) {
+				try {
+					localEnv = require('dotenv').config({ path: envPath }).parsed || {};
+				} catch (error) {
+					log.warn(`Failed to load .env from ${envPath}: ${error.message}`);
+				}
+			}
+
+			// 3. Combine with session env and execute
+			const combinedEnv = {
+				...localEnv,
+				...(session?.env || {})
+			};
+
+			return await withSessionEnv(combinedEnv, async () => {
+				// Pass normalized projectRoot to the execute function
+				return await executeFn({ ...args, projectRoot }, context);
+			});
+		} catch (error) {
+			log.error(`Error in project context: ${error.message}`);
+			return createErrorResponse(error.message);
+		}
 	};
 }
 

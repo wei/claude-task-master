@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import {
 	createErrorResponse,
-	getProjectRootFromSession,
+	withProjectContext,
 	handleApiResult
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
@@ -63,26 +63,17 @@ export function registerAddTaskTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for task creation')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withProjectContext(async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
+				// Note: projectRoot is now guaranteed to be normalized by withProjectContext
 
 				// Resolve the path to tasks.json
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 				} catch (error) {
@@ -117,6 +108,6 @@ export function registerAddTaskTool(server) {
 				log.error(`Error in add-task tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
-		}
+		})
 	});
 }
