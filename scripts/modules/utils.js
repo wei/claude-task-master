@@ -539,7 +539,6 @@ function detectCamelCaseFlags(args) {
 
 // Export all utility functions and configuration
 export {
-	CONFIG,
 	LOG_LEVELS,
 	log,
 	readJSON,
@@ -556,23 +555,9 @@ export {
 	detectCamelCaseFlags,
 	disableSilentMode,
 	enableSilentMode,
-	findCycles,
-	findTaskById,
-	findTaskInComplexityReport,
-	formatTaskId,
 	getTaskManager,
 	isSilentMode,
-	log,
-	LOG_LEVELS,
-	readComplexityReport,
 	addComplexityToTask,
-	readJSON,
-	sanitizePrompt,
-	taskExists,
-	toKebabCase,
-	truncate,
-	writeJSON,
 	resolveEnvVariable,
-	getTaskManager,
 	findProjectRoot
 };
