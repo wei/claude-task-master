@@ -1,5 +1,13 @@
 # task-master-ai
 
+## 0.13.2
+
+### Patch Changes
+
+- 01963af: Resolve all issues related to MCP
+- 01963af: Fix ERR_MODULE_NOT_FOUND when trying to run MCP Server
+- 01963af: Add src directory to exports
+
 ## 0.13.1
 
 ### Patch Changes
