@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.13.0-rc.1",
+	"version": "0.13.0-rc.2",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -90,7 +90,8 @@
 		"README-task-master.md",
 		"index.js",
 		"bin/**",
-		"mcp-server/**"
+		"mcp-server/**",
+		"src/**"
 	],
 	"overrides": {
 		"node-fetch": "^3.3.2",

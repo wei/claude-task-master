@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.13.0-rc.2
+
+### Patch Changes
+
+- Add src directory to exports
+
 ## 0.13.0-rc.1
 
 ### Patch Changes
