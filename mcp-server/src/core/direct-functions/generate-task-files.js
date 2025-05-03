@@ -8,6 +8,7 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import path from 'path';
 
 /**
  * Direct function wrapper for generateTaskFiles with error handling.

@@ -23,8 +23,6 @@ import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode } from './modules/utils.js';
-import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
-import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -180,9 +178,9 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 	// Map template names to their actual source paths
 	switch (templateName) {
-		// case 'scripts_README.md':
-		// 	sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
-		// 	break;
+		case 'scripts_README.md':
+			sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
+			break;
 		case 'dev_workflow.mdc':
 			sourcePath = path.join(
 				__dirname,
@@ -219,32 +217,11 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 				'self_improve.mdc'
 			);
 			break;
-			// case 'README-task-master.md':
-			// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
+		case 'README-task-master.md':
+			sourcePath = path.join(__dirname, '..', 'README-task-master.md');
 			break;
 		case 'windsurfrules':
 			sourcePath = path.join(__dirname, '..', 'assets', '.windsurfrules');
-			break;
-		case '.roomodes':
-			sourcePath = path.join(__dirname, '..', 'assets', 'roocode', '.roomodes');
-			break;
-		case 'architect-rules':
-		case 'ask-rules':
-		case 'boomerang-rules':
-		case 'code-rules':
-		case 'debug-rules':
-		case 'test-rules':
-			// Extract the mode name from the template name (e.g., 'architect' from 'architect-rules')
-			const mode = templateName.split('-')[0];
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'assets',
-				'roocode',
-				'.roo',
-				`rules-${mode}`,
-				templateName
-			);
 			break;
 		default:
 			// For other files like env.example, gitignore, etc. that don't have direct equivalents
@@ -333,7 +310,10 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 		}
 
 		// For other files, warn and prompt before overwriting
-		log('warn', `${targetPath} already exists, skipping.`);
+		log(
+			'warn',
+			`${targetPath} already exists. Skipping file creation to avoid overwriting existing content.`
+		);
 		return;
 	}
 
@@ -342,7 +322,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 	log('info', `Created file: ${targetPath}`);
 }
 
-// Main function to initialize a new project (No longer needs isInteractive logic)
+// Main function to initialize a new project (Now relies solely on passed options)
 async function initializeProject(options = {}) {
 	// Receives options as argument
 	// Only display banner if not in silent mode
@@ -351,30 +331,25 @@ async function initializeProject(options = {}) {
 	}
 
 	// Debug logging only if not in silent mode
-	// if (!isSilentMode()) {
-	// 	console.log('===== DEBUG: INITIALIZE PROJECT OPTIONS RECEIVED =====');
-	// 	console.log('Full options object:', JSON.stringify(options));
-	// 	console.log('options.yes:', options.yes);
-	// 	console.log('==================================================');
-	// }
+	if (!isSilentMode()) {
+		console.log('===== DEBUG: INITIALIZE PROJECT OPTIONS RECEIVED =====');
+		console.log('Full options object:', JSON.stringify(options));
+		console.log('options.yes:', options.yes);
+		console.log('==================================================');
+	}
 
-	const skipPrompts = options.yes || (options.name && options.description);
-
-	// if (!isSilentMode()) {
-	// 	console.log('Skip prompts determined:', skipPrompts);
-	// }
+	// Determine if we should skip prompts based on the passed options
+	const skipPrompts = options.yes;
+	if (!isSilentMode()) {
+		console.log('Skip prompts determined:', skipPrompts);
+	}
 
 	if (skipPrompts) {
 		if (!isSilentMode()) {
 			console.log('SKIPPING PROMPTS - Using defaults or provided values');
 		}
 
-		// Use provided options or defaults
-		const projectName = options.name || 'task-master-project';
-		const projectDescription =
-			options.description || 'A project managed with Task Master AI';
-		const projectVersion = options.version || '0.1.0';
-		const authorName = options.author || 'Vibe coder';
+		// We no longer need these variables
 		const dryRun = options.dryRun || false;
 		const addAliases = options.aliases || false;
 
@@ -390,9 +365,10 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun);
+		// Create structure using only necessary values
+		createProjectStructure(addAliases);
 	} else {
-		// Interactive logic
+		// Prompting logic (only runs if skipPrompts is false)
 		log('info', 'Required options not provided, proceeding with prompts.');
 		const rl = readline.createInterface({
 			input: process.stdin,
@@ -427,10 +403,11 @@ async function initializeProject(options = {}) {
 
 			if (!shouldContinue) {
 				log('info', 'Project initialization cancelled by user');
-				process.exit(0);
-				return;
+				process.exit(0); // Exit if cancelled
+				return; // Added return for clarity
 			}
 
+			// Still respect dryRun if passed initially even when prompting
 			const dryRun = options.dryRun || false;
 
 			if (dryRun) {
@@ -446,11 +423,11 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(addAliasesPrompted, dryRun);
+			createProjectStructure(addAliasesPrompted);
 		} catch (error) {
 			rl.close();
-			log('error', `Error during initialization process: ${error.message}`);
-			process.exit(1);
+			log('error', `Error during prompting: ${error.message}`); // Use log function
+			process.exit(1); // Exit on error during prompts
 		}
 	}
 }
@@ -465,27 +442,12 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun) {
+function createProjectStructure(addAliases) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
 	// Create directories
 	ensureDirectoryExists(path.join(targetDir, '.cursor', 'rules'));
-
-	// Create Roo directories
-	ensureDirectoryExists(path.join(targetDir, '.roo'));
-	ensureDirectoryExists(path.join(targetDir, '.roo', 'rules'));
-	for (const mode of [
-		'architect',
-		'ask',
-		'boomerang',
-		'code',
-		'debug',
-		'test'
-	]) {
-		ensureDirectoryExists(path.join(targetDir, '.roo', `rules-${mode}`));
-	}
-
 	ensureDirectoryExists(path.join(targetDir, 'scripts'));
 	ensureDirectoryExists(path.join(targetDir, 'tasks'));
 
@@ -502,15 +464,6 @@ function createProjectStructure(addAliases, dryRun) {
 		'env.example',
 		path.join(targetDir, '.env.example'),
 		replacements
-	);
-
-	// Copy .taskmasterconfig with project name
-	copyTemplateFile(
-		'.taskmasterconfig',
-		path.join(targetDir, '.taskmasterconfig'),
-		{
-			...replacements
-		}
 	);
 
 	// Copy .gitignore
@@ -540,24 +493,8 @@ function createProjectStructure(addAliases, dryRun) {
 		path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc')
 	);
 
-	// Generate Roo rules from Cursor rules
-	log('info', 'Generating Roo rules from Cursor rules...');
-	convertAllCursorRulesToRooRules(targetDir);
-
 	// Copy .windsurfrules
 	copyTemplateFile('windsurfrules', path.join(targetDir, '.windsurfrules'));
-
-	// Copy .roomodes for Roo Code integration
-	copyTemplateFile('.roomodes', path.join(targetDir, '.roomodes'));
-
-	// Copy Roo rule files for each mode
-	const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
-	for (const mode of rooModes) {
-		copyTemplateFile(
-			`${mode}-rules`,
-			path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`)
-		);
-	}
 
 	// Copy example_prd.txt
 	copyTemplateFile(
@@ -565,81 +502,17 @@ function createProjectStructure(addAliases, dryRun) {
 		path.join(targetDir, 'scripts', 'example_prd.txt')
 	);
 
-	// // Create main README.md
-	// copyTemplateFile(
-	// 	'README-task-master.md',
-	// 	path.join(targetDir, 'README-task-master.md'),
-	// 	replacements
-	// );
+	// Create main README.md
+	copyTemplateFile(
+		'README-task-master.md',
+		path.join(targetDir, 'README-task-master.md'),
+		replacements
+	);
 
-	// Initialize git repository if git is available
-	try {
-		if (!fs.existsSync(path.join(targetDir, '.git'))) {
-			log('info', 'Initializing git repository...');
-			execSync('git init', { stdio: 'ignore' });
-			log('success', 'Git repository initialized');
-		}
-	} catch (error) {
-		log('warn', 'Git not available, skipping repository initialization');
+	// Add shell aliases if requested
+	if (addAliases) {
+		addShellAliases();
 	}
-
-	// Run npm install automatically
-	const npmInstallOptions = {
-		cwd: targetDir,
-		// Default to inherit for interactive CLI, change if silent
-		stdio: 'inherit'
-	};
-
-	if (isSilentMode()) {
-		// If silent (MCP mode), suppress npm install output
-		npmInstallOptions.stdio = 'ignore';
-		log('info', 'Running npm install silently...'); // Log our own message
-	} else {
-		// Interactive mode, show the boxen message
-		console.log(
-			boxen(chalk.cyan('Installing dependencies...'), {
-				padding: 0.5,
-				margin: 0.5,
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
-	}
-
-	// === Add Model Configuration Step ===
-	if (!isSilentMode() && !dryRun) {
-		console.log(
-			boxen(chalk.cyan('Configuring AI Models...'), {
-				padding: 0.5,
-				margin: { top: 1, bottom: 0.5 },
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
-		log(
-			'info',
-			'Running interactive model setup. Please select your preferred AI models.'
-		);
-		try {
-			execSync('npx task-master models --setup', {
-				stdio: 'inherit',
-				cwd: targetDir
-			});
-			log('success', 'AI Models configured.');
-		} catch (error) {
-			log('error', 'Failed to configure AI models:', error.message);
-			log('warn', 'You may need to run "task-master models --setup" manually.');
-		}
-	} else if (isSilentMode() && !dryRun) {
-		log('info', 'Skipping interactive model setup in silent (MCP) mode.');
-		log(
-			'warn',
-			'Please configure AI models using "task-master models --set-..." or the "models" MCP tool.'
-		);
-	} else if (dryRun) {
-		log('info', 'DRY RUN: Skipping interactive model setup.');
-	}
-	// ====================================
 
 	// Display success message
 	if (!isSilentMode()) {
@@ -664,59 +537,43 @@ function createProjectStructure(addAliases, dryRun) {
 	if (!isSilentMode()) {
 		console.log(
 			boxen(
-				chalk.cyan.bold('Things you should do next:') +
+				chalk.cyan.bold('Things you can now do:') +
 					'\n\n' +
 					chalk.white('1. ') +
 					chalk.yellow(
-						'Configure AI models (if needed) and add API keys to `.env`'
-					) +
-					'\n' +
-					chalk.white('   ├─ ') +
-					chalk.dim('Models: Use `task-master models` commands') +
-					'\n' +
-					chalk.white('   └─ ') +
-					chalk.dim(
-						'Keys: Add provider API keys to .env (or inside the MCP config file i.e. .cursor/mcp.json)'
+						'Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY'
 					) +
 					'\n' +
 					chalk.white('2. ') +
 					chalk.yellow(
-						'Discuss your idea with AI and ask for a PRD using example_prd.txt, and save it to scripts/PRD.txt'
+						'Discuss your idea with AI, and once ready ask for a PRD using the example_prd.txt file, and save what you get to scripts/PRD.txt'
 					) +
 					'\n' +
 					chalk.white('3. ') +
 					chalk.yellow(
-						'Ask Cursor Agent (or run CLI) to parse your PRD and generate initial tasks:'
+						'Ask Cursor Agent to parse your PRD.txt and generate tasks'
 					) +
 					'\n' +
 					chalk.white('   └─ ') +
-					chalk.dim('MCP Tool: ') +
-					chalk.cyan('parse_prd') +
-					chalk.dim(' | CLI: ') +
-					chalk.cyan('task-master parse-prd scripts/prd.txt') +
+					chalk.dim('You can also run ') +
+					chalk.cyan('task-master parse-prd <your-prd-file.txt>') +
 					'\n' +
 					chalk.white('4. ') +
-					chalk.yellow(
-						'Ask Cursor to analyze the complexity of the tasks in your PRD using research'
-					) +
-					'\n' +
-					chalk.white('   └─ ') +
-					chalk.dim('MCP Tool: ') +
-					chalk.cyan('analyze_project_complexity') +
-					chalk.dim(' | CLI: ') +
-					chalk.cyan('task-master analyze-complexity') +
+					chalk.yellow('Ask Cursor to analyze the complexity of your tasks') +
 					'\n' +
 					chalk.white('5. ') +
 					chalk.yellow(
-						'Ask Cursor to expand all of your tasks using the complexity analysis'
+						'Ask Cursor which task is next to determine where to start'
 					) +
 					'\n' +
 					chalk.white('6. ') +
-					chalk.yellow('Ask Cursor to begin working on the next task') +
+					chalk.yellow(
+						'Ask Cursor to expand any complex tasks that are too large or complex.'
+					) +
 					'\n' +
 					chalk.white('7. ') +
 					chalk.yellow(
-						'Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists.'
+						'Ask Cursor to set the status of a task, or multiple tasks. Use the task id from the task lists.'
 					) +
 					'\n' +
 					chalk.white('8. ') +
@@ -729,10 +586,6 @@ function createProjectStructure(addAliases, dryRun) {
 					'\n\n' +
 					chalk.dim(
 						'* Review the README.md file to learn how to use other commands via Cursor Agent.'
-					) +
-					'\n' +
-					chalk.dim(
-						'* Use the task-master command without arguments to see all available commands.'
 					),
 				{
 					padding: 1,
@@ -761,22 +614,21 @@ function setupMCPConfiguration(targetDir) {
 	const newMCPServer = {
 		'task-master-ai': {
 			command: 'npx',
-			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
+			args: ['-y', 'task-master-mcp'],
 			env: {
-				ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY_HERE',
-				PERPLEXITY_API_KEY: 'PERPLEXITY_API_KEY_HERE',
-				OPENAI_API_KEY: 'OPENAI_API_KEY_HERE',
-				GOOGLE_API_KEY: 'GOOGLE_API_KEY_HERE',
-				XAI_API_KEY: 'XAI_API_KEY_HERE',
-				OPENROUTER_API_KEY: 'OPENROUTER_API_KEY_HERE',
-				MISTRAL_API_KEY: 'MISTRAL_API_KEY_HERE',
-				AZURE_OPENAI_API_KEY: 'AZURE_OPENAI_API_KEY_HERE',
-				OLLAMA_API_KEY: 'OLLAMA_API_KEY_HERE'
+				ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY',
+				PERPLEXITY_API_KEY: 'YOUR_PERPLEXITY_API_KEY',
+				MODEL: 'claude-3-7-sonnet-20250219',
+				PERPLEXITY_MODEL: 'sonar-pro',
+				MAX_TOKENS: '64000',
+				TEMPERATURE: '0.2',
+				DEFAULT_SUBTASKS: '5',
+				DEFAULT_PRIORITY: 'medium'
 			}
 		}
 	};
 
-	// Check if mcp.json already existsimage.png
+	// Check if mcp.json already exists
 	if (fs.existsSync(mcpJsonPath)) {
 		log(
 			'info',
@@ -796,14 +648,14 @@ function setupMCPConfiguration(targetDir) {
 				(server) =>
 					server.args &&
 					server.args.some(
-						(arg) => typeof arg === 'string' && arg.includes('task-master-ai')
+						(arg) => typeof arg === 'string' && arg.includes('task-master-mcp')
 					)
 			);
 
 			if (hasMCPString) {
 				log(
 					'info',
-					'Found existing task-master-ai MCP configuration in mcp.json, leaving untouched'
+					'Found existing task-master-mcp configuration in mcp.json, leaving untouched'
 				);
 				return; // Exit early, don't modify the existing configuration
 			}

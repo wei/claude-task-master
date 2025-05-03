@@ -25,9 +25,9 @@ global.wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 if (process.env.SILENCE_CONSOLE === 'true') {
 	global.console = {
 		...console,
-		log: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {}
+		log: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn()
 	};
 }

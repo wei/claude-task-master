@@ -6,8 +6,10 @@
 import { z } from 'zod';
 import {
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	createContentResponse,
+	getProjectRootFromSession,
+	executeTaskMasterCommand,
+	handleApiResult
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -63,15 +65,26 @@ export function registerAddTaskTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for task creation')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
+
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve the path to tasks.json
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: rootFolder, file: args.file },
 						log
 					);
 				} catch (error) {
@@ -81,29 +94,27 @@ export function registerAddTaskTool(server) {
 					);
 				}
 
-				// Call the direct functionP
+				// Call the direct function
 				const result = await addTaskDirect(
 					{
+						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
 						prompt: args.prompt,
-						title: args.title,
-						description: args.description,
-						details: args.details,
-						testStrategy: args.testStrategy,
 						dependencies: args.dependencies,
 						priority: args.priority,
-						research: args.research,
-						projectRoot: args.projectRoot
+						research: args.research
 					},
 					log,
 					{ session }
 				);
 
+				// Return the result
 				return handleApiResult(result, log);
 			} catch (error) {
 				log.error(`Error in add-task tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
-		})
+		}
 	});
 }

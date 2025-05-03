@@ -155,19 +155,19 @@ describe('Commands Module', () => {
 			const program = setupCLI();
 			const version = program._version();
 			expect(mockReadFileSync).not.toHaveBeenCalled();
-			expect(version).toBe('unknown');
+			expect(version).toBe('1.5.0');
 		});
 
 		test('should use default version when package.json reading throws an error', () => {
 			mockExistsSync.mockReturnValue(true);
 			mockReadFileSync.mockImplementation(() => {
-				throw new Error('Read error');
+				throw new Error('Invalid JSON');
 			});
 
 			const program = setupCLI();
 			const version = program._version();
 			expect(mockReadFileSync).toHaveBeenCalled();
-			expect(version).toBe('unknown');
+			expect(version).toBe('1.5.0');
 		});
 	});
 

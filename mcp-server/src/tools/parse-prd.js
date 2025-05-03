@@ -4,16 +4,20 @@
  */
 
 import { z } from 'zod';
-import path from 'path';
 import {
+	getProjectRootFromSession,
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
+import {
+	resolveProjectPaths,
+	findPRDDocumentPath,
+	resolveTasksOutputPath
+} from '../core/utils/path-utils.js';
 
 /**
- * Register the parse_prd tool
+ * Register the parsePRD tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
 export function registerParsePRDTool(server) {
@@ -42,50 +46,72 @@ export function registerParsePRDTool(server) {
 			force: z
 				.boolean()
 				.optional()
-				.default(false)
-				.describe('Overwrite existing output file without prompting.'),
+				.describe('Allow overwriting an existing tasks.json file.'),
 			append: z
 				.boolean()
 				.optional()
-				.default(false)
-				.describe('Append generated tasks to existing file.'),
+				.describe(
+					'Append new tasks to existing tasks.json instead of overwriting'
+				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			const toolName = 'parse_prd';
+		execute: async (args, { log, session }) => {
 			try {
-				log.info(
-					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
+				log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
+
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
+
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve input (PRD) and output (tasks.json) paths using the utility
+				const { projectRoot, prdPath, tasksJsonPath } = resolveProjectPaths(
+					rootFolder,
+					args,
+					log
 				);
 
-				// Call Direct Function - Pass relevant args including projectRoot
+				// Check if PRD path was found (resolveProjectPaths returns null if not found and not provided)
+				if (!prdPath) {
+					return createErrorResponse(
+						'No PRD document found or provided. Please ensure a PRD file exists (e.g., PRD.md) or provide a valid input file path.'
+					);
+				}
+
+				// Call the direct function with fully resolved paths
 				const result = await parsePRDDirect(
 					{
-						input: args.input,
-						output: args.output,
+						projectRoot: projectRoot,
+						input: prdPath,
+						output: tasksJsonPath,
 						numTasks: args.numTasks,
 						force: args.force,
-						append: args.append,
-						projectRoot: args.projectRoot
+						append: args.append
 					},
 					log,
 					{ session }
 				);
 
-				log.info(
-					`${toolName}: Direct function result: success=${result.success}`
-				);
+				if (result.success) {
+					log.info(`Successfully parsed PRD: ${result.data.message}`);
+				} else {
+					log.error(
+						`Failed to parse PRD: ${result.error?.message || 'Unknown error'}`
+					);
+				}
+
 				return handleApiResult(result, log, 'Error parsing PRD');
 			} catch (error) {
-				log.error(
-					`Critical error in ${toolName} tool execute: ${error.message}`
-				);
-				return createErrorResponse(
-					`Internal tool error (${toolName}): ${error.message}`
-				);
+				log.error(`Error in parse-prd tool: ${error.message}`);
+				return createErrorResponse(error.message);
 			}
-		})
+		}
 	});
 }

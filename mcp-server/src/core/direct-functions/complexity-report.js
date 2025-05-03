@@ -9,6 +9,7 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
+import path from 'path';
 
 /**
  * Direct function wrapper for displaying the complexity report with error handling and caching.

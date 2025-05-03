@@ -6,40 +6,32 @@
 import { updateSubtaskById } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
-	disableSilentMode,
-	isSilentMode
+	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { createLogWrapper } from '../../tools/utils.js';
+import {
+	getAnthropicClientForMCP,
+	getPerplexityClientForMCP
+} from '../utils/ai-client-utils.js';
 
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - Subtask ID in format "parent.sub".
- * @param {string} args.prompt - Information to append to the subtask.
- * @param {boolean} [args.research] - Whether to use research role.
- * @param {string} [args.projectRoot] - Project root path.
+ * @param {Object} args - Command arguments containing id, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
-	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
-
-	const logWrapper = createLogWrapper(log);
+	const { session } = context; // Only extract session, not reportProgress
+	const { tasksJsonPath, id, prompt, research } = args;
 
 	try {
-		logWrapper.info(
-			`Updating subtask by ID via direct function. ID: ${id}, ProjectRoot: ${projectRoot}`
-		);
+		log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {
 			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			logWrapper.error(errorMessage);
+			log.error(errorMessage);
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
@@ -47,22 +39,22 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		// Basic validation for ID format (e.g., '5.2')
-		if (!id || typeof id !== 'string' || !id.includes('.')) {
+		// Check required parameters (id and prompt)
+		if (!id) {
 			const errorMessage =
-				'Invalid subtask ID format. Must be in format "parentId.subtaskId" (e.g., "5.2").';
-			logWrapper.error(errorMessage);
+				'No subtask ID specified. Please provide a subtask ID to update.';
+			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INVALID_SUBTASK_ID', message: errorMessage },
+				error: { code: 'MISSING_SUBTASK_ID', message: errorMessage },
 				fromCache: false
 			};
 		}
 
 		if (!prompt) {
 			const errorMessage =
-				'No prompt specified. Please provide the information to append.';
-			logWrapper.error(errorMessage);
+				'No prompt specified. Please provide a prompt with information to add to the subtask.';
+			log.error(errorMessage);
 			return {
 				success: false,
 				error: { code: 'MISSING_PROMPT', message: errorMessage },
@@ -95,41 +87,79 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 
 		// Use the provided path
 		const tasksPath = tasksJsonPath;
+
+		// Get research flag
 		const useResearch = research === true;
 
 		log.info(
 			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
-		const wasSilent = isSilentMode();
-		if (!wasSilent) {
-			enableSilentMode();
+		// Initialize the appropriate AI client based on research flag
+		try {
+			if (useResearch) {
+				// Initialize Perplexity client
+				await getPerplexityClientForMCP(session);
+			} else {
+				// Initialize Anthropic client
+				await getAnthropicClientForMCP(session);
+			}
+		} catch (error) {
+			log.error(`AI client initialization error: ${error.message}`);
+			return {
+				success: false,
+				error: {
+					code: 'AI_CLIENT_ERROR',
+					message: error.message || 'Failed to initialize AI client'
+				},
+				fromCache: false
+			};
 		}
 
 		try {
+			// Enable silent mode to prevent console logs from interfering with JSON response
+			enableSilentMode();
+
+			// Create a logger wrapper object to handle logging without breaking the mcpLog[level] calls
+			// This ensures outputFormat is set to 'json' while still supporting proper logging
+			const logWrapper = {
+				info: (message) => log.info(message),
+				warn: (message) => log.warn(message),
+				error: (message) => log.error(message),
+				debug: (message) => log.debug && log.debug(message),
+				success: (message) => log.info(message) // Map success to info if needed
+			};
+
 			// Execute core updateSubtaskById function
+			// Pass both session and logWrapper as mcpLog to ensure outputFormat is 'json'
 			const updatedSubtask = await updateSubtaskById(
 				tasksPath,
 				subtaskIdStr,
 				prompt,
 				useResearch,
-				{ mcpLog: logWrapper, session, projectRoot },
-				'json'
+				{
+					session,
+					mcpLog: logWrapper
+				}
 			);
 
-			if (updatedSubtask === null) {
-				const message = `Subtask ${id} or its parent task not found.`;
-				logWrapper.error(message); // Log as error since it couldn't be found
+			// Restore normal logging
+			disableSilentMode();
+
+			// Handle the case where the subtask couldn't be updated (e.g., already marked as done)
+			if (!updatedSubtask) {
 				return {
 					success: false,
-					error: { code: 'SUBTASK_NOT_FOUND', message: message },
+					error: {
+						code: 'SUBTASK_UPDATE_FAILED',
+						message:
+							'Failed to update subtask. It may be marked as completed, or another error occurred.'
+					},
 					fromCache: false
 				};
 			}
 
-			// Subtask updated successfully
-			const successMessage = `Successfully updated subtask with ID ${subtaskIdStr}`;
-			logWrapper.success(successMessage);
+			// Return the updated subtask information
 			return {
 				success: true,
 				data: {
@@ -140,33 +170,23 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					tasksPath,
 					useResearch
 				},
-				fromCache: false
+				fromCache: false // This operation always modifies state and should never be cached
 			};
 		} catch (error) {
-			logWrapper.error(`Error updating subtask by ID: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'UPDATE_SUBTASK_CORE_ERROR',
-					message: error.message || 'Unknown error updating subtask'
-				},
-				fromCache: false
-			};
-		} finally {
-			if (!wasSilent && isSilentMode()) {
-				disableSilentMode();
-			}
+			// Make sure to restore normal logging even if there's an error
+			disableSilentMode();
+			throw error; // Rethrow to be caught by outer catch block
 		}
 	} catch (error) {
-		logWrapper.error(
-			`Setup error in updateSubtaskByIdDirect: ${error.message}`
-		);
-		if (isSilentMode()) disableSilentMode();
+		// Ensure silent mode is disabled
+		disableSilentMode();
+
+		log.error(`Error updating subtask by ID: ${error.message}`);
 		return {
 			success: false,
 			error: {
-				code: 'DIRECT_FUNCTION_SETUP_ERROR',
-				message: error.message || 'Unknown setup error'
+				code: 'UPDATE_SUBTASK_ERROR',
+				message: error.message || 'Unknown error updating subtask'
 			},
 			fromCache: false
 		};

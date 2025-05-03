@@ -17,7 +17,7 @@ import { registerExpandTaskTool } from './expand-task.js';
 import { registerAddTaskTool } from './add-task.js';
 import { registerAddSubtaskTool } from './add-subtask.js';
 import { registerRemoveSubtaskTool } from './remove-subtask.js';
-import { registerAnalyzeProjectComplexityTool } from './analyze.js';
+import { registerAnalyzeTool } from './analyze.js';
 import { registerClearSubtasksTool } from './clear-subtasks.js';
 import { registerExpandAllTool } from './expand-all.js';
 import { registerRemoveDependencyTool } from './remove-dependency.js';
@@ -27,51 +27,39 @@ import { registerComplexityReportTool } from './complexity-report.js';
 import { registerAddDependencyTool } from './add-dependency.js';
 import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
-import { registerModelsTool } from './models.js';
+import { asyncOperationManager } from '../core/utils/async-manager.js';
 
 /**
  * Register all Task Master tools with the MCP server
  * @param {Object} server - FastMCP server instance
+ * @param {asyncOperationManager} asyncManager - The async operation manager instance
  */
-export function registerTaskMasterTools(server) {
+export function registerTaskMasterTools(server, asyncManager) {
 	try {
-		// Register each tool in a logical workflow order
-
-		// Group 1: Initialization & Setup
-		registerInitializeProjectTool(server);
-		registerModelsTool(server);
-		registerParsePRDTool(server);
-
-		// Group 2: Task Listing & Viewing
+		// Register each tool
 		registerListTasksTool(server);
-		registerShowTaskTool(server);
-		registerNextTaskTool(server);
-		registerComplexityReportTool(server);
-
-		// Group 3: Task Status & Management
 		registerSetTaskStatusTool(server);
-		registerGenerateTool(server);
-
-		// Group 4: Task Creation & Modification
-		registerAddTaskTool(server);
-		registerAddSubtaskTool(server);
+		registerParsePRDTool(server);
 		registerUpdateTool(server);
 		registerUpdateTaskTool(server);
 		registerUpdateSubtaskTool(server);
-		registerRemoveTaskTool(server);
-		registerRemoveSubtaskTool(server);
-		registerClearSubtasksTool(server);
-
-		// Group 5: Task Analysis & Expansion
-		registerAnalyzeProjectComplexityTool(server);
+		registerGenerateTool(server);
+		registerShowTaskTool(server);
+		registerNextTaskTool(server);
 		registerExpandTaskTool(server);
+		registerAddTaskTool(server, asyncManager);
+		registerAddSubtaskTool(server);
+		registerRemoveSubtaskTool(server);
+		registerAnalyzeTool(server);
+		registerClearSubtasksTool(server);
 		registerExpandAllTool(server);
-
-		// Group 6: Dependency Management
-		registerAddDependencyTool(server);
 		registerRemoveDependencyTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
+		registerComplexityReportTool(server);
+		registerAddDependencyTool(server);
+		registerRemoveTaskTool(server);
+		registerInitializeProjectTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;
