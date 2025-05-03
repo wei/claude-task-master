@@ -5,6 +5,7 @@
     "task-master-ai": "0.13.1"
   },
   "changesets": [
+    "beige-doodles-type",
     "beige-rats-accept",
     "blue-spies-kick",
     "cuddly-zebras-matter",

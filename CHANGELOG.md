@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.13.1-rc.1
+
+### Patch Changes
+
+- Resolve all issues related to MCP
+
 ## 0.13.0-rc.2
 
 ### Patch Changes
