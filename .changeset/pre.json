@@ -2,7 +2,7 @@
   "mode": "pre",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.12.1"
+    "task-master-ai": "0.13.1"
   },
   "changesets": [
     "beige-rats-accept",
