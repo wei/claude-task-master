@@ -3,6 +3,7 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
+import { z } from 'zod';
 
 import {
 	getStatusWithColor,
@@ -16,7 +17,10 @@ import {
 	truncate,
 	isSilentMode
 } from '../utils.js';
-import { generateTextService } from '../ai-services-unified.js';
+import {
+	generateObjectService,
+	generateTextService
+} from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
@@ -29,6 +33,7 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path (needed for AI service key resolution).
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). Automatically 'json' if mcpLog is present.
  * @returns {Promise<Object|null>} - The updated subtask or null if update failed.
  */
@@ -40,7 +45,7 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -130,36 +135,16 @@ async function updateSubtaskById(
 
 		const subtask = parentTask.subtasks[subtaskIndex];
 
-		// Check if subtask is already completed
-		if (subtask.status === 'done' || subtask.status === 'completed') {
-			report(
-				'warn',
-				`Subtask ${subtaskId} is already marked as done and cannot be updated`
-			);
-
-			// Only show UI elements for text output (CLI)
-			if (outputFormat === 'text') {
-				console.log(
-					boxen(
-						chalk.yellow(
-							`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`
-						) +
-							'\n\n' +
-							chalk.white(
-								'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
-							) +
-							'\n' +
-							chalk.white(
-								'1. Change its status to "pending" or "in-progress"'
-							) +
-							'\n' +
-							chalk.white('2. Then run the update-subtask command'),
-						{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-					)
-				);
-			}
-			return null;
-		}
+		const subtaskSchema = z.object({
+			id: z.number().int().positive(),
+			title: z.string(),
+			description: z.string().optional(),
+			status: z.string(),
+			dependencies: z.array(z.union([z.string(), z.number()])).optional(),
+			priority: z.string().optional(),
+			details: z.string().optional(),
+			testStrategy: z.string().optional()
+		});
 
 		// Only show UI elements for text output (CLI)
 		if (outputFormat === 'text') {
@@ -192,101 +177,161 @@ async function updateSubtaskById(
 
 			// Start the loading indicator - only for text output
 			loadingIndicator = startLoadingIndicator(
-				'Generating additional information with AI...'
+				useResearch
+					? 'Updating subtask with research...'
+					: 'Updating subtask...'
 			);
 		}
 
-		let additionalInformation = '';
+		let parsedAIResponse;
 		try {
-			// Reverted: Keep the original system prompt
-			const systemPrompt = `You are an AI assistant helping to update software development subtasks with additional information.
-Given a subtask, you will provide additional details, implementation notes, or technical insights based on user request.
-Focus only on adding content that enhances the subtask - don't repeat existing information.
-Be technical, specific, and implementation-focused rather than general.
-Provide concrete examples, code snippets, or implementation details when relevant.`;
+			// --- GET PARENT & SIBLING CONTEXT ---
+			const parentContext = {
+				id: parentTask.id,
+				title: parentTask.title
+				// Avoid sending full parent description/details unless necessary
+			};
 
-			// Reverted: Use the full JSON stringification for the user message
-			const subtaskData = JSON.stringify(subtask, null, 2);
-			const userMessageContent = `Here is the subtask to enhance:\n${subtaskData}\n\nPlease provide additional information addressing this request:\n${prompt}\n\nReturn ONLY the new information to add - do not repeat existing content.`;
+			const prevSubtask =
+				subtaskIndex > 0
+					? {
+							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex - 1].id}`,
+							title: parentTask.subtasks[subtaskIndex - 1].title,
+							status: parentTask.subtasks[subtaskIndex - 1].status
+						}
+					: null;
 
-			const serviceRole = useResearch ? 'research' : 'main';
-			report('info', `Calling AI text service with role: ${serviceRole}`);
+			const nextSubtask =
+				subtaskIndex < parentTask.subtasks.length - 1
+					? {
+							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex + 1].id}`,
+							title: parentTask.subtasks[subtaskIndex + 1].title,
+							status: parentTask.subtasks[subtaskIndex + 1].status
+						}
+					: null;
 
-			const streamResult = await generateTextService({
-				role: serviceRole,
-				session: session,
+			const contextString = `
+Parent Task: ${JSON.stringify(parentContext)}
+${prevSubtask ? `Previous Subtask: ${JSON.stringify(prevSubtask)}` : ''}
+${nextSubtask ? `Next Subtask: ${JSON.stringify(nextSubtask)}` : ''}
+`;
+
+			const systemPrompt = `You are an AI assistant updating a parent task's subtask. This subtask will be part of a larger parent task and will be used to direct AI agents to complete the subtask. Your goal is to GENERATE new, relevant information based on the user's request (which may be high-level, mid-level or low-level) and APPEND it to the existing subtask 'details' field, wrapped in specific XML-like tags with an ISO 8601 timestamp. Intelligently determine the level of detail to include based on the user's request. Some requests are meant simply to update the subtask with some mid-implementation details, while others are meant to update the subtask with a detailed plan or strategy.
+
+Context Provided:
+- The current subtask object.
+- Basic info about the parent task (ID, title).
+- Basic info about the immediately preceding subtask (ID, title, status), if it exists.
+- Basic info about the immediately succeeding subtask (ID, title, status), if it exists.
+- A user request string.
+
+Guidelines:
+1. Analyze the user request considering the provided subtask details AND the context of the parent and sibling tasks.
+2. GENERATE new, relevant text content that should be added to the 'details' field. Focus *only* on the substance of the update based on the user request and context. Do NOT add timestamps or any special formatting yourself. Avoid over-engineering the details, provide .
+3. Update the 'details' field in the subtask object with the GENERATED text content. It's okay if this overwrites previous details in the object you return, as the calling code will handle the final appending.
+4. Return the *entire* updated subtask object (with your generated content in the 'details' field) as a valid JSON object conforming to the provided schema. Do NOT return explanations or markdown formatting.`;
+
+			const subtaskDataString = JSON.stringify(subtask, null, 2);
+			// Updated user prompt including context
+			const userPrompt = `Task Context:\n${contextString}\nCurrent Subtask:\n${subtaskDataString}\n\nUser Request: "${prompt}"\n\nPlease GENERATE new, relevant text content for the 'details' field based on the user request and the provided context. Return the entire updated subtask object as a valid JSON object matching the schema, with the newly generated text placed in the 'details' field.`;
+			// --- END UPDATED PROMPTS ---
+
+			// Call Unified AI Service using generateObjectService
+			const role = useResearch ? 'research' : 'main';
+			report('info', `Using AI object service with role: ${role}`);
+
+			parsedAIResponse = await generateObjectService({
+				prompt: userPrompt,
 				systemPrompt: systemPrompt,
-				prompt: userMessageContent
+				schema: subtaskSchema,
+				objectName: 'updatedSubtask',
+				role,
+				session,
+				projectRoot,
+				maxRetries: 2
 			});
+			report(
+				'success',
+				'Successfully received object response from AI service'
+			);
 
 			if (outputFormat === 'text' && loadingIndicator) {
-				// Stop indicator immediately since generateText is blocking
 				stopLoadingIndicator(loadingIndicator);
 				loadingIndicator = null;
 			}
 
-			// Assign the result directly (generateTextService returns the text string)
-			additionalInformation = streamResult ? streamResult.trim() : '';
-
-			if (!additionalInformation) {
-				throw new Error('AI returned empty response.'); // Changed error message slightly
+			if (!parsedAIResponse || typeof parsedAIResponse !== 'object') {
+				throw new Error('AI did not return a valid object.');
 			}
+
 			report(
-				// Corrected log message to reflect generateText
 				'success',
-				`Successfully generated text using AI role: ${serviceRole}.`
+				`Successfully generated object using AI role: ${role}.`
 			);
 		} catch (aiError) {
 			report('error', `AI service call failed: ${aiError.message}`);
+			if (outputFormat === 'text' && loadingIndicator) {
+				stopLoadingIndicator(loadingIndicator); // Ensure stop on error
+				loadingIndicator = null;
+			}
 			throw aiError;
-		} // Removed the inner finally block as streamingInterval is gone
+		}
 
-		const currentDate = new Date();
+		// --- TIMESTAMP & FORMATTING LOGIC (Handled Locally) ---
+		// Extract only the generated content from the AI's response details field.
+		const generatedContent = parsedAIResponse.details || ''; // Default to empty string
 
-		// Format the additional information with timestamp
-		const formattedInformation = `\n\n<info added on ${currentDate.toISOString()}>\n${additionalInformation}\n</info added on ${currentDate.toISOString()}>`;
+		if (generatedContent.trim()) {
+			// Generate timestamp locally
+			const timestamp = new Date().toISOString(); // <<< Local Timestamp
+
+			// Format the content with XML-like tags and timestamp LOCALLY
+			const formattedBlock = `<info added on ${timestamp}>\n${generatedContent.trim()}\n</info added on ${timestamp}>`; // <<< Local Formatting
+
+			// Append the formatted block to the *original* subtask details
+			subtask.details =
+				(subtask.details ? subtask.details + '\n' : '') + formattedBlock; // <<< Local Appending
+			report(
+				'info',
+				'Appended timestamped, formatted block with AI-generated content to subtask.details.'
+			);
+		} else {
+			report(
+				'warn',
+				'AI response object did not contain generated content in the "details" field. Original details remain unchanged.'
+			);
+		}
+		// --- END TIMESTAMP & FORMATTING LOGIC ---
+
+		// Get a reference to the subtask *after* its details have been updated
+		const updatedSubtask = parentTask.subtasks[subtaskIndex]; // subtask === updatedSubtask now
+
+		report('info', 'Updated subtask details locally after AI generation.');
+		// --- END UPDATE SUBTASK ---
 
 		// Only show debug info for text output (CLI)
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log(
-				'>>> DEBUG: formattedInformation:',
-				formattedInformation.substring(0, 70) + '...'
+				'>>> DEBUG: Subtask details AFTER AI update:',
+				updatedSubtask.details // Use updatedSubtask
 			);
 		}
 
-		// Append to subtask details and description
-		// Only show debug info for text output (CLI)
-		if (outputFormat === 'text' && getDebugFlag(session)) {
-			console.log('>>> DEBUG: Subtask details BEFORE append:', subtask.details);
-		}
-
-		if (subtask.details) {
-			subtask.details += formattedInformation;
-		} else {
-			subtask.details = `${formattedInformation}`;
-		}
-
-		// Only show debug info for text output (CLI)
-		if (outputFormat === 'text' && getDebugFlag(session)) {
-			console.log('>>> DEBUG: Subtask details AFTER append:', subtask.details);
-		}
-
-		if (subtask.description) {
-			// Only append to description if it makes sense (for shorter updates)
-			if (additionalInformation.length < 200) {
-				// Only show debug info for text output (CLI)
+		// Description update logic (keeping as is for now)
+		if (updatedSubtask.description) {
+			// Use updatedSubtask
+			if (prompt.length < 100) {
 				if (outputFormat === 'text' && getDebugFlag(session)) {
 					console.log(
 						'>>> DEBUG: Subtask description BEFORE append:',
-						subtask.description
+						updatedSubtask.description // Use updatedSubtask
 					);
 				}
-				subtask.description += ` [Updated: ${currentDate.toLocaleDateString()}]`;
-				// Only show debug info for text output (CLI)
+				updatedSubtask.description += ` [Updated: ${new Date().toLocaleDateString()}]`; // Use updatedSubtask
 				if (outputFormat === 'text' && getDebugFlag(session)) {
 					console.log(
 						'>>> DEBUG: Subtask description AFTER append:',
-						subtask.description
+						updatedSubtask.description // Use updatedSubtask
 					);
 				}
 			}
@@ -297,10 +342,7 @@ Provide concrete examples, code snippets, or implementation details when relevan
 			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
 
-		// Update the subtask in the parent task's array
-		parentTask.subtasks[subtaskIndex] = subtask;
-
-		// Write the updated tasks to the file
+		// Write the updated tasks to the file (parentTask already contains the updated subtask)
 		writeJSON(tasksPath, data);
 
 		// Only show debug info for text output (CLI)
@@ -326,17 +368,18 @@ Provide concrete examples, code snippets, or implementation details when relevan
 						'\n\n' +
 						chalk.white.bold('Title:') +
 						' ' +
-						subtask.title +
+						updatedSubtask.title +
 						'\n\n' +
-						chalk.white.bold('Information Added:') +
+						// Update the display to show the new details field
+						chalk.white.bold('Updated Details:') +
 						'\n' +
-						chalk.white(truncate(additionalInformation, 300, true)),
+						chalk.white(truncate(updatedSubtask.details || '', 500, true)), // Use updatedSubtask
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
 			);
 		}
 
-		return subtask;
+		return updatedSubtask; // Return the modified subtask object
 	} catch (error) {
 		// Outer catch block handles final errors after loop/attempts
 		// Stop indicator on error - only for text output (CLI)
