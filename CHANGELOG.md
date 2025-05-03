@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.13.0-rc.1
+
+### Patch Changes
+
+- 4cbfe82: Fix ERR_MODULE_NOT_FOUND when trying to run MCP Server
+
 ## 0.13.0-rc.0
 
 ### Minor Changes
