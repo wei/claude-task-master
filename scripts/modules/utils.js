@@ -276,7 +276,14 @@ function findTaskInComplexityReport(report, taskId) {
 }
 
 function addComplexityToTask(task, complexityReport) {
-	const taskId = task.isSubtask ? task.parentTask.id : task.id;
+	let taskId;
+	if (task.isSubtask) {
+		taskId = task.parentTask.id;
+	} else if (task.parentId) {
+		taskId = task.parentId;
+	} else {
+		taskId = task.id;
+	}
 
 	const taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
 	if (taskAnalysis) {
