@@ -392,6 +392,8 @@ function findTaskById(
 		return { task: null, originalSubtaskCount: null };
 	}
 
+	taskResult = task;
+
 	// If task found and statusFilter provided, filter its subtasks
 	if (statusFilter && task.subtasks && Array.isArray(task.subtasks)) {
 		const originalSubtaskCount = task.subtasks.length;
