@@ -349,9 +349,6 @@ function findTaskById(
 		return { task: null, originalSubtaskCount: null };
 	}
 
-	let taskResult = null;
-	let originalSubtaskCount = null;
-
 	// Check if it's a subtask ID (e.g., "1.2")
 	if (typeof taskId === 'string' && taskId.includes('.')) {
 		// If looking for a subtask, statusFilter doesn't apply directly here.
@@ -380,8 +377,11 @@ function findTaskById(
 			addComplexityToTask(subtask, complexityReport);
 		}
 
-		taskResult = subtask;
+		return { task: subtask || null, originalSubtaskCount: null };
 	}
+
+	let taskResult = null;
+	let originalSubtaskCount = null;
 
 	// Find the main task
 	const id = parseInt(taskId, 10);

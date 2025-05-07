@@ -58,11 +58,11 @@ describe('Task Finder', () => {
 		});
 		test('should work correctly when no complexity report is provided', () => {
 			// Pass null as the complexity report
-			const task = findTaskById(sampleTasks.tasks, 2, null);
+			const result = findTaskById(sampleTasks.tasks, 2, null);
 
-			expect(task).toBeDefined();
-			expect(task.id).toBe(2);
-			expect(task.complexityScore).toBeUndefined();
+			expect(result.task).toBeDefined();
+			expect(result.task.id).toBe(2);
+			expect(result.task.complexityScore).toBeUndefined();
 		});
 		test('should work correctly when task has no complexity data in the provided report', () => {
 			// Define a complexity report that doesn't include task 2
@@ -70,11 +70,11 @@ describe('Task Finder', () => {
 				complexityAnalysis: [{ taskId: 999, complexityScore: 5 }]
 			};
 
-			const task = findTaskById(sampleTasks.tasks, 2, complexityReport);
+			const result = findTaskById(sampleTasks.tasks, 2, complexityReport);
 
-			expect(task).toBeDefined();
-			expect(task.id).toBe(2);
-			expect(task.complexityScore).toBeUndefined();
+			expect(result.task).toBeDefined();
+			expect(result.task.id).toBe(2);
+			expect(result.task.complexityScore).toBeUndefined();
 		});
 
 		test('should include complexity score when report is provided', () => {
@@ -107,11 +107,11 @@ describe('Task Finder', () => {
 				]
 			};
 
-			const task = findTaskById(sampleTasks.tasks, 2, complexityReport);
+			const result = findTaskById(sampleTasks.tasks, 2, complexityReport);
 
-			expect(task).toBeDefined();
-			expect(task.id).toBe(2);
-			expect(task.complexityScore).toBe(8);
+			expect(result.task).toBeDefined();
+			expect(result.task.id).toBe(2);
+			expect(result.task.complexityScore).toBe(8);
 		});
 	});
 });
