@@ -58,7 +58,7 @@ export function registerNextTaskTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						rootFolder,
+						args.projectRoot,
 						args.complexityReport,
 						log
 					);

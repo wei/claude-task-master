@@ -73,7 +73,7 @@ export function registerListTasksTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						rootFolder,
+						args.projectRoot,
 						args.complexityReport,
 						log
 					);

@@ -94,7 +94,7 @@ export function registerShowTaskTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						rootFolder,
+						projectRoot,
 						args.complexityReport,
 						log
 					);

@@ -36,7 +36,7 @@ export async function listTasksDirect(args, log) {
 	// Use the explicit tasksJsonPath for cache key
 	const statusFilter = status || 'all';
 	const withSubtasksFilter = withSubtasks || false;
-	const cacheKey = `listTasks:${tasksJsonPath}:${statusFilter}:${withSubtasksFilter}`;
+	const cacheKey = `listTasks:${tasksJsonPath}:${reportPath}:${statusFilter}:${withSubtasksFilter}`;
 
 	// Define the action function to be executed on cache miss
 	const coreListTasksAction = async () => {
