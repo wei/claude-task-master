@@ -20,6 +20,7 @@ import path from 'path';
 import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
+import { TASK_STATUS_OPTIONS } from '../../src/shared/task-status.js';
 
 // Create a color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
@@ -458,7 +459,7 @@ function displayHelp() {
 				{
 					name: 'set-status',
 					args: '--id=<id> --status=<status>',
-					desc: 'Update task status (done, pending, etc.)'
+					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
 				},
 				{
 					name: 'update',

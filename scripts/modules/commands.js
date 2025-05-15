@@ -73,6 +73,10 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import { findProjectRoot } from './utils.js';
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../src/shared/task-status.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -1038,7 +1042,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-s, --status <status>',
-			'New status (todo, in-progress, review, done)'
+			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.action(async (options) => {
@@ -1048,6 +1052,16 @@ function registerCommands(programInstance) {
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
+				process.exit(1);
+			}
+
+			if (!isValidTaskStatus(status)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+					)
+				);
+
 				process.exit(1);
 			}
 

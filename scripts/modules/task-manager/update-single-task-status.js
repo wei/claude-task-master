@@ -17,6 +17,12 @@ async function updateSingleTaskStatus(
 	data,
 	showUi = true
 ) {
+	if (!isValidTaskStatus(newStatus)) {
+		throw new Error(
+			`Error: Invalid status value: ${newStatus}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+		);
+	}
+
 	// Check if it's a subtask (e.g., "1.2")
 	if (taskIdInput.includes('.')) {
 		const [parentId, subtaskId] = taskIdInput
