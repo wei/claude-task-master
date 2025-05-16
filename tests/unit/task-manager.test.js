@@ -338,7 +338,7 @@ import { sampleTasks, emptySampleTasks } from '../fixtures/sample-tasks.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
-} from '../../src/shared/task-status.js';
+} from '../../src/constants/task-status.js';
 
 // Destructure the required functions for convenience
 const { findNextTask, generateTaskFiles, clearSubtasks, updateTaskById } =

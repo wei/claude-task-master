@@ -11,7 +11,7 @@ import generateTaskFiles from './generate-task-files.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
-} from '../../../src/shared/task-status.js';
+} from '../../../src/constants/task-status.js';
 
 /**
  * Set the status of a task

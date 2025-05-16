@@ -76,7 +76,7 @@ import { findProjectRoot } from './utils.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
-} from '../../src/shared/task-status.js';
+} from '../../src/constants/task-status.js';
 
 /**
  * Runs the interactive setup process for model configuration.
