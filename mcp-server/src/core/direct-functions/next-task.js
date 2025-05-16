@@ -35,9 +35,6 @@ export async function nextTaskDirect(args, log) {
 		};
 	}
 
-	// Generate cache key using the provided task path
-	const cacheKey = `nextTask:${tasksJsonPath}`;
-
 	// Define the action function to be executed on cache miss
 	const coreNextTaskAction = async () => {
 		try {
@@ -118,18 +115,12 @@ export async function nextTaskDirect(args, log) {
 
 	// Use the caching utility
 	try {
-		const result = await getCachedOrExecute({
-			cacheKey,
-			actionFn: coreNextTaskAction,
-			log
-		});
-		log.info(`nextTaskDirect completed. From cache: ${result.fromCache}`);
+		const result = await coreNextTaskAction();
+		log.info(`nextTaskDirect completed.`);
 		return result; // Returns { success, data/error, fromCache }
 	} catch (error) {
 		// Catch unexpected errors from getCachedOrExecute itself
-		log.error(
-			`Unexpected error during getCachedOrExecute for nextTask: ${error.message}`
-		);
+		log.error(`Unexpected error during nextTask: ${error.message}`);
 		return {
 			success: false,
 			error: {
