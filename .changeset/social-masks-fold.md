@@ -2,4 +2,4 @@
 'task-master-ai': minor
 ---
 
-Updated complexity report handling and testcases
+Display task complexity scores in task lists, next task, and task details views.

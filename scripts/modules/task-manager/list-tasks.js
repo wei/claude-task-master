@@ -47,10 +47,10 @@ function listTasks(
 		}
 
 		// Add complexity scores to tasks if report exists
-		const complexityReport = readComplexityReport(reportPath); // Read report
+		const complexityReport = readComplexityReport(reportPath);
 		// Apply complexity scores to tasks
 		if (complexityReport && complexityReport.complexityAnalysis) {
-			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport)); // Apply scores using utility
+			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
 		}
 
 		// Filter tasks by status if specified
@@ -274,7 +274,7 @@ function listTasks(
 		const avgDependenciesPerTask = totalDependencies / data.tasks.length;
 
 		// Find next task to work on, passing the complexity report
-		const nextItem = findNextTask(data.tasks, complexityReport); // Pass complexityReport
+		const nextItem = findNextTask(data.tasks, complexityReport);
 
 		// Get terminal width - more reliable method
 		let terminalWidth;
@@ -320,8 +320,8 @@ function listTasks(
 			`ID: ${chalk.cyan(nextItem ? nextItem.id : 'N/A')} - ${nextItem ? chalk.white.bold(truncate(nextItem.title, 40)) : chalk.yellow('No task available')}
 ` +
 			`Priority: ${nextItem ? chalk.white(nextItem.priority || 'medium') : ''}  Dependencies: ${nextItem ? formatDependenciesWithStatus(nextItem.dependencies, data.tasks, true, complexityReport) : ''}
-` + // Pass complexityReport
-			`Complexity: ${nextItem && nextItem.complexityScore ? getComplexityWithColor(nextItem.complexityScore) : chalk.gray('N/A')}`; // Added complexity display
+` +
+			`Complexity: ${nextItem && nextItem.complexityScore ? getComplexityWithColor(nextItem.complexityScore) : chalk.gray('N/A')}`;
 
 		// Calculate width for side-by-side display
 		// Box borders, padding take approximately 4 chars on each side
@@ -431,7 +431,7 @@ function listTasks(
 		// Make dependencies column smaller as requested (-20%)
 		const depsWidthPct = 20;
 
-		const complexityWidthPct = 10; // Added complexity column percentage
+		const complexityWidthPct = 10;
 
 		// Calculate title/description width as remaining space (+20% from dependencies reduction)
 		const titleWidthPct =
@@ -440,7 +440,7 @@ function listTasks(
 			statusWidthPct -
 			priorityWidthPct -
 			depsWidthPct -
-			complexityWidthPct; // Adjusted for complexity column
+			complexityWidthPct;
 
 		// Allow 10 characters for borders and padding
 		const availableWidth = terminalWidth - 10;
@@ -463,7 +463,7 @@ function listTasks(
 				chalk.cyan.bold('Status'),
 				chalk.cyan.bold('Priority'),
 				chalk.cyan.bold('Dependencies'),
-				chalk.cyan.bold('Complexity') // Added Complexity header
+				chalk.cyan.bold('Complexity')
 			],
 			colWidths: [
 				idWidth,
@@ -492,7 +492,7 @@ function listTasks(
 					task.dependencies,
 					data.tasks,
 					true,
-					complexityReport // Pass complexityReport
+					complexityReport
 				);
 			} else {
 				depText = chalk.gray('None');
@@ -518,9 +518,9 @@ function listTasks(
 				truncate(cleanTitle, titleWidth - 3),
 				status,
 				priorityColor(truncate(task.priority || 'medium', priorityWidth - 2)),
-				depText, // No truncation for dependencies
-				task.complexityScore // Add complexity score data
-					? getComplexityWithColor(task.complexityScore) // Use color function
+				depText,
+				task.complexityScore
+					? getComplexityWithColor(task.complexityScore)
 					: chalk.gray('N/A')
 			]);
 
@@ -584,9 +584,9 @@ function listTasks(
 						chalk.dim(`└─ ${truncate(subtask.title, titleWidth - 5)}`),
 						getStatusWithColor(subtask.status, true),
 						chalk.dim('-'),
-						subtaskDepText, // No truncation for dependencies
-						subtask.complexityScore // Add subtask complexity if available
-							? chalk.gray(`${subtask.complexityScore}`) // Display subtask complexity
+						subtaskDepText,
+						subtask.complexityScore
+							? chalk.gray(`${subtask.complexityScore}`)
 							: chalk.gray('N/A')
 					]);
 				});
