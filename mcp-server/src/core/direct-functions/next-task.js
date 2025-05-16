@@ -5,7 +5,6 @@
 
 import { findNextTask } from '../../../../scripts/modules/task-manager.js';
 import { readJSON } from '../../../../scripts/modules/utils.js';
-import { getCachedOrExecute } from '../../tools/utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -117,9 +116,8 @@ export async function nextTaskDirect(args, log) {
 	try {
 		const result = await coreNextTaskAction();
 		log.info(`nextTaskDirect completed.`);
-		return result; // Returns { success, data/error, fromCache }
+		return result;
 	} catch (error) {
-		// Catch unexpected errors from getCachedOrExecute itself
 		log.error(`Unexpected error during nextTask: ${error.message}`);
 		return {
 			success: false,
