@@ -50,7 +50,7 @@ export {
 	taskExists,
 	isTaskDependentOn,
 	moveTask,
-	performResearch,
 	readComplexityReport,
-	migrateProject
+	migrateProject,
+	performResearch
 };
