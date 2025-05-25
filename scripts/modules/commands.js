@@ -66,7 +66,8 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	displayMultipleTasksSummary
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -1785,11 +1786,14 @@ ${result.result}
 	programInstance
 		.command('show')
 		.description(
-			`Display detailed information about a specific task${chalk.reset('')}`
+			`Display detailed information about one or more tasks${chalk.reset('')}`
 		)
-		.argument('[id]', 'Task ID to show')
-		.option('-i, --id <id>', 'Task ID to show')
-		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
+		.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to show (comma-separated for multiple)'
+		)
+		.option('-s, --status <status>', 'Filter subtasks by status')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-r, --report <report>',
@@ -1798,7 +1802,7 @@ ${result.result}
 		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
-			const statusFilter = options.status; // ADDED: Capture status filter
+			const statusFilter = options.status;
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -1807,8 +1811,25 @@ ${result.result}
 
 			const tasksPath = options.file;
 			const reportPath = options.report;
-			// PASS statusFilter to the display function
-			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
+
+			// Check if multiple IDs are provided (comma-separated)
+			const taskIds = idArg
+				.split(',')
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0);
+
+			if (taskIds.length > 1) {
+				// Multiple tasks - use compact summary view with interactive drill-down
+				await displayMultipleTasksSummary(
+					tasksPath,
+					taskIds,
+					reportPath,
+					statusFilter
+				);
+			} else {
+				// Single task - use detailed view
+				await displayTaskById(tasksPath, taskIds[0], reportPath, statusFilter);
+			}
 		});
 
 	// add-dependency command

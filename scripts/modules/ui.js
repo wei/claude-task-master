@@ -2262,7 +2262,7 @@ async function displayMultipleTasksSummary(
 			boxen(
 				chalk.white.bold('Interactive Options:') +
 					'\n' +
-					chalk.cyan('• Press Enter to view detailed breakdown of all tasks') +
+					chalk.cyan('• Press Enter to view available actions for all tasks') +
 					'\n' +
 					chalk.cyan(
 						'• Type a task ID (e.g., "3" or "3.2") to view that specific task'
@@ -2293,40 +2293,123 @@ async function displayMultipleTasksSummary(
 		if (choice.toLowerCase() === 'q') {
 			return;
 		} else if (choice.trim() === '') {
-			// Show detailed breakdown of all tasks
-			console.log('\n' + chalk.blue('='.repeat(terminalWidth - 10)));
-			console.log(chalk.white.bold('Detailed Task Breakdown'));
-			console.log(chalk.blue('='.repeat(terminalWidth - 10)) + '\n');
+			// Show action menu for selected tasks
+			console.log(
+				boxen(
+					chalk.white.bold('Available Actions for Selected Tasks:') +
+						'\n' +
+						chalk.cyan('1.') +
+						' Mark all as in-progress' +
+						'\n' +
+						chalk.cyan('2.') +
+						' Mark all as done' +
+						'\n' +
+						chalk.cyan('3.') +
+						' Show next available task' +
+						'\n' +
+						chalk.cyan('4.') +
+						' Expand all tasks (generate subtasks)' +
+						'\n' +
+						chalk.cyan('5.') +
+						' View dependency relationships' +
+						'\n' +
+						chalk.cyan('6.') +
+						' Generate task files' +
+						'\n' +
+						chalk.gray('Or type a task ID to view details'),
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'blue',
+						borderStyle: 'round',
+						margin: { top: 1 }
+					}
+				)
+			);
 
-			for (let i = 0; i < foundTasks.length; i++) {
-				const task = foundTasks[i];
-				console.log(chalk.cyan.bold(`Task ${task.id}: ${task.title}`));
-				console.log(
-					chalk.gray(
-						`Status: ${task.status || 'pending'} | Priority: ${task.priority || 'medium'}`
-					)
-				);
+			const rl2 = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
 
-				if (task.description) {
+			const actionChoice = await new Promise((resolve) => {
+				rl2.question(chalk.cyan('Choose action (1-6): '), resolve);
+			});
+			rl2.close();
+
+			const taskIdList = foundTasks.map((t) => t.id).join(',');
+
+			switch (actionChoice.trim()) {
+				case '1':
 					console.log(
-						chalk.white(`Description: ${truncate(task.description, 80)}`)
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=in-progress`
+						)
 					);
-				}
-
-				// Show subtask progress if exists
-				if (task.subtasks && task.subtasks.length > 0) {
-					const total = task.subtasks.length;
-					const completed = task.subtasks.filter(
-						(st) => st.status === 'done' || st.status === 'completed'
-					).length;
 					console.log(
-						chalk.magenta(`Subtasks: ${completed}/${total} completed`)
+						chalk.green(
+							'✓ Copy and run this command to mark all tasks as in-progress'
+						)
 					);
-				}
-
-				if (i < foundTasks.length - 1) {
-					console.log(chalk.gray('─'.repeat(Math.min(50, terminalWidth - 10))));
-				}
+					break;
+				case '2':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=done`
+						)
+					);
+					console.log(
+						chalk.green('✓ Copy and run this command to mark all tasks as done')
+					);
+					break;
+				case '3':
+					console.log(chalk.blue(`\n→ Command: task-master next`));
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to see the next available task'
+						)
+					);
+					break;
+				case '4':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master expand --id=${taskIdList} --research`
+						)
+					);
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to expand all selected tasks into subtasks'
+						)
+					);
+					break;
+				case '5':
+					// Show dependency visualization
+					console.log(chalk.white.bold('\nDependency Relationships:'));
+					let hasDependencies = false;
+					foundTasks.forEach((task) => {
+						if (task.dependencies && task.dependencies.length > 0) {
+							console.log(
+								chalk.cyan(
+									`Task ${task.id} depends on: ${task.dependencies.join(', ')}`
+								)
+							);
+							hasDependencies = true;
+						}
+					});
+					if (!hasDependencies) {
+						console.log(chalk.gray('No dependencies found for selected tasks'));
+					}
+					break;
+				case '6':
+					console.log(chalk.blue(`\n→ Command: task-master generate`));
+					console.log(
+						chalk.green('✓ Copy and run this command to generate task files')
+					);
+					break;
+				default:
+					if (actionChoice.trim().length > 0) {
+						console.log(chalk.yellow(`Invalid choice: ${actionChoice.trim()}`));
+						console.log(chalk.gray('Please choose 1-6 or type a task ID'));
+					}
 			}
 		} else {
 			// Show specific task

@@ -43,9 +43,27 @@ task-master show <id>
 # or
 task-master show --id=<id>
 
+# View multiple tasks with comma-separated IDs
+task-master show 1,3,5
+task-master show 44,55
+
 # View a specific subtask (e.g., subtask 2 of task 1)
 task-master show 1.2
+
+# Mix parent tasks and subtasks
+task-master show 44,44.1,55,55.2
 ```
+
+**Multiple Task Display:**
+
+- **Single ID**: Shows detailed task view with full implementation details
+- **Multiple IDs**: Shows compact summary table with interactive action menu
+- **Action Menu**: Provides copy-paste ready commands for batch operations:
+  - Mark all as in-progress/done
+  - Show next available task
+  - Expand all tasks (generate subtasks)
+  - View dependency relationships
+  - Generate task files
 
 ## Update Tasks
 

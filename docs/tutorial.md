@@ -198,10 +198,15 @@ Ask the agent to list available tasks:
 What tasks are available to work on next?
 ```
 
+```
+Can you show me tasks 1, 3, and 5 to understand their current status?
+```
+
 The agent will:
 
 - Run `task-master list` to see all tasks
 - Run `task-master next` to determine the next task to work on
+- Run `task-master show 1,3,5` to display multiple tasks with interactive options
 - Analyze dependencies to determine which tasks are ready to be worked on
 - Prioritize tasks based on priority level and ID order
 - Suggest the next task(s) to implement
@@ -220,6 +225,21 @@ You can ask:
 ```
 Let's implement task 3. What does it involve?
 ```
+
+### 2.1. Viewing Multiple Tasks
+
+For efficient context gathering and batch operations:
+
+```
+Show me tasks 5, 7, and 9 so I can plan my implementation approach.
+```
+
+The agent will:
+
+- Run `task-master show 5,7,9` to display a compact summary table
+- Show task status, priority, and progress indicators
+- Provide an interactive action menu with batch operations
+- Allow you to perform group actions like marking multiple tasks as in-progress
 
 ### 3. Task Verification
 

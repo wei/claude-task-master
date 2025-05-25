@@ -21,6 +21,20 @@ What's the next task I should work on? Please consider dependencies and prioriti
 I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
 ```
 
+## Viewing multiple tasks
+
+```
+Can you show me tasks 1, 3, and 5 so I can understand their relationship?
+```
+
+```
+I need to see the status of tasks 44, 55, and their subtasks. Can you show me those?
+```
+
+```
+Show me tasks 10, 12, and 15 and give me some batch actions I can perform on them.
+```
+
 ## Managing subtasks
 
 ```
