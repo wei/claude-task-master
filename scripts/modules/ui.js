@@ -545,7 +545,7 @@ function displayHelp() {
 				},
 				{
 					name: 'research',
-					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--project-tree] [-s=<save_file>] [-d=<detail_level>]',
+					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--tree] [-s=<save_file>] [-d=<detail_level>]',
 					desc: 'Perform AI-powered research queries with project context'
 				}
 			]
@@ -2068,6 +2068,296 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	);
 }
 
+/**
+ * Display multiple tasks in a compact summary format with interactive drill-down
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {Array<string>} taskIds - Array of task IDs to display
+ * @param {string} complexityReportPath - Path to complexity report
+ * @param {string} statusFilter - Optional status filter for subtasks
+ */
+async function displayMultipleTasksSummary(
+	tasksPath,
+	taskIds,
+	complexityReportPath = null,
+	statusFilter = null
+) {
+	displayBanner();
+
+	// Read the tasks file
+	const data = readJSON(tasksPath);
+	if (!data || !data.tasks) {
+		log('error', 'No valid tasks found.');
+		process.exit(1);
+	}
+
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
+	// Find all requested tasks
+	const foundTasks = [];
+	const notFoundIds = [];
+
+	taskIds.forEach((id) => {
+		const { task } = findTaskById(
+			data.tasks,
+			id,
+			complexityReport,
+			statusFilter
+		);
+		if (task) {
+			foundTasks.push(task);
+		} else {
+			notFoundIds.push(id);
+		}
+	});
+
+	// Show not found tasks
+	if (notFoundIds.length > 0) {
+		console.log(
+			boxen(chalk.yellow(`Tasks not found: ${notFoundIds.join(', ')}`), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'yellow',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			})
+		);
+	}
+
+	if (foundTasks.length === 0) {
+		console.log(
+			boxen(chalk.red('No valid tasks found to display'), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'red',
+				borderStyle: 'round',
+				margin: { top: 1 }
+			})
+		);
+		return;
+	}
+
+	// Display header
+	console.log(
+		boxen(
+			chalk.white.bold(
+				`Task Summary (${foundTasks.length} task${foundTasks.length === 1 ? '' : 's'})`
+			),
+			{
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'blue',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 0 }
+			}
+		)
+	);
+
+	// Calculate terminal width for responsive layout
+	const terminalWidth = process.stdout.columns || 100;
+	const availableWidth = terminalWidth - 10;
+
+	// Create compact summary table
+	const summaryTable = new Table({
+		head: [
+			chalk.cyan.bold('ID'),
+			chalk.cyan.bold('Title'),
+			chalk.cyan.bold('Status'),
+			chalk.cyan.bold('Priority'),
+			chalk.cyan.bold('Subtasks'),
+			chalk.cyan.bold('Progress')
+		],
+		colWidths: [
+			Math.floor(availableWidth * 0.08), // ID: 8%
+			Math.floor(availableWidth * 0.35), // Title: 35%
+			Math.floor(availableWidth * 0.12), // Status: 12%
+			Math.floor(availableWidth * 0.1), // Priority: 10%
+			Math.floor(availableWidth * 0.15), // Subtasks: 15%
+			Math.floor(availableWidth * 0.2) // Progress: 20%
+		],
+		style: {
+			head: [],
+			border: [],
+			'padding-top': 0,
+			'padding-bottom': 0,
+			compact: true
+		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
+		wordWrap: true
+	});
+
+	// Add each task to the summary table
+	foundTasks.forEach((task) => {
+		// Handle subtask case
+		if (task.isSubtask || task.parentTask) {
+			const parentId = task.parentTask ? task.parentTask.id : 'Unknown';
+			summaryTable.push([
+				`${parentId}.${task.id}`,
+				truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+				getStatusWithColor(task.status || 'pending', true),
+				chalk.gray('(subtask)'),
+				chalk.gray('N/A'),
+				chalk.gray('N/A')
+			]);
+			return;
+		}
+
+		// Handle regular task
+		const priorityColors = {
+			high: chalk.red.bold,
+			medium: chalk.yellow,
+			low: chalk.gray
+		};
+		const priorityColor =
+			priorityColors[task.priority || 'medium'] || chalk.white;
+
+		// Calculate subtask summary
+		let subtaskSummary = chalk.gray('None');
+		let progressBar = chalk.gray('N/A');
+
+		if (task.subtasks && task.subtasks.length > 0) {
+			const total = task.subtasks.length;
+			const completed = task.subtasks.filter(
+				(st) => st.status === 'done' || st.status === 'completed'
+			).length;
+			const inProgress = task.subtasks.filter(
+				(st) => st.status === 'in-progress'
+			).length;
+			const pending = task.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+
+			// Compact subtask count with status indicators
+			subtaskSummary = `${chalk.green(completed)}/${total}`;
+			if (inProgress > 0)
+				subtaskSummary += ` ${chalk.hex('#FFA500')(`+${inProgress}`)}`;
+			if (pending > 0) subtaskSummary += ` ${chalk.yellow(`(${pending})`)}`;
+
+			// Mini progress bar (shorter than usual)
+			const completionPercentage = (completed / total) * 100;
+			const barLength = 8; // Compact bar
+			const statusBreakdown = {
+				'in-progress': (inProgress / total) * 100,
+				pending: (pending / total) * 100
+			};
+			progressBar = createProgressBar(
+				completionPercentage,
+				barLength,
+				statusBreakdown
+			);
+		}
+
+		summaryTable.push([
+			task.id.toString(),
+			truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+			getStatusWithColor(task.status || 'pending', true),
+			priorityColor(task.priority || 'medium'),
+			subtaskSummary,
+			progressBar
+		]);
+	});
+
+	console.log(summaryTable.toString());
+
+	// Interactive drill-down prompt
+	if (foundTasks.length > 1) {
+		console.log(
+			boxen(
+				chalk.white.bold('Interactive Options:') +
+					'\n' +
+					chalk.cyan('• Press Enter to view detailed breakdown of all tasks') +
+					'\n' +
+					chalk.cyan(
+						'• Type a task ID (e.g., "3" or "3.2") to view that specific task'
+					) +
+					'\n' +
+					chalk.cyan('• Type "q" to quit'),
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+
+		// Use dynamic import for readline
+		const readline = await import('readline');
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout
+		});
+
+		const choice = await new Promise((resolve) => {
+			rl.question(chalk.cyan('Your choice: '), resolve);
+		});
+		rl.close();
+
+		if (choice.toLowerCase() === 'q') {
+			return;
+		} else if (choice.trim() === '') {
+			// Show detailed breakdown of all tasks
+			console.log('\n' + chalk.blue('='.repeat(terminalWidth - 10)));
+			console.log(chalk.white.bold('Detailed Task Breakdown'));
+			console.log(chalk.blue('='.repeat(terminalWidth - 10)) + '\n');
+
+			for (let i = 0; i < foundTasks.length; i++) {
+				const task = foundTasks[i];
+				console.log(chalk.cyan.bold(`Task ${task.id}: ${task.title}`));
+				console.log(
+					chalk.gray(
+						`Status: ${task.status || 'pending'} | Priority: ${task.priority || 'medium'}`
+					)
+				);
+
+				if (task.description) {
+					console.log(
+						chalk.white(`Description: ${truncate(task.description, 80)}`)
+					);
+				}
+
+				// Show subtask progress if exists
+				if (task.subtasks && task.subtasks.length > 0) {
+					const total = task.subtasks.length;
+					const completed = task.subtasks.filter(
+						(st) => st.status === 'done' || st.status === 'completed'
+					).length;
+					console.log(
+						chalk.magenta(`Subtasks: ${completed}/${total} completed`)
+					);
+				}
+
+				if (i < foundTasks.length - 1) {
+					console.log(chalk.gray('─'.repeat(Math.min(50, terminalWidth - 10))));
+				}
+			}
+		} else {
+			// Show specific task
+			await displayTaskById(
+				tasksPath,
+				choice.trim(),
+				complexityReportPath,
+				statusFilter
+			);
+		}
+	} else {
+		// Single task - show suggested actions
+		const task = foundTasks[0];
+		console.log(
+			boxen(
+				chalk.white.bold('Suggested Actions:') +
+					'\n' +
+					`${chalk.cyan('1.')} View full details: ${chalk.yellow(`task-master show ${task.id}`)}\n` +
+					`${chalk.cyan('2.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}\n` +
+					`${chalk.cyan('3.')} Mark as done: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`,
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+	}
+}
+
 // Export UI functions
 export {
 	displayBanner,
@@ -2086,5 +2376,6 @@ export {
 	displayApiKeyStatus,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	displayMultipleTasksSummary
 };
