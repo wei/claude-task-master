@@ -90,20 +90,26 @@ async function moveTask(
 				);
 			}
 
-			if (!destParentTask.subtasks || destParentTask.subtasks.length === 0) {
-				throw new Error(
-					`Destination parent task ${parentIdNum} has no subtasks`
+			// Initialize subtasks array if it doesn't exist
+			if (!destParentTask.subtasks) {
+				destParentTask.subtasks = [];
+			}
+
+			// If there are existing subtasks, try to find the specific destination subtask
+			if (destParentTask.subtasks.length > 0) {
+				destSubtaskIndex = destParentTask.subtasks.findIndex(
+					(st) => st.id === subtaskIdNum
 				);
+				if (destSubtaskIndex !== -1) {
+					destSubtask = destParentTask.subtasks[destSubtaskIndex];
+				} else {
+					// Subtask doesn't exist, we'll insert at the end
+					destSubtaskIndex = destParentTask.subtasks.length - 1;
+				}
+			} else {
+				// No existing subtasks, this will be the first one
+				destSubtaskIndex = -1; // Will insert at position 0
 			}
-
-			destSubtaskIndex = destParentTask.subtasks.findIndex(
-				(st) => st.id === subtaskIdNum
-			);
-			if (destSubtaskIndex === -1) {
-				throw new Error(`Destination subtask ${destinationId} not found`);
-			}
-
-			destSubtask = destParentTask.subtasks[destSubtaskIndex];
 		} else {
 			// Destination is a task
 			const destIdNum = parseInt(destinationId, 10);
@@ -337,7 +343,10 @@ function moveTaskToSubtaskPosition(
 	};
 
 	// Insert at specific position
-	destParentTask.subtasks.splice(destSubtaskIndex + 1, 0, newSubtask);
+	// If destSubtaskIndex is -1, insert at the beginning (position 0)
+	// Otherwise, insert after the specified subtask
+	const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
+	destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
 
 	// Remove the original task from the tasks array
 	data.tasks.splice(sourceTaskIndex, 1);
@@ -474,7 +483,10 @@ function moveSubtaskToAnotherParent(
 	}
 
 	// Insert at the destination position
-	destParentTask.subtasks.splice(destSubtaskIndex + 1, 0, newSubtask);
+	// If destSubtaskIndex is -1, insert at the beginning (position 0)
+	// Otherwise, insert after the specified subtask
+	const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
+	destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
 
 	// Remove the subtask from the original parent
 	sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
@@ -549,19 +561,20 @@ function moveTaskToNewId(
 		}
 	});
 
-	// Remove the original task from its position
+	// We need to be careful about the order of operations to avoid index issues
+	// The strategy: remove the source first, then replace the destination
+	// This avoids index shifting problems
+
+	// Remove the source task first
 	data.tasks.splice(sourceTaskIndex, 1);
 
-	// If we're moving to a position after the original, adjust the destination index
-	// since removing the original shifts everything down by 1
+	// Adjust the destination index if the source was before the destination
+	// Since we removed the source, indices after it shift down by 1
 	const adjustedDestIndex =
 		sourceTaskIndex < destTaskIndex ? destTaskIndex - 1 : destTaskIndex;
 
-	// Remove the placeholder destination task
-	data.tasks.splice(adjustedDestIndex, 1);
-
-	// Insert the moved task at the destination position
-	data.tasks.splice(adjustedDestIndex, 0, movedTask);
+	// Replace the placeholder destination task with the moved task
+	data.tasks[adjustedDestIndex] = movedTask;
 
 	log('info', `Moved task ${sourceIdNum} to new ID ${destIdNum}`);
 

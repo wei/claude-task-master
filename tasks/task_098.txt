@@ -1,0 +1,61 @@
+# Task ID: 98
+# Title: Implement Separate Context Window and Output Token Limits
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Replace the ambiguous MAX_TOKENS configuration with separate contextWindowTokens and maxOutputTokens fields to properly handle model token limits and enable dynamic token allocation.
+# Details:
+Currently, the MAX_TOKENS configuration entry is ambiguous and doesn't properly differentiate between:
+1. Context window tokens (total input + output capacity)
+2. Maximum output tokens (generation limit)
+
+This causes issues where:
+- The system can't properly validate prompt lengths against model capabilities
+- Output token allocation is not optimized based on input length
+- Different models with different token architectures are handled inconsistently
+
+This epic will implement a comprehensive solution that:
+- Updates supported-models.json with accurate contextWindowTokens and maxOutputTokens for each model
+- Modifies config-manager.js to use separate maxInputTokens and maxOutputTokens in role configurations
+- Implements a token counting utility for accurate prompt measurement
+- Updates ai-services-unified.js to dynamically calculate available output tokens
+- Provides migration guidance and validation for existing configurations
+- Adds comprehensive error handling and validation throughout the system
+
+The end result will be more precise token management, better cost control, and reduced likelihood of hitting model context limits.
+
+# Test Strategy:
+1. Verify all models have accurate token limit data from official documentation
+2. Test dynamic token allocation with various prompt lengths
+3. Ensure backward compatibility with existing .taskmasterconfig files
+4. Validate error messages are clear and actionable
+5. Test with multiple AI providers to ensure consistent behavior
+6. Performance test token counting utility with large prompts
+
+# Subtasks:
+## 1. Update supported-models.json with token limit fields [pending]
+### Dependencies: None
+### Description: Modify the supported-models.json file to include contextWindowTokens and maxOutputTokens fields for each model, replacing the ambiguous max_tokens field.
+### Details:
+For each model entry in supported-models.json:
+1. Add `contextWindowTokens` field representing the total context window (input + output tokens)
+2. Add `maxOutputTokens` field representing the maximum tokens the model can generate
+3. Remove or deprecate the ambiguous `max_tokens` field if present
+
+Research and populate accurate values for each model from official documentation:
+- For OpenAI models (e.g., gpt-4o): contextWindowTokens=128000, maxOutputTokens=16384
+- For Anthropic models (e.g., Claude 3.7): contextWindowTokens=200000, maxOutputTokens=8192
+- For other providers, find official documentation or use reasonable defaults
+
+Example entry:
+```json
+{
+  "id": "claude-3-7-sonnet-20250219",
+  "swe_score": 0.623,
+  "cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+  "allowed_roles": ["main", "fallback"],
+  "contextWindowTokens": 200000,
+  "maxOutputTokens": 8192
+}
+```
+

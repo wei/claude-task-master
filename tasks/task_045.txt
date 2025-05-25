@@ -1,7 +1,7 @@
 # Task ID: 45
 # Title: Implement GitHub Issue Import Feature
 # Status: pending
-# Dependencies: 97
+# Dependencies: None
 # Priority: medium
 # Description: Add a '--from-github' flag to the add-task command that accepts a GitHub issue URL and automatically generates a corresponding task with relevant details. This feature works in conjunction with the GitHub export feature (Task #97) to provide bidirectional linking between Task Master tasks and GitHub issues.
 # Details:
