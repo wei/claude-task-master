@@ -3089,13 +3089,13 @@
     },
     {
       "id": 51,
-      "title": "Implement Perplexity Research Command",
-      "description": "Create an interactive REPL-style chat interface for AI-powered research that maintains conversation context, integrates project information, and provides session management capabilities.",
+      "title": "Implement Interactive 'Explore' Command REPL",
+      "description": "Create an interactive 'explore' command that launches a REPL-style chat interface for AI-powered research and project exploration with conversation context and session management.",
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "details": "Develop an interactive REPL-style chat interface for AI-powered research that allows users to have ongoing research conversations with context awareness. The system should:\n\n1. Create an interactive REPL using inquirer that:\n   - Maintains conversation history and context\n   - Provides a natural chat-like experience\n   - Supports special commands with the '/' prefix\n\n2. Integrate with the existing ai-services-unified.js using research mode:\n   - Leverage our unified AI service architecture\n   - Configure appropriate system prompts for research context\n   - Handle streaming responses for real-time feedback\n\n3. Support multiple context sources:\n   - Task/subtask IDs for project context\n   - File paths for code or document context\n   - Custom prompts for specific research directions\n   - Project file tree for system context\n\n4. Implement chat commands including:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n\n5. Create session management capabilities:\n   - Generate and track unique session IDs\n   - Save/load sessions automatically\n   - Browse and switch between previous sessions\n   - Export sessions to portable formats\n\n6. Design a consistent UI using ui.js patterns:\n   - Color-coded messages for user/AI distinction\n   - Support for markdown rendering in terminal\n   - Progressive display of AI responses\n   - Clear visual hierarchy and readability\n\n7. Follow the \"taskmaster way\":\n   - Create something new and exciting\n   - Focus on usefulness and practicality\n   - Avoid over-engineering\n   - Maintain consistency with existing patterns\n\nThe REPL should feel like a natural conversation while providing powerful research capabilities that integrate seamlessly with the rest of the system.",
-      "testStrategy": "1. Unit tests:\n   - Test the REPL command parsing and execution\n   - Mock AI service responses to test different scenarios\n   - Verify context extraction and integration from various sources\n   - Test session serialization and deserialization\n\n2. Integration tests:\n   - Test actual AI service integration with the REPL\n   - Verify session persistence across application restarts\n   - Test conversation state management with long interactions\n   - Verify context switching between different tasks and files\n\n3. User acceptance testing:\n   - Have team members use the REPL for real research needs\n   - Test the conversation flow and command usability\n   - Verify the UI is intuitive and responsive\n   - Test with various terminal sizes and environments\n\n4. Performance testing:\n   - Measure and optimize response time for queries\n   - Test behavior with large conversation histories\n   - Verify performance with complex context sources\n   - Test under poor network conditions\n\n5. Specific test scenarios:\n   - Verify markdown rendering for complex formatting\n   - Test streaming display with various response lengths\n   - Verify export features create properly formatted files\n   - Test session recovery from simulated crashes\n   - Validate handling of special characters and unicode",
+      "details": "Develop an interactive 'explore' command that provides a REPL-style chat interface for AI-powered research and project exploration. The system should:\n\n1. Create an interactive REPL using inquirer that:\n   - Maintains conversation history and context\n   - Provides a natural chat-like experience\n   - Supports special commands with the '/' prefix\n\n2. Integrate with the existing ai-services-unified.js using research mode:\n   - Leverage our unified AI service architecture\n   - Configure appropriate system prompts for research context\n   - Handle streaming responses for real-time feedback\n\n3. Support multiple context sources:\n   - Task/subtask IDs for project context\n   - File paths for code or document context\n   - Custom prompts for specific research directions\n   - Project file tree for system context\n\n4. Implement chat commands including:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n   - `/context` - Show current context information\n\n5. Create session management capabilities:\n   - Generate and track unique session IDs\n   - Save/load sessions automatically\n   - Browse and switch between previous sessions\n   - Export sessions to portable formats\n\n6. Design a consistent UI using ui.js patterns:\n   - Color-coded messages for user/AI distinction\n   - Support for markdown rendering in terminal\n   - Progressive display of AI responses\n   - Clear visual hierarchy and readability\n\n7. Command specification:\n   - Command name: `task-master explore` or `tm explore`\n   - Accept optional parameters: --tasks, --files, --session\n   - Generate project file tree for system context\n   - Launch interactive REPL session\n\n8. Follow the \"taskmaster way\":\n   - Create something new and exciting\n   - Focus on usefulness and practicality\n   - Avoid over-engineering\n   - Maintain consistency with existing patterns\n\nThe explore command should feel like a natural conversation while providing powerful research capabilities that integrate seamlessly with the rest of the system.",
+      "testStrategy": "1. Unit tests:\n   - Test the REPL command parsing and execution\n   - Mock AI service responses to test different scenarios\n   - Verify context extraction and integration from various sources\n   - Test session serialization and deserialization\n\n2. Integration tests:\n   - Test actual AI service integration with the REPL\n   - Verify session persistence across application restarts\n   - Test conversation state management with long interactions\n   - Verify context switching between different tasks and files\n\n3. User acceptance testing:\n   - Have team members use the explore command for real research needs\n   - Test the conversation flow and command usability\n   - Verify the UI is intuitive and responsive\n   - Test with various terminal sizes and environments\n\n4. Performance testing:\n   - Measure and optimize response time for queries\n   - Test behavior with large conversation histories\n   - Verify performance with complex context sources\n   - Test under poor network conditions\n\n5. Specific test scenarios:\n   - Verify markdown rendering for complex formatting\n   - Test streaming display with various response lengths\n   - Verify export features create properly formatted files\n   - Test session recovery from simulated crashes\n   - Validate handling of special characters and unicode\n   - Test command line parameter parsing for --tasks, --files, --session",
       "subtasks": [
         {
           "id": 1,
@@ -3117,25 +3117,23 @@
         },
         {
           "id": 3,
-          "title": "Build Research Command CLI Interface",
-          "description": "Implement the Commander.js command structure for the 'research' command with all required options and parameters.",
+          "title": "Build Explore Command CLI Interface",
+          "description": "Implement the Commander.js command structure for the 'explore' command with all required options and parameters to launch the interactive REPL.",
           "dependencies": [
-            1,
             2
           ],
-          "details": "Implementation details:\n1. Create a new command file `commands/research.js`\n2. Set up the Commander.js command structure with the following options:\n   - Required search query parameter\n   - `--task` or `-t` option for task/subtask ID\n   - `--prompt` or `-p` option for custom research prompt\n   - `--save` or `-s` option to save results to a file\n   - `--copy` or `-c` option to copy results to clipboard\n   - `--summary` or `-m` option to generate a summary\n   - `--detail` or `-d` option to set research depth (default: medium)\n3. Implement command validation logic\n4. Connect the command to the Perplexity service created in subtask 1\n5. Integrate the context extraction logic from subtask 2\n6. Register the command in the main CLI application\n7. Add help text and examples\n\nTesting approach:\n- Test command registration and option parsing\n- Verify command validation logic works correctly\n- Test with various combinations of options\n- Ensure proper error messages for invalid inputs\n<info added on 2025-05-23T21:09:08.478Z>\nImplementation details:\n1. Create a new module `repl/research-chat.js` for the interactive research experience\n2. Implement REPL-style chat interface using inquirer with:\n   - Persistent conversation history management\n   - Context-aware prompting system\n   - Command parsing for special instructions\n3. Implement REPL commands:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n4. Create context initialization system:\n   - Task/subtask context loading\n   - File content integration\n   - System prompt configuration\n5. Integrate with ai-services-unified.js research mode\n6. Implement conversation state management:\n   - Track message history\n   - Maintain context window\n   - Handle context pruning for long conversations\n7. Design consistent UI patterns using ui.js library\n8. Add entry point in main CLI application\n\nTesting approach:\n- Test REPL command parsing and execution\n- Verify context initialization with various inputs\n- Test conversation state management\n- Ensure proper error handling and recovery\n- Validate UI consistency across different terminal environments\n</info added on 2025-05-23T21:09:08.478Z>",
+          "details": "Implementation details:\n1. Create a new command file `commands/explore.js`\n2. Set up the Commander.js command structure with the following options:\n   - `--tasks` or `-t` option for task/subtask IDs (comma-separated)\n   - `--files` or `-f` option for file paths (comma-separated)\n   - `--session` or `-s` option to resume a previous session\n   - `--context` or `-c` option for custom initial context\n3. Implement command validation logic for parameters\n4. Create entry point that launches the interactive REPL\n5. Integrate context initialization from command line parameters\n6. Register the command in the main CLI application\n7. Add help text and usage examples\n8. Implement parameter parsing for task IDs and file paths\n\nTesting approach:\n- Test command registration and option parsing\n- Verify command validation logic works correctly\n- Test with various combinations of options\n- Ensure proper error messages for invalid inputs\n- Test parameter parsing for complex task ID formats\n<info added on 2025-05-23T21:09:08.478Z>\nImplementation details:\n1. Create a new module `repl/research-chat.js` for the interactive research experience\n2. Implement REPL-style chat interface using inquirer with:\n   - Persistent conversation history management\n   - Context-aware prompting system\n   - Command parsing for special instructions\n3. Implement REPL commands:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n4. Create context initialization system:\n   - Task/subtask context loading\n   - File content integration\n   - System prompt configuration\n5. Integrate with ai-services-unified.js research mode\n6. Implement conversation state management:\n   - Track message history\n   - Maintain context window\n   - Handle context pruning for long conversations\n7. Design consistent UI patterns using ui.js library\n8. Add entry point in main CLI application\n\nTesting approach:\n- Test REPL command parsing and execution\n- Verify context initialization with various inputs\n- Test conversation state management\n- Ensure proper error handling and recovery\n- Validate UI consistency across different terminal environments\n</info added on 2025-05-23T21:09:08.478Z>",
           "status": "pending",
           "parentTaskId": 51
         },
         {
           "id": 4,
-          "title": "Implement Results Processing and Output Formatting",
-          "description": "Create functionality to process, format, and display research results in the terminal with options for saving, copying, and summarizing.",
+          "title": "Implement Chat Formatting and Display System",
+          "description": "Create functionality to format and display conversational research interactions in the terminal with streaming responses and markdown support.",
           "dependencies": [
-            1,
             3
           ],
-          "details": "Implementation details:\n1. Create a new module `utils/researchFormatter.js`\n2. Implement terminal output formatting with:\n   - Color-coded sections for better readability\n   - Proper text wrapping for terminal width\n   - Highlighting of key points\n3. Add functionality to save results to a file:\n   - Create a `research-results` directory if it doesn't exist\n   - Save results with timestamp and query in filename\n   - Support multiple formats (text, markdown, JSON)\n4. Implement clipboard copying using a library like `clipboardy`\n5. Create a summarization function that extracts key points from research results\n6. Add progress indicators during API calls\n7. Implement pagination for long results\n\nTesting approach:\n- Test output formatting with various result lengths and content types\n- Verify file saving functionality creates proper files with correct content\n- Test clipboard functionality\n- Verify summarization produces useful results\n<info added on 2025-05-23T21:10:00.181Z>\nImplementation details:\n1. Create a new module `utils/chatFormatter.js` for REPL interface formatting\n2. Implement terminal output formatting for conversational display:\n   - Color-coded messages distinguishing user inputs and AI responses\n   - Proper text wrapping and indentation for readability\n   - Support for markdown rendering in terminal\n   - Visual indicators for system messages and status updates\n3. Implement streaming/progressive display of AI responses:\n   - Character-by-character or chunk-by-chunk display\n   - Cursor animations during response generation\n   - Ability to interrupt long responses\n4. Design chat history visualization:\n   - Scrollable history with clear message boundaries\n   - Timestamp display options\n   - Session identification\n5. Create specialized formatters for different content types:\n   - Code blocks with syntax highlighting\n   - Bulleted and numbered lists\n   - Tables and structured data\n   - Citations and references\n6. Implement export functionality:\n   - Save conversations to markdown or text files\n   - Export individual responses\n   - Copy responses to clipboard\n7. Adapt existing ui.js patterns for conversational context:\n   - Maintain consistent styling while supporting chat flow\n   - Handle multi-turn context appropriately\n\nTesting approach:\n- Test streaming display with various response lengths and speeds\n- Verify markdown rendering accuracy for complex formatting\n- Test history navigation and scrolling functionality\n- Verify export features create properly formatted files\n- Test display on various terminal sizes and configurations\n- Verify handling of special characters and unicode\n</info added on 2025-05-23T21:10:00.181Z>",
+          "details": "Implementation details:\n1. Create a new module `utils/chatFormatter.js` for REPL interface formatting\n2. Implement terminal output formatting for conversational display:\n   - Color-coded messages distinguishing user inputs and AI responses\n   - Proper text wrapping and indentation for readability\n   - Support for markdown rendering in terminal\n   - Visual indicators for system messages and status updates\n3. Implement streaming/progressive display of AI responses:\n   - Character-by-character or chunk-by-chunk display\n   - Cursor animations during response generation\n   - Ability to interrupt long responses\n4. Design chat history visualization:\n   - Scrollable history with clear message boundaries\n   - Timestamp display options\n   - Session identification\n5. Create specialized formatters for different content types:\n   - Code blocks with syntax highlighting\n   - Bulleted and numbered lists\n   - Tables and structured data\n   - Citations and references\n6. Implement export functionality:\n   - Save conversations to markdown or text files\n   - Export individual responses\n   - Copy responses to clipboard\n7. Adapt existing ui.js patterns for conversational context:\n   - Maintain consistent styling while supporting chat flow\n   - Handle multi-turn context appropriately\n\nTesting approach:\n- Test streaming display with various response lengths and speeds\n- Verify markdown rendering accuracy for complex formatting\n- Test history navigation and scrolling functionality\n- Verify export features create properly formatted files\n- Test display on various terminal sizes and configurations\n- Verify handling of special characters and unicode\n<info added on 2025-05-23T21:10:00.181Z>\nImplementation details:\n1. Create a new module `utils/chatFormatter.js` for REPL interface formatting\n2. Implement terminal output formatting for conversational display:\n   - Color-coded messages distinguishing user inputs and AI responses\n   - Proper text wrapping and indentation for readability\n   - Support for markdown rendering in terminal\n   - Visual indicators for system messages and status updates\n3. Implement streaming/progressive display of AI responses:\n   - Character-by-character or chunk-by-chunk display\n   - Cursor animations during response generation\n   - Ability to interrupt long responses\n4. Design chat history visualization:\n   - Scrollable history with clear message boundaries\n   - Timestamp display options\n   - Session identification\n5. Create specialized formatters for different content types:\n   - Code blocks with syntax highlighting\n   - Bulleted and numbered lists\n   - Tables and structured data\n   - Citations and references\n6. Implement export functionality:\n   - Save conversations to markdown or text files\n   - Export individual responses\n   - Copy responses to clipboard\n7. Adapt existing ui.js patterns for conversational context:\n   - Maintain consistent styling while supporting chat flow\n   - Handle multi-turn context appropriately\n\nTesting approach:\n- Test streaming display with various response lengths and speeds\n- Verify markdown rendering accuracy for complex formatting\n- Test history navigation and scrolling functionality\n- Verify export features create properly formatted files\n- Test display on various terminal sizes and configurations\n- Verify handling of special characters and unicode\n</info added on 2025-05-23T21:10:00.181Z>",
           "status": "pending",
           "parentTaskId": 51
         },
@@ -3165,23 +3163,35 @@
         {
           "id": 7,
           "title": "Create REPL Command System",
-          "description": "Implement a flexible command system for the research REPL that allows users to control the conversation flow, manage sessions, and access additional functionality.",
+          "description": "Implement a flexible command system for the explore REPL that allows users to control the conversation flow, manage sessions, and access additional functionality.",
           "dependencies": [
             3
           ],
-          "details": "Implementation details:\n1. Create a new module `repl/commands.js` for REPL command handling\n2. Implement a command parser that:\n   - Detects commands starting with `/`\n   - Parses arguments and options\n   - Handles quoted strings and special characters\n3. Create a command registry system:\n   - Register command handlers with descriptions\n   - Support command aliases\n   - Enable command discovery and help\n4. Implement core commands:\n   - `/save [filename]` - Save conversation\n   - `/task <taskId>` - Load task context\n   - `/file <path>` - Include file content\n   - `/help [command]` - Show help\n   - `/exit` - End session\n   - `/copy [n]` - Copy nth response\n   - `/summary` - Generate conversation summary\n   - `/detail <level>` - Set detail level\n   - `/clear` - Clear conversation\n   - `/project` - Refresh project context\n   - `/session <id|new>` - Switch/create session\n5. Add command completion and suggestions\n6. Implement error handling for invalid commands\n7. Create a help system with examples\n\nTesting approach:\n- Test command parsing with various inputs\n- Verify command execution and error handling\n- Test command completion functionality\n- Verify help system provides useful information\n- Test with complex command sequences",
+          "details": "Implementation details:\n1. Create a new module `repl/commands.js` for REPL command handling\n2. Implement a command parser that:\n   - Detects commands starting with `/`\n   - Parses arguments and options\n   - Handles quoted strings and special characters\n3. Create a command registry system:\n   - Register command handlers with descriptions\n   - Support command aliases\n   - Enable command discovery and help\n4. Implement core commands:\n   - `/save [filename]` - Save conversation\n   - `/task <taskId>` - Load task context\n   - `/file <path>` - Include file content\n   - `/help [command]` - Show help\n   - `/exit` - End session\n   - `/copy [n]` - Copy nth response\n   - `/summary` - Generate conversation summary\n   - `/detail <level>` - Set detail level\n   - `/clear` - Clear conversation\n   - `/project` - Refresh project context\n   - `/session <id|new>` - Switch/create session\n   - `/context` - Show current context information\n5. Add command completion and suggestions\n6. Implement error handling for invalid commands\n7. Create a help system with examples\n\nTesting approach:\n- Test command parsing with various inputs\n- Verify command execution and error handling\n- Test command completion functionality\n- Verify help system provides useful information\n- Test with complex command sequences",
           "status": "pending",
           "parentTaskId": 51
         },
         {
           "id": 8,
           "title": "Integrate with AI Services Unified",
-          "description": "Integrate the research REPL with the existing ai-services-unified.js to leverage the unified AI service architecture with research mode.",
+          "description": "Integrate the explore REPL with the existing ai-services-unified.js to leverage the unified AI service architecture with research mode.",
           "dependencies": [
             3,
             4
           ],
-          "details": "Implementation details:\n1. Update `repl/research-chat.js` to integrate with ai-services-unified.js\n2. Configure research mode in AI service:\n   - Set appropriate system prompts\n   - Configure temperature and other parameters\n   - Enable streaming responses\n3. Implement context management:\n   - Format conversation history for AI context\n   - Include task and project context\n   - Handle context window limitations\n4. Add support for different research styles:\n   - Exploratory research with broader context\n   - Focused research with specific questions\n   - Comparative analysis between concepts\n5. Implement response handling:\n   - Process streaming chunks\n   - Format and display responses\n   - Handle errors and retries\n6. Add configuration options for AI service selection\n7. Implement fallback mechanisms for service unavailability\n\nTesting approach:\n- Test integration with mocked AI services\n- Verify context formatting and management\n- Test streaming response handling\n- Verify error handling and recovery\n- Test with various research styles and queries",
+          "details": "Implementation details:\n1. Update `repl/research-chat.js` to integrate with ai-services-unified.js\n2. Configure research mode in AI service:\n   - Set appropriate system prompts for exploration and research\n   - Configure temperature and other parameters\n   - Enable streaming responses\n3. Implement context management:\n   - Format conversation history for AI context\n   - Include task and project context\n   - Handle context window limitations\n4. Add support for different exploration styles:\n   - Exploratory research with broader context\n   - Focused research with specific questions\n   - Comparative analysis between concepts\n   - Code exploration and analysis\n5. Implement response handling:\n   - Process streaming chunks\n   - Format and display responses\n   - Handle errors and retries\n6. Add configuration options for AI service selection\n7. Implement fallback mechanisms for service unavailability\n\nTesting approach:\n- Test integration with mocked AI services\n- Verify context formatting and management\n- Test streaming response handling\n- Verify error handling and recovery\n- Test with various exploration styles and queries",
+          "status": "pending",
+          "parentTaskId": 51
+        },
+        {
+          "id": 9,
+          "title": "Implement Session Management System",
+          "description": "Create a comprehensive session management system for the explore REPL that handles session persistence, recovery, and switching between multiple exploration sessions.",
+          "dependencies": [
+            4,
+            7
+          ],
+          "details": "Implementation details:\n1. Create a session management system for the explore REPL:\n   - Generate and track unique session IDs\n   - Store conversation history with timestamps\n   - Maintain context and state between interactions\n2. Implement session persistence:\n   - Save sessions to disk automatically\n   - Load previous sessions on startup\n   - Handle graceful recovery from crashes\n3. Build session browser and selector:\n   - List available sessions with preview\n   - Filter sessions by date, topic, or content\n   - Enable quick switching between sessions\n4. Implement conversation state serialization:\n   - Capture full conversation context\n   - Preserve user preferences per session\n   - Handle state migration during updates\n5. Add session sharing capabilities:\n   - Export sessions to portable formats\n   - Import sessions from files\n   - Generate shareable session summaries\n6. Create session management commands:\n   - Create new sessions\n   - Clone existing sessions\n   - Archive or delete old sessions\n7. Integrate with command line --session parameter\n\nTesting approach:\n- Verify session persistence across application restarts\n- Test session recovery from simulated crashes\n- Validate state serialization with complex conversations\n- Ensure session switching maintains proper context\n- Test session import/export functionality\n- Verify performance with large conversation histories",
           "status": "pending",
           "parentTaskId": 51
         }
@@ -5371,20 +5381,6 @@
       "subtasks": []
     },
     {
-      "id": 90,
-      "title": "Implement Subtask Progress Analyzer and Reporting System",
-      "description": "Develop a subtask analyzer that monitors the progress of all subtasks, validates their status, and generates comprehensive reports for users to track project advancement.",
-      "details": "The subtask analyzer should be implemented with the following components and considerations:\n\n1. Progress Tracking Mechanism:\n   - Create a function to scan the task data structure and identify all tasks with subtasks\n   - Implement logic to determine the completion status of each subtask\n   - Calculate overall progress percentages for tasks with multiple subtasks\n\n2. Status Validation:\n   - Develop validation rules to check if subtasks are progressing according to expected timelines\n   - Implement detection for stalled or blocked subtasks\n   - Create alerts for subtasks that are behind schedule or have dependency issues\n\n3. Reporting System:\n   - Design a structured report format that clearly presents:\n     - Overall project progress\n     - Task-by-task breakdown with subtask status\n     - Highlighted issues or blockers\n   - Support multiple output formats (console, JSON, exportable text)\n   - Include visual indicators for progress (e.g., progress bars in CLI)\n\n4. Integration Points:\n   - Hook into the existing task management system\n   - Ensure the analyzer can be triggered via CLI commands\n   - Make the reporting feature accessible through the main command interface\n\n5. Performance Considerations:\n   - Optimize for large task lists with many subtasks\n   - Implement caching if necessary to avoid redundant calculations\n   - Ensure reports generate quickly even for complex project structures\n\nThe implementation should follow the existing code style and patterns, leveraging the task data structure already in place. The analyzer should be non-intrusive to existing functionality while providing valuable insights to users.",
-      "testStrategy": "Testing for the subtask analyzer should include:\n\n1. Unit Tests:\n   - Test the progress calculation logic with various task/subtask configurations\n   - Verify status validation correctly identifies issues in different scenarios\n   - Ensure report generation produces consistent and accurate output\n   - Test edge cases (empty subtasks, all complete, all incomplete, mixed states)\n\n2. Integration Tests:\n   - Verify the analyzer correctly integrates with the existing task data structure\n   - Test CLI command integration and parameter handling\n   - Ensure reports reflect actual changes to task/subtask status\n\n3. Performance Tests:\n   - Benchmark report generation with large task sets (100+ tasks with multiple subtasks)\n   - Verify memory usage remains reasonable during analysis\n\n4. User Acceptance Testing:\n   - Create sample projects with various subtask configurations\n   - Generate reports and verify they provide clear, actionable information\n   - Confirm visual indicators accurately represent progress\n\n5. Regression Testing:\n   - Verify that the analyzer doesn't interfere with existing task management functionality\n   - Ensure backward compatibility with existing task data structures\n\nDocumentation should be updated to include examples of how to use the new analyzer and interpret the reports. Success criteria include accurate progress tracking, clear reporting, and performance that scales with project size.",
-      "status": "pending",
-      "dependencies": [
-        1,
-        3
-      ],
-      "priority": "medium",
-      "subtasks": []
-    },
-    {
       "id": 91,
       "title": "Implement Move Command for Tasks and Subtasks",
       "description": "Introduce a 'move' command to enable moving tasks or subtasks to a different id, facilitating conflict resolution by allowing teams to assign new ids as needed.",
@@ -5466,6 +5462,199 @@
           "parentTaskId": 91
         }
       ]
+    },
+    {
+      "id": 92,
+      "title": "Add Global Joke Flag to All CLI Commands",
+      "description": "Implement a global --joke flag that can be added to any command to include a programming-related joke with the command's output.",
+      "details": "Implement a global joke feature that enhances all CLI commands with optional humor. The implementation should:\n\n1. **Global Flag Implementation**: Add a global --joke flag (with -j shorthand) to the Commander.js configuration in the CLI foundation that can be used with any command.\n\n2. **Joke Service Module**: Create a new module (scripts/modules/joke-service.js) that:\n   - Maintains a curated collection of programming, development, and tech-related jokes\n   - Provides a getRandomJoke() function that returns a formatted joke\n   - Includes categories like programming languages, debugging, project management, etc.\n   - Ensures jokes are appropriate and professional\n\n3. **Output Integration**: Modify the existing output formatting utilities to:\n   - Check for the --joke flag in global options\n   - Append a formatted joke section to command results when the flag is present\n   - Maintain proper formatting and spacing between regular output and jokes\n   - Ensure jokes don't interfere with JSON output mode (--json flag)\n\n4. **Command Integration**: Update all existing commands to support the joke flag by:\n   - Modifying output functions to check for the joke flag\n   - Ensuring consistent joke placement across all command types\n   - Maintaining backward compatibility with existing command behavior\n\n5. **Configuration Options**: Add configuration support for:\n   - Enabling/disabling joke categories\n   - Custom joke collections via configuration files\n   - Joke frequency settings for repeated command usage\n\nThe implementation should be non-intrusive, maintaining all existing functionality while adding this optional enhancement feature.",
+      "testStrategy": "Verify implementation through comprehensive testing:\n\n1. **Flag Recognition Testing**: Test that the --joke and -j flags are properly recognized across all existing commands (list, add, update, move, plan, etc.)\n\n2. **Output Format Testing**: \n   - Verify jokes appear correctly formatted after normal command output\n   - Test that jokes don't appear when flag is not used\n   - Confirm JSON output mode (--json) excludes jokes or formats them appropriately\n   - Test joke formatting with various command output lengths and types\n\n3. **Joke Content Testing**:\n   - Verify jokes are appropriate and professional\n   - Test that getRandomJoke() returns different jokes on multiple calls\n   - Confirm joke categories are working correctly\n\n4. **Integration Testing**: Test the joke flag with:\n   - Simple commands (list, help)\n   - Complex commands with multiple outputs (update, plan)\n   - Error scenarios to ensure jokes don't appear with error messages\n   - Combination with other global flags (--quiet, --debug, --json)\n\n5. **Performance Testing**: Ensure the joke feature doesn't impact command execution speed or memory usage significantly\n\n6. **Regression Testing**: Run existing test suite to confirm no existing functionality is broken by the joke feature implementation",
+      "status": "pending",
+      "dependencies": [
+        2
+      ],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update CLI foundation to support global flags",
+          "description": "Modify the core CLI framework to recognize and handle global flags like --joke across all commands, ensuring proper flag parsing and propagation throughout the application.",
+          "dependencies": [],
+          "details": "Implement global flag parsing mechanism, update command dispatcher to handle global flags, ensure flag inheritance across subcommands, and maintain backward compatibility with existing flag handling.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Develop the joke-service module with joke management and category support",
+          "description": "Create a dedicated service module for managing jokes, including joke retrieval, categorization, and content management functionality.",
+          "dependencies": [],
+          "details": "Build joke storage/retrieval system, implement category-based joke selection, create joke content validation, add support for custom joke sources, and ensure thread-safe operations.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Integrate joke output into existing output utilities",
+          "description": "Modify output formatting utilities to seamlessly incorporate joke content without disrupting existing output formats, especially JSON output.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Update output formatters to handle joke injection, ensure JSON output compatibility, implement conditional joke display logic, and maintain output consistency across different formats.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Update all CLI commands for joke flag compatibility",
+          "description": "Modify every existing CLI command to recognize and properly handle the global --joke flag while maintaining their core functionality.",
+          "dependencies": [
+            1,
+            3
+          ],
+          "details": "Update command handlers to process joke flag, integrate with output utilities, ensure no interference with command-specific logic, and maintain existing command behavior when flag is not used.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Add configuration options for joke categories and custom jokes",
+          "description": "Implement configuration management for joke preferences, including category selection, custom joke sources, and user-defined joke content.",
+          "dependencies": [
+            2
+          ],
+          "details": "Create configuration schema for joke settings, implement category preference management, add custom joke import/export functionality, and ensure configuration persistence across sessions.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Implement comprehensive testing",
+          "description": "Develop thorough test coverage including flag recognition, output verification, content validation, integration testing, performance testing, and regression testing.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "Create unit tests for joke service, integration tests for flag handling, output format validation tests, performance benchmarks, regression test suite, and end-to-end testing scenarios.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Update documentation and usage examples",
+          "description": "Comprehensive documentation update including usage examples, configuration guides, and integration instructions for the new --joke flag functionality.",
+          "dependencies": [
+            6
+          ],
+          "details": "Update CLI help text, create usage examples for different scenarios, document configuration options, add troubleshooting guide, and update API documentation for developers.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "title": "Implement Git Workflow Integration",
+      "description": "Add `task-master git` command suite to automate git workflows based on established patterns from Task 4, eliminating manual overhead and ensuring 100% consistency",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create a comprehensive git workflow automation system that integrates deeply with TaskMaster's task management. The feature will:\n\n1. **Automated Branch Management**:\n   - Create branches following `task-{id}` naming convention\n   - Validate branch names and prevent conflicts\n   - Handle branch switching with uncommitted changes\n   - Clean up local and remote branches post-merge\n\n2. **Intelligent Commit Generation**:\n   - Auto-detect commit type (feat/fix/test/refactor/docs) from file changes\n   - Generate standardized commit messages with task context\n   - Support subtask-specific commits with proper references\n   - Include coverage delta in test commits\n\n3. **PR Automation**:\n   - Generate comprehensive PR descriptions from task/subtask data\n   - Include implementation details, test coverage, breaking changes\n   - Format using GitHub markdown with task hierarchy\n   - Auto-populate PR template with relevant metadata\n\n4. **Workflow State Management**:\n   - Track current task branch and status\n   - Validate task readiness before PR creation\n   - Ensure all subtasks completed before finishing\n   - Handle merge conflicts gracefully\n\n5. **Integration Points**:\n   - Seamless integration with existing task commands\n   - MCP server support for IDE integrations\n   - GitHub CLI (`gh`) authentication support\n   - Coverage report parsing and display\n\n**Technical Architecture**:\n- Modular command structure in `scripts/modules/task-manager/git-*`\n- Git operations wrapper using simple-git or native child_process\n- Template engine for commit/PR generation in `scripts/modules/`\n- State persistence in `.taskmaster/git-state.json`\n- Error recovery and rollback mechanisms\n\n**Key Files to Create**:\n- `scripts/modules/task-manager/git-start.js` - Branch creation and task status update\n- `scripts/modules/task-manager/git-commit.js` - Intelligent commit message generation\n- `scripts/modules/task-manager/git-pr.js` - PR creation with auto-generated description\n- `scripts/modules/task-manager/git-finish.js` - Post-merge cleanup and status update\n- `scripts/modules/task-manager/git-status.js` - Current git workflow state display\n- `scripts/modules/git-operations.js` - Core git functionality wrapper\n- `scripts/modules/commit-analyzer.js` - File change analysis for commit types\n- `scripts/modules/pr-description-generator.js` - PR description template generator\n\n**MCP Integration Files**:\n- `mcp-server/src/core/direct-functions/git-start.js`\n- `mcp-server/src/core/direct-functions/git-commit.js`\n- `mcp-server/src/core/direct-functions/git-pr.js`\n- `mcp-server/src/core/direct-functions/git-finish.js`\n- `mcp-server/src/core/direct-functions/git-status.js`\n- `mcp-server/src/tools/git-start.js`\n- `mcp-server/src/tools/git-commit.js`\n- `mcp-server/src/tools/git-pr.js`\n- `mcp-server/src/tools/git-finish.js`\n- `mcp-server/src/tools/git-status.js`\n\n**Configuration**:\n- Add git workflow settings to `.taskmasterconfig`\n- Support for custom commit prefixes and PR templates\n- Branch naming pattern customization\n- Remote repository detection and validation",
+      "testStrategy": "Implement comprehensive test suite following Task 4's TDD approach:\n\n1. **Unit Tests** (target: 95%+ coverage):\n   - Git operations wrapper with mocked git commands\n   - Commit type detection with various file change scenarios\n   - PR description generation with different task structures\n   - Branch name validation and generation\n   - State management and persistence\n\n2. **Integration Tests**:\n   - Full workflow simulation in test repository\n   - Error handling for git conflicts and failures\n   - Multi-task workflow scenarios\n   - Coverage integration with real test runs\n   - GitHub API interaction (mocked)\n\n3. **E2E Tests**:\n   - Complete task lifecycle from start to finish\n   - Multiple developer workflow simulation\n   - Merge conflict resolution scenarios\n   - Branch protection and validation\n\n4. **Test Implementation Details**:\n   - Use Jest with git repository fixtures\n   - Mock simple-git for isolated unit tests\n   - Create test tasks.json scenarios\n   - Validate all error messages and edge cases\n   - Test rollback and recovery mechanisms\n\n5. **Coverage Requirements**:\n   - Minimum 90% overall coverage\n   - 100% coverage for critical paths (branch creation, PR generation)\n   - All error scenarios must be tested\n   - Performance tests for large task hierarchies",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design and implement core git operations wrapper",
+          "description": "Create a robust git operations layer that handles all git commands with proper error handling and state management",
+          "status": "pending",
+          "details": "Create `scripts/modules/git-operations.js` with methods for:\n- Branch creation/deletion (local and remote)\n- Commit operations with message formatting\n- Status checking and conflict detection\n- Remote operations (fetch, push, pull)\n- Repository validation and setup\n\nUse simple-git library or child_process for git commands. Implement comprehensive error handling with specific error types for different git failures. Include retry logic for network operations.",
+          "testStrategy": "Unit test all git operations with mocked git commands. Test error scenarios including conflicts, network failures, and invalid states. Achieve 100% coverage."
+        },
+        {
+          "id": 2,
+          "title": "Implement git start command",
+          "description": "Create the entry point for task-based git workflows with automated branch creation and task status updates",
+          "status": "pending",
+          "details": "Implement `scripts/modules/task-manager/git-start.js` with functionality to:\n- Validate task exists and is ready to start\n- Check for clean working directory\n- Create branch with `task-{id}` naming\n- Update task status to 'in-progress'\n- Store workflow state in `.taskmaster/git-state.json`\n- Handle existing branch scenarios\n- Support --force flag for branch recreation\n\nIntegrate with existing task-master commands and ensure MCP compatibility.",
+          "testStrategy": "Test all scenarios including clean start, existing branches, dirty working directory, and force recreation. Mock git operations and task updates."
+        },
+        {
+          "id": 3,
+          "title": "Build intelligent commit analyzer and generator",
+          "description": "Create a system that analyzes file changes to auto-detect commit types and generate standardized commit messages",
+          "status": "pending",
+          "details": "Develop `scripts/modules/commit-analyzer.js` with:\n- File change detection and categorization\n- Commit type inference rules:\n  - feat: new files in scripts/, new functions\n  - fix: changes to existing logic\n  - test: changes in tests/ directory\n  - docs: markdown and comment changes\n  - refactor: file moves, renames, cleanup\n- Smart message generation with task context\n- Support for custom commit templates\n- Subtask reference inclusion\n\nCreate `scripts/modules/task-manager/git-commit.js` that uses the analyzer to generate commits with proper formatting.",
+          "testStrategy": "Test commit type detection with various file change combinations. Validate message generation for all scenarios. Test edge cases and custom templates."
+        },
+        {
+          "id": 4,
+          "title": "Create PR description generator and command",
+          "description": "Build a comprehensive PR description generator that creates detailed, formatted descriptions from task data",
+          "status": "pending",
+          "details": "Implement `scripts/modules/pr-description-generator.js` to generate:\n- Task overview with full context\n- Subtask completion checklist\n- Implementation details summary\n- Test coverage metrics integration\n- Breaking changes section\n- Related tasks and dependencies\n\nCreate `scripts/modules/task-manager/git-pr.js` to:\n- Validate all subtasks are complete\n- Generate PR title and description\n- Use GitHub CLI for PR creation\n- Handle draft PR scenarios\n- Support custom PR templates\n- Include labels based on task metadata",
+          "testStrategy": "Test PR generation with various task structures. Validate markdown formatting and GitHub compatibility. Test with incomplete subtasks and edge cases."
+        },
+        {
+          "id": 5,
+          "title": "Implement git finish command with cleanup",
+          "description": "Create the workflow completion command that handles post-merge cleanup and task status updates",
+          "status": "pending",
+          "details": "Build `scripts/modules/task-manager/git-finish.js` with:\n- PR merge verification via GitHub API\n- Local branch cleanup\n- Remote branch deletion (with confirmation)\n- Task status update to 'done'\n- Workflow state cleanup\n- Switch back to main branch\n- Pull latest changes\n\nHandle scenarios where PR isn't merged yet or merge failed. Include --skip-cleanup flag for manual branch management.",
+          "testStrategy": "Test successful completion flow, unmerged PR handling, and cleanup failures. Mock GitHub API and git operations. Validate state cleanup."
+        },
+        {
+          "id": 6,
+          "title": "Add git status command for workflow visibility",
+          "description": "Create a status command that shows current git workflow state with task context",
+          "status": "pending",
+          "details": "Implement `scripts/modules/task-manager/git-status.js` to display:\n- Current task and branch information\n- Subtask completion status\n- Uncommitted changes summary\n- PR status if exists\n- Coverage metrics comparison\n- Suggested next actions\n\nIntegrate with existing task status displays and provide actionable guidance based on workflow state.",
+          "testStrategy": "Test status display in various workflow states. Validate suggestion logic and formatting. Test with missing or corrupted state."
+        },
+        {
+          "id": 7,
+          "title": "Integrate with Commander.js and add command routing",
+          "description": "Add the git command suite to TaskMaster's CLI with proper help text and option handling",
+          "status": "pending",
+          "details": "Update `scripts/modules/commands.js` to:\n- Add 'git' command with subcommands\n- Implement option parsing for all git commands\n- Add comprehensive help text\n- Ensure proper error handling and display\n- Validate command prerequisites\n\nCreate proper command structure:\n- `task-master git start [taskId] [options]`\n- `task-master git commit [options]`\n- `task-master git pr [options]`\n- `task-master git finish [options]`\n- `task-master git status [options]`",
+          "testStrategy": "Test command registration and routing. Validate help text and option parsing. Test error handling for invalid commands."
+        },
+        {
+          "id": 8,
+          "title": "Add MCP server integration for git commands",
+          "description": "Implement MCP tools and direct functions for git workflow commands to enable IDE integration",
+          "status": "pending",
+          "details": "Create MCP integration in:\n- `mcp-server/src/core/direct-functions/git-start.js`\n- `mcp-server/src/core/direct-functions/git-commit.js`\n- `mcp-server/src/core/direct-functions/git-pr.js`\n- `mcp-server/src/core/direct-functions/git-finish.js`\n- `mcp-server/src/core/direct-functions/git-status.js`\n- `mcp-server/src/tools/git-start.js`\n- `mcp-server/src/tools/git-commit.js`\n- `mcp-server/src/tools/git-pr.js`\n- `mcp-server/src/tools/git-finish.js`\n- `mcp-server/src/tools/git-status.js`\n\nImplement tools for:\n- git_start_task\n- git_commit_task\n- git_create_pr\n- git_finish_task\n- git_workflow_status\n\nEnsure proper error handling, logging, and response formatting. Include telemetry data for git operations.",
+          "testStrategy": "Test MCP tool registration and execution. Validate response formats and error handling. Test with various parameter combinations."
+        },
+        {
+          "id": 9,
+          "title": "Create comprehensive test suite",
+          "description": "Implement full test coverage following Task 4's high standards with unit, integration, and E2E tests",
+          "status": "pending",
+          "details": "Create test files:\n- `tests/unit/git/` - Unit tests for all git components\n- `tests/integration/git-workflow.test.js` - Full workflow tests\n- `tests/e2e/git-automation.test.js` - End-to-end scenarios\n\nImplement:\n- Git repository fixtures and mocks\n- Coverage tracking and reporting\n- Performance benchmarks\n- Error scenario coverage\n- Multi-developer workflow simulations\n\nTarget 95%+ coverage with focus on critical paths.",
+          "testStrategy": "Follow TDD approach. Write tests before implementation. Use Jest with proper mocking. Validate all edge cases and error scenarios."
+        },
+        {
+          "id": 10,
+          "title": "Add configuration and documentation",
+          "description": "Create configuration options and comprehensive documentation for the git workflow feature",
+          "status": "pending",
+          "details": "Configuration tasks:\n- Add git workflow settings to `.taskmasterconfig`\n- Support environment variables for GitHub tokens\n- Create default PR and commit templates\n- Add branch naming customization\n\nDocumentation tasks:\n- Update README with git workflow section\n- Create `docs/git-workflow.md` guide\n- Add examples for common scenarios\n- Document configuration options\n- Create troubleshooting guide\n\nUpdate rule files:\n- Create `.cursor/rules/git_workflow.mdc`\n- Update existing workflow rules",
+          "testStrategy": "Test configuration loading and validation. Verify documentation accuracy with real usage scenarios. Test template rendering."
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "title": "Implement Standalone 'research' CLI Command for AI-Powered Queries",
+      "description": "Develop a new 'task-master research' (alias 'tm research') CLI command for fast, context-aware AI research queries using the ai-services-unified.js infrastructure.",
+      "details": "- Add a new CLI command 'research' to commands.js, following established CLI patterns and conventions.\n- Command should accept a research query as the main parameter, with optional flags for task IDs (--tasks), file paths (--files), custom context (--context), output detail level (--detail), and result saving (--save).\n- Integrate with ai-services-unified.js, invoking its research mode to process the query and context, leveraging project file tree and task context as needed.\n- Implement logic to gather and inject relevant context from specified tasks, files, or custom input, and generate a project file tree snapshot if required.\n- Ensure output is formatted for terminal readability, including citations and references where available.\n- Support saving research results to a specified file if --save is provided.\n- Provide both brief and comprehensive output modes, controlled by a flag.\n- Ensure the command is non-interactive (one-shot execution) and complements the existing 'explore' command.\n- Update help documentation and usage examples for the new command.",
+      "testStrategy": "- Write unit and integration tests to verify correct parsing of command-line arguments and flags.\n- Test that the command invokes ai-services-unified.js in research mode with the correct parameters and context.\n- Validate that context from tasks, files, and custom input is correctly gathered and passed to the research engine.\n- Confirm that output is properly formatted, includes citations, and is displayed in the terminal as expected.\n- Test saving results to files and handling of file system errors.\n- Ensure the command works in both brief and comprehensive modes.\n- Verify that the command does not enter interactive mode and exits cleanly after execution.\n- Check help output and usage documentation for accuracy and completeness.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        4,
+        16
+      ],
+      "priority": "medium",
+      "subtasks": []
     }
   ]
 }

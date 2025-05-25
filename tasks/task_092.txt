@@ -1,0 +1,104 @@
+# Task ID: 92
+# Title: Add Global Joke Flag to All CLI Commands
+# Status: pending
+# Dependencies: 2
+# Priority: medium
+# Description: Implement a global --joke flag that can be added to any command to include a programming-related joke with the command's output.
+# Details:
+Implement a global joke feature that enhances all CLI commands with optional humor. The implementation should:
+
+1. **Global Flag Implementation**: Add a global --joke flag (with -j shorthand) to the Commander.js configuration in the CLI foundation that can be used with any command.
+
+2. **Joke Service Module**: Create a new module (scripts/modules/joke-service.js) that:
+   - Maintains a curated collection of programming, development, and tech-related jokes
+   - Provides a getRandomJoke() function that returns a formatted joke
+   - Includes categories like programming languages, debugging, project management, etc.
+   - Ensures jokes are appropriate and professional
+
+3. **Output Integration**: Modify the existing output formatting utilities to:
+   - Check for the --joke flag in global options
+   - Append a formatted joke section to command results when the flag is present
+   - Maintain proper formatting and spacing between regular output and jokes
+   - Ensure jokes don't interfere with JSON output mode (--json flag)
+
+4. **Command Integration**: Update all existing commands to support the joke flag by:
+   - Modifying output functions to check for the joke flag
+   - Ensuring consistent joke placement across all command types
+   - Maintaining backward compatibility with existing command behavior
+
+5. **Configuration Options**: Add configuration support for:
+   - Enabling/disabling joke categories
+   - Custom joke collections via configuration files
+   - Joke frequency settings for repeated command usage
+
+The implementation should be non-intrusive, maintaining all existing functionality while adding this optional enhancement feature.
+
+# Test Strategy:
+Verify implementation through comprehensive testing:
+
+1. **Flag Recognition Testing**: Test that the --joke and -j flags are properly recognized across all existing commands (list, add, update, move, plan, etc.)
+
+2. **Output Format Testing**: 
+   - Verify jokes appear correctly formatted after normal command output
+   - Test that jokes don't appear when flag is not used
+   - Confirm JSON output mode (--json) excludes jokes or formats them appropriately
+   - Test joke formatting with various command output lengths and types
+
+3. **Joke Content Testing**:
+   - Verify jokes are appropriate and professional
+   - Test that getRandomJoke() returns different jokes on multiple calls
+   - Confirm joke categories are working correctly
+
+4. **Integration Testing**: Test the joke flag with:
+   - Simple commands (list, help)
+   - Complex commands with multiple outputs (update, plan)
+   - Error scenarios to ensure jokes don't appear with error messages
+   - Combination with other global flags (--quiet, --debug, --json)
+
+5. **Performance Testing**: Ensure the joke feature doesn't impact command execution speed or memory usage significantly
+
+6. **Regression Testing**: Run existing test suite to confirm no existing functionality is broken by the joke feature implementation
+
+# Subtasks:
+## 1. Update CLI foundation to support global flags [pending]
+### Dependencies: None
+### Description: Modify the core CLI framework to recognize and handle global flags like --joke across all commands, ensuring proper flag parsing and propagation throughout the application.
+### Details:
+Implement global flag parsing mechanism, update command dispatcher to handle global flags, ensure flag inheritance across subcommands, and maintain backward compatibility with existing flag handling.
+
+## 2. Develop the joke-service module with joke management and category support [pending]
+### Dependencies: None
+### Description: Create a dedicated service module for managing jokes, including joke retrieval, categorization, and content management functionality.
+### Details:
+Build joke storage/retrieval system, implement category-based joke selection, create joke content validation, add support for custom joke sources, and ensure thread-safe operations.
+
+## 3. Integrate joke output into existing output utilities [pending]
+### Dependencies: 92.1, 92.2
+### Description: Modify output formatting utilities to seamlessly incorporate joke content without disrupting existing output formats, especially JSON output.
+### Details:
+Update output formatters to handle joke injection, ensure JSON output compatibility, implement conditional joke display logic, and maintain output consistency across different formats.
+
+## 4. Update all CLI commands for joke flag compatibility [pending]
+### Dependencies: 92.1, 92.3
+### Description: Modify every existing CLI command to recognize and properly handle the global --joke flag while maintaining their core functionality.
+### Details:
+Update command handlers to process joke flag, integrate with output utilities, ensure no interference with command-specific logic, and maintain existing command behavior when flag is not used.
+
+## 5. Add configuration options for joke categories and custom jokes [pending]
+### Dependencies: 92.2
+### Description: Implement configuration management for joke preferences, including category selection, custom joke sources, and user-defined joke content.
+### Details:
+Create configuration schema for joke settings, implement category preference management, add custom joke import/export functionality, and ensure configuration persistence across sessions.
+
+## 6. Implement comprehensive testing [pending]
+### Dependencies: 92.1, 92.2, 92.3, 92.4, 92.5
+### Description: Develop thorough test coverage including flag recognition, output verification, content validation, integration testing, performance testing, and regression testing.
+### Details:
+Create unit tests for joke service, integration tests for flag handling, output format validation tests, performance benchmarks, regression test suite, and end-to-end testing scenarios.
+
+## 7. Update documentation and usage examples [pending]
+### Dependencies: 92.6
+### Description: Comprehensive documentation update including usage examples, configuration guides, and integration instructions for the new --joke flag functionality.
+### Details:
+Update CLI help text, create usage examples for different scenarios, document configuration options, add troubleshooting guide, and update API documentation for developers.
+

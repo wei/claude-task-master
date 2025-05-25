@@ -1,0 +1,26 @@
+# Task ID: 94
+# Title: Implement Standalone 'research' CLI Command for AI-Powered Queries
+# Status: pending
+# Dependencies: 2, 4, 16
+# Priority: medium
+# Description: Develop a new 'task-master research' (alias 'tm research') CLI command for fast, context-aware AI research queries using the ai-services-unified.js infrastructure.
+# Details:
+- Add a new CLI command 'research' to commands.js, following established CLI patterns and conventions.
+- Command should accept a research query as the main parameter, with optional flags for task IDs (--tasks), file paths (--files), custom context (--context), output detail level (--detail), and result saving (--save).
+- Integrate with ai-services-unified.js, invoking its research mode to process the query and context, leveraging project file tree and task context as needed.
+- Implement logic to gather and inject relevant context from specified tasks, files, or custom input, and generate a project file tree snapshot if required.
+- Ensure output is formatted for terminal readability, including citations and references where available.
+- Support saving research results to a specified file if --save is provided.
+- Provide both brief and comprehensive output modes, controlled by a flag.
+- Ensure the command is non-interactive (one-shot execution) and complements the existing 'explore' command.
+- Update help documentation and usage examples for the new command.
+
+# Test Strategy:
+- Write unit and integration tests to verify correct parsing of command-line arguments and flags.
+- Test that the command invokes ai-services-unified.js in research mode with the correct parameters and context.
+- Validate that context from tasks, files, and custom input is correctly gathered and passed to the research engine.
+- Confirm that output is properly formatted, includes citations, and is displayed in the terminal as expected.
+- Test saving results to files and handling of file system errors.
+- Ensure the command works in both brief and comprehensive modes.
+- Verify that the command does not enter interactive mode and exits cleanly after execution.
+- Check help output and usage documentation for accuracy and completeness.
