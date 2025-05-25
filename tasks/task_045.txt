@@ -1,12 +1,13 @@
 # Task ID: 45
 # Title: Implement GitHub Issue Import Feature
 # Status: pending
-# Dependencies: None
+# Dependencies: 97
 # Priority: medium
-# Description: Add a '--from-github' flag to the add-task command that accepts a GitHub issue URL and automatically generates a corresponding task with relevant details.
+# Description: Add a '--from-github' flag to the add-task command that accepts a GitHub issue URL and automatically generates a corresponding task with relevant details. This feature works in conjunction with the GitHub export feature (Task #97) to provide bidirectional linking between Task Master tasks and GitHub issues.
 # Details:
-Implement a new flag '--from-github' for the add-task command that allows users to create tasks directly from GitHub issues. The implementation should:
+Implement a new flag '--from-github' for the add-task command that allows users to create tasks directly from GitHub issues. The implementation should work seamlessly with the GitHub export feature (Task #97) to provide bidirectional linking capabilities.
 
+Core functionality:
 1. Accept a GitHub issue URL as an argument (e.g., 'taskmaster add-task --from-github https://github.com/owner/repo/issues/123')
 2. Parse the URL to extract the repository owner, name, and issue number
 3. Use the GitHub API to fetch the issue details including:
@@ -16,16 +17,27 @@ Implement a new flag '--from-github' for the add-task command that allows users 
    - Issue assignees (for reference)
    - Issue status (open/closed)
 4. Generate a well-formatted task with this information
-5. Include a reference link back to the original GitHub issue
-6. Handle authentication for private repositories using GitHub tokens from environment variables or config file
-7. Implement proper error handling for:
+5. **Automatically add GitHub link metadata** using the same schema as the export feature:
+   - Store the source GitHub issue URL in task metadata
+   - Use consistent metadata structure with export feature for bidirectional compatibility
+   - Enable future synchronization capabilities
+6. Include a reference link back to the original GitHub issue in the task description
+7. Handle authentication for private repositories using GitHub tokens from environment variables or config file
+8. Implement proper error handling for:
    - Invalid URLs
    - Non-existent issues
    - API rate limiting
    - Authentication failures
    - Network issues
-8. Allow users to override or supplement the imported details with additional command-line arguments
-9. Add appropriate documentation in help text and user guide
+9. **Validate GitHub links** during import to ensure they point to valid, accessible issues
+10. Allow users to override or supplement the imported details with additional command-line arguments
+11. Add appropriate documentation in help text and user guide, including information about the complementary export feature
+
+Bidirectional Integration:
+- Use the same metadata schema as Task #97 for GitHub links
+- Ensure imported tasks can be identified as GitHub-linked for future export operations
+- Prepare infrastructure for future synchronization between tasks and their source issues
+- Maintain consistency with export feature's link management approach
 
 # Test Strategy:
 Testing should cover the following scenarios:
@@ -34,11 +46,15 @@ Testing should cover the following scenarios:
    - Test URL parsing functionality with valid and invalid GitHub issue URLs
    - Test GitHub API response parsing with mocked API responses
    - Test error handling for various failure cases
+   - **Test metadata schema consistency with export feature**
+   - **Test GitHub link validation functionality**
 
 2. Integration tests:
    - Test with real GitHub public issues (use well-known repositories)
    - Test with both open and closed issues
    - Test with issues containing various elements (labels, assignees, comments)
+   - **Test bidirectional compatibility with export feature**
+   - **Verify metadata structure matches export feature requirements**
 
 3. Error case tests:
    - Invalid URL format
@@ -46,11 +62,19 @@ Testing should cover the following scenarios:
    - Non-existent issue number
    - API rate limit exceeded
    - Authentication failures for private repos
+   - **Invalid or inaccessible GitHub links**
 
 4. End-to-end tests:
    - Verify that a task created from a GitHub issue contains all expected information
+   - **Verify that imported tasks contain proper GitHub link metadata**
    - Verify that the task can be properly managed after creation
    - Test the interaction with other flags and commands
+   - **Test compatibility with export feature workflows**
+
+5. **Bidirectional feature tests**:
+   - Import a GitHub issue and verify it can be exported back
+   - Test metadata consistency between import and export operations
+   - Verify link validation works correctly
 
 Create mock GitHub API responses for testing to avoid hitting rate limits during development and testing. Use environment variables to configure test credentials if needed.
 
@@ -84,4 +108,16 @@ Map GitHub issue fields to task fields (title, description, etc.). Convert GitHu
 ### Description: Create the user interface and workflow for importing GitHub issues, including progress indicators and error handling.
 ### Details:
 Design and implement UI for URL input and import confirmation. Show loading states during API calls. Display meaningful error messages for various failure scenarios. Allow users to review and modify imported task details before saving. Add automated tests for the entire import flow.
+
+## 6. Implement GitHub metadata schema and link management [pending]
+### Dependencies: None
+### Description: Create a consistent metadata schema for GitHub links that works with both import and export features, ensuring bidirectional compatibility.
+### Details:
+Design and implement metadata structure that matches the export feature (Task #97). Include fields for GitHub issue URL, repository information, issue number, and sync status. Implement link validation to ensure GitHub URLs are accessible and valid. Create utilities for managing GitHub link metadata consistently across import and export operations.
+
+## 7. Add bidirectional integration with export feature [pending]
+### Dependencies: 45.6
+### Description: Ensure imported tasks work seamlessly with the GitHub export feature and maintain consistent link management.
+### Details:
+Verify that tasks imported from GitHub can be properly exported back to GitHub. Implement checks to prevent duplicate exports of imported issues. Add metadata flags to identify imported tasks and their source repositories. Test round-trip workflows (import → modify → export) to ensure data integrity.
 

@@ -542,6 +542,11 @@ function displayHelp() {
 					name: 'expand --all',
 					args: '[--force] [--research]',
 					desc: 'Expand all pending tasks with subtasks'
+				},
+				{
+					name: 'research',
+					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--project-tree] [-s=<save_file>] [-d=<detail_level>]',
+					desc: 'Perform AI-powered research queries with project context'
 				}
 			]
 		},
