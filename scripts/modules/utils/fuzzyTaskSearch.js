@@ -276,7 +276,11 @@ export class FuzzyTaskSearch {
 	 * @returns {Array<string>} Array of task ID strings
 	 */
 	getTaskIds(searchResults) {
-		return searchResults.results.map((task) => task.id.toString());
+		return searchResults.results.map((task) => {
+			// Use searchableId if available (for flattened tasks with subtasks)
+			// Otherwise fall back to regular id
+			return task.searchableId || task.id.toString();
+		});
 	}
 
 	/**

@@ -100,7 +100,9 @@ async function performResearch(
 			const tasksData = await readJSON(tasksPath);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
-				const fuzzySearch = new FuzzyTaskSearch(tasksData.tasks, 'research');
+				// Flatten tasks to include subtasks for fuzzy search
+				const flattenedTasks = flattenTasksWithSubtasks(tasksData.tasks);
+				const fuzzySearch = new FuzzyTaskSearch(flattenedTasks, 'research');
 				const searchResults = fuzzySearch.findRelevantTasks(query, {
 					maxResults: 8,
 					includeRecent: true,
@@ -559,6 +561,42 @@ function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
 
 	// Success footer
 	console.log(chalk.green('✅ Research completed'));
+}
+
+/**
+ * Flatten tasks array to include subtasks as individual searchable items
+ * @param {Array} tasks - Array of task objects
+ * @returns {Array} Flattened array including both tasks and subtasks
+ */
+function flattenTasksWithSubtasks(tasks) {
+	const flattened = [];
+
+	for (const task of tasks) {
+		// Add the main task
+		flattened.push({
+			...task,
+			searchableId: task.id.toString(), // For consistent ID handling
+			isSubtask: false
+		});
+
+		// Add subtasks if they exist
+		if (task.subtasks && task.subtasks.length > 0) {
+			for (const subtask of task.subtasks) {
+				flattened.push({
+					...subtask,
+					searchableId: `${task.id}.${subtask.id}`, // Format: "15.2"
+					isSubtask: true,
+					parentId: task.id,
+					parentTitle: task.title,
+					// Enhance subtask context with parent information
+					title: `${subtask.title} (subtask of: ${task.title})`,
+					description: `${subtask.description} [Parent: ${task.description}]`
+				});
+			}
+		}
+	}
+
+	return flattened;
 }
 
 export { performResearch };
