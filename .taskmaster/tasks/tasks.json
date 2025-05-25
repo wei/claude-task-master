@@ -5956,14 +5956,77 @@
       "description": "Develop a new 'task-master research' (alias 'tm research') CLI command for fast, context-aware AI research queries using the ai-services-unified.js infrastructure.",
       "details": "- Add a new CLI command 'research' to commands.js, following established CLI patterns and conventions.\n- Command should accept a research query as the main parameter, with optional flags for task IDs (--tasks), file paths (--files), custom context (--context), output detail level (--detail), and result saving (--save).\n- Integrate with ai-services-unified.js, invoking its research mode to process the query and context, leveraging project file tree and task context as needed.\n- Implement logic to gather and inject relevant context from specified tasks, files, or custom input, and generate a project file tree snapshot if required.\n- Ensure output is formatted for terminal readability, including citations and references where available.\n- Support saving research results to a specified file if --save is provided.\n- Provide both brief and comprehensive output modes, controlled by a flag.\n- Ensure the command is non-interactive (one-shot execution) and complements the existing 'explore' command.\n- Update help documentation and usage examples for the new command.",
       "testStrategy": "- Write unit and integration tests to verify correct parsing of command-line arguments and flags.\n- Test that the command invokes ai-services-unified.js in research mode with the correct parameters and context.\n- Validate that context from tasks, files, and custom input is correctly gathered and passed to the research engine.\n- Confirm that output is properly formatted, includes citations, and is displayed in the terminal as expected.\n- Test saving results to files and handling of file system errors.\n- Ensure the command works in both brief and comprehensive modes.\n- Verify that the command does not enter interactive mode and exits cleanly after execution.\n- Check help output and usage documentation for accuracy and completeness.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         2,
         4,
         16
       ],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Command Registration",
+          "description": "Register the 'research' command with the CLI framework, ensuring it appears in the list of available commands and supports standard CLI conventions.",
+          "dependencies": [],
+          "details": "Integrate the new command into the CLI's command registry. Ensure it is discoverable via the CLI's help system and follows established naming and grouping conventions.",
+          "status": "in-progress"
+        },
+        {
+          "id": 2,
+          "title": "Parameter and Flag Handling",
+          "description": "Define and implement parsing for all arguments, flags, and options accepted by the 'research' command, including validation and default values.",
+          "dependencies": [
+            1
+          ],
+          "details": "Use a command-line parsing framework to handle parameters. Ensure support for optional and required arguments, order-independence, and clear error messages for invalid input.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Context Gathering",
+          "description": "Implement logic to gather necessary context for the research operation, such as reading from files, stdin, or other sources as specified by the user.",
+          "dependencies": [
+            2
+          ],
+          "details": "Support reading input from files or stdin using '-' as a convention. Validate and preprocess the gathered context to ensure it is suitable for AI processing.\n<info added on 2025-05-25T05:24:58.107Z>\nCreate a comprehensive, reusable context gathering utility `utils/contextGatherer.js` that can be shared between the research command and explore REPL functionality.\n\n**Core Features:**\n\n**Task/Subtask Context Extraction:**\n- Parse task IDs and subtask IDs (formats: \"15\", \"15.2\", \"16,17.1\")\n- Extract task titles, descriptions, details, and dependencies from the task system\n- Include parent task context automatically for subtasks\n- Format task data optimally for AI consumption\n\n**File Path Context Processing:**\n- Handle single or comma-separated file paths\n- Implement safe file reading with comprehensive error handling\n- Support multiple file types (JavaScript, markdown, text, JSON, etc.)\n- Include file metadata (path, size, type, last modified)\n\n**Project File Tree Generation:**\n- Create structured project overview with configurable depth\n- Filter out irrelevant directories (.git, node_modules, .env files)\n- Include file counts and directory statistics\n- Support custom filtering patterns\n\n**Custom Context Integration:**\n- Accept and merge custom context strings\n- Maintain clear context hierarchy and organization\n- Preserve context source attribution\n\n**Unified API Design:**\n```javascript\nconst contextGatherer = new ContextGatherer(projectRoot);\nconst context = await contextGatherer.gather({\n  tasks: [\"15\", \"16.2\"],\n  files: [\"src/main.js\", \"README.md\"],\n  customContext: \"Additional context...\",\n  includeProjectTree: true,\n  format: \"research\" // or \"chat\", \"system-prompt\"\n});\n```\n\n**Output Formatting:**\n- Support multiple output formats (research, chat, system-prompt)\n- Ensure consistent context structure across different use cases\n- Optimize for AI model consumption and token efficiency\n\nThis utility will eliminate code duplication between task 51 (explore REPL) and task 94 (research command) while providing a robust, extensible foundation for context gathering operations.\n</info added on 2025-05-25T05:24:58.107Z>",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "AI Service Integration",
+          "description": "Integrate with the AI service to process the gathered context and parameters, handling API calls, authentication, and error management.",
+          "dependencies": [
+            3
+          ],
+          "details": "Establish a robust interface to the AI backend, manage API keys or tokens securely, and handle network or service errors gracefully.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Output Formatting",
+          "description": "Format the AI-generated output according to user-specified modes (e.g., plain text, JSON), and support writing to stdout or files.",
+          "dependencies": [
+            4
+          ],
+          "details": "Implement flexible output formatting, ensuring compatibility with piping and redirection. Provide clear, user-friendly output and support for machine-readable formats.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Documentation and Help",
+          "description": "Document the 'research' command, including usage examples, parameter descriptions, and integration with the CLI's --help system.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "Update CLI documentation and ensure the --help flag provides comprehensive guidance on using the command, its options, and expected outputs.",
+          "status": "pending"
+        }
+      ]
     }
   ]
 }
