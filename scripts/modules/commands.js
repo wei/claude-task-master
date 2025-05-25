@@ -1393,7 +1393,7 @@ function registerCommands(programInstance) {
 			'Additional custom context to include in the research prompt'
 		)
 		.option(
-			'--project-tree',
+			'-t, --tree',
 			'Include project file tree structure in the research context'
 		)
 		.option(
@@ -1527,7 +1527,7 @@ function registerCommands(programInstance) {
 				taskIds: taskIds,
 				filePaths: filePaths,
 				customContext: options.context ? options.context.trim() : null,
-				includeProjectTree: !!options.projectTree,
+				includeProjectTree: !!options.tree,
 				saveTarget: options.save ? options.save.trim() : null,
 				detailLevel: options.detail ? options.detail.toLowerCase() : 'medium',
 				tasksPath: tasksPath,

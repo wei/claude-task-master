@@ -348,7 +348,7 @@ For AI-powered commands that benefit from project context, follow the research c
     .option('-i, --id <ids>', 'Comma-separated task/subtask IDs to include as context')
     .option('-f, --files <paths>', 'Comma-separated file paths to include as context')
     .option('-c, --context <text>', 'Additional custom context')
-    .option('--project-tree', 'Include project file tree structure')
+    .option('--tree', 'Include project file tree structure')
     .option('-d, --detail <level>', 'Output detail level: low, medium, high', 'medium')
     .action(async (prompt, options) => {
       // 1. Parameter validation and parsing

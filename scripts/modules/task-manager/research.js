@@ -6,6 +6,7 @@
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import inquirer from 'inquirer';
 import { highlight } from 'cli-highlight';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
@@ -33,13 +34,15 @@ import {
  * @param {string} [context.commandName] - Command name for telemetry
  * @param {string} [context.outputType] - Output type ('cli' or 'mcp')
  * @param {string} [outputFormat] - Output format ('text' or 'json')
+ * @param {boolean} [allowFollowUp] - Whether to allow follow-up questions (default: true)
  * @returns {Promise<Object>} Research results with telemetry data
  */
 async function performResearch(
 	query,
 	options = {},
 	context = {},
-	outputFormat = 'text'
+	outputFormat = 'text',
+	allowFollowUp = true
 ) {
 	const {
 		taskIds = [],
@@ -249,6 +252,19 @@ async function performResearch(
 			// Display AI usage telemetry for CLI users
 			if (telemetryData) {
 				displayAiUsageSummary(telemetryData, 'cli');
+			}
+
+			// Offer follow-up question option (only for initial CLI queries, not MCP)
+			if (allowFollowUp && !isMCP) {
+				await handleFollowUpQuestions(
+					options,
+					context,
+					outputFormat,
+					projectRoot,
+					logFn,
+					query,
+					researchResult
+				);
 			}
 		}
 
@@ -597,6 +613,135 @@ function flattenTasksWithSubtasks(tasks) {
 	}
 
 	return flattened;
+}
+
+/**
+ * Handle follow-up questions in interactive mode
+ * @param {Object} originalOptions - Original research options
+ * @param {Object} context - Execution context
+ * @param {string} outputFormat - Output format
+ * @param {string} projectRoot - Project root directory
+ * @param {Object} logFn - Logger function
+ * @param {string} initialQuery - Initial query for context
+ * @param {string} initialResult - Initial AI result for context
+ */
+async function handleFollowUpQuestions(
+	originalOptions,
+	context,
+	outputFormat,
+	projectRoot,
+	logFn,
+	initialQuery,
+	initialResult
+) {
+	try {
+		// Initialize conversation history with the initial Q&A
+		const conversationHistory = [
+			{
+				question: initialQuery,
+				answer: initialResult,
+				type: 'initial'
+			}
+		];
+
+		while (true) {
+			// Ask if user wants to ask a follow-up question
+			const { wantFollowUp } = await inquirer.prompt([
+				{
+					type: 'confirm',
+					name: 'wantFollowUp',
+					message: 'Would you like to ask a follow-up question?',
+					default: false // Default to 'n' as requested
+				}
+			]);
+
+			if (!wantFollowUp) {
+				break;
+			}
+
+			// Get the follow-up question
+			const { followUpQuery } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'followUpQuery',
+					message: 'Enter your follow-up question:',
+					validate: (input) => {
+						if (!input || input.trim().length === 0) {
+							return 'Please enter a valid question.';
+						}
+						return true;
+					}
+				}
+			]);
+
+			if (!followUpQuery || followUpQuery.trim().length === 0) {
+				continue;
+			}
+
+			console.log('\n' + chalk.gray('─'.repeat(60)) + '\n');
+
+			// Build cumulative conversation context from all previous exchanges
+			const conversationContext = buildConversationContext(conversationHistory);
+
+			// Create enhanced options for follow-up with full conversation context
+			// Remove explicit task IDs to allow fresh fuzzy search based on new question
+			const followUpOptions = {
+				...originalOptions,
+				taskIds: [], // Clear task IDs to allow fresh fuzzy search
+				customContext:
+					conversationContext +
+					(originalOptions.customContext
+						? `\n\n--- Original Context ---\n${originalOptions.customContext}`
+						: '')
+			};
+
+			// Perform follow-up research with fresh fuzzy search and conversation context
+			// Disable follow-up prompts for nested calls to prevent infinite recursion
+			const followUpResult = await performResearch(
+				followUpQuery.trim(),
+				followUpOptions,
+				context,
+				outputFormat,
+				false // allowFollowUp = false for nested calls
+			);
+
+			// Add this exchange to the conversation history
+			conversationHistory.push({
+				question: followUpQuery.trim(),
+				answer: followUpResult.result,
+				type: 'followup'
+			});
+		}
+	} catch (error) {
+		// If there's an error with inquirer (e.g., non-interactive terminal),
+		// silently continue without follow-up functionality
+		logFn.debug(`Follow-up questions not available: ${error.message}`);
+	}
+}
+
+/**
+ * Build conversation context string from conversation history
+ * @param {Array} conversationHistory - Array of conversation exchanges
+ * @returns {string} Formatted conversation context
+ */
+function buildConversationContext(conversationHistory) {
+	if (conversationHistory.length === 0) {
+		return '';
+	}
+
+	const contextParts = ['--- Conversation History ---'];
+
+	conversationHistory.forEach((exchange, index) => {
+		const questionLabel =
+			exchange.type === 'initial' ? 'Initial Question' : `Follow-up ${index}`;
+		const answerLabel =
+			exchange.type === 'initial' ? 'Initial Answer' : `Answer ${index}`;
+
+		contextParts.push(`\n${questionLabel}: ${exchange.question}`);
+		contextParts.push(`${answerLabel}: ${exchange.answer}`);
+	});
+
+	return contextParts.join('\n');
 }
 
 export { performResearch };
