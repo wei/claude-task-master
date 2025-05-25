@@ -4,14 +4,107 @@ import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
 /**
- * Move a task or subtask to a new position
+ * Move one or more tasks/subtasks to new positions
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {string} sourceId - ID(s) of the task/subtask to move (e.g., '5' or '5.2' or '5,6,7')
+ * @param {string} destinationId - ID(s) of the destination (e.g., '7' or '7.3' or '7,8,9')
+ * @param {boolean} generateFiles - Whether to regenerate task files after moving
+ * @returns {Object} Result object with moved task details
+ */
+async function moveTask(
+	tasksPath,
+	sourceId,
+	destinationId,
+	generateFiles = true
+) {
+	// Check if we have comma-separated IDs (multiple moves)
+	const sourceIds = sourceId.split(',').map((id) => id.trim());
+	const destinationIds = destinationId.split(',').map((id) => id.trim());
+
+	// If multiple IDs, validate they match in count
+	if (sourceIds.length > 1 || destinationIds.length > 1) {
+		if (sourceIds.length !== destinationIds.length) {
+			throw new Error(
+				`Number of source IDs (${sourceIds.length}) must match number of destination IDs (${destinationIds.length})`
+			);
+		}
+
+		// Perform multiple moves
+		return await moveMultipleTasks(
+			tasksPath,
+			sourceIds,
+			destinationIds,
+			generateFiles
+		);
+	}
+
+	// Single move - use existing logic
+	return await moveSingleTask(
+		tasksPath,
+		sourceId,
+		destinationId,
+		generateFiles
+	);
+}
+
+/**
+ * Move multiple tasks/subtasks to new positions
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {string[]} sourceIds - Array of source IDs
+ * @param {string[]} destinationIds - Array of destination IDs
+ * @param {boolean} generateFiles - Whether to regenerate task files after moving
+ * @returns {Object} Result object with moved task details
+ */
+async function moveMultipleTasks(
+	tasksPath,
+	sourceIds,
+	destinationIds,
+	generateFiles = true
+) {
+	try {
+		log(
+			'info',
+			`Moving multiple tasks/subtasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+		);
+
+		const results = [];
+
+		// Perform moves one by one, but don't regenerate files until the end
+		for (let i = 0; i < sourceIds.length; i++) {
+			const result = await moveSingleTask(
+				tasksPath,
+				sourceIds[i],
+				destinationIds[i],
+				false
+			);
+			results.push(result);
+		}
+
+		// Generate task files once at the end if requested
+		if (generateFiles) {
+			log('info', 'Regenerating task files...');
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		}
+
+		return {
+			message: `Successfully moved ${sourceIds.length} tasks/subtasks`,
+			moves: results
+		};
+	} catch (error) {
+		log('error', `Error moving multiple tasks/subtasks: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
+ * Move a single task or subtask to a new position
  * @param {string} tasksPath - Path to tasks.json file
  * @param {string} sourceId - ID of the task/subtask to move (e.g., '5' or '5.2')
  * @param {string} destinationId - ID of the destination (e.g., '7' or '7.3')
  * @param {boolean} generateFiles - Whether to regenerate task files after moving
  * @returns {Object} Result object with moved task details
  */
-async function moveTask(
+async function moveSingleTask(
 	tasksPath,
 	sourceId,
 	destinationId,

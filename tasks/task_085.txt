@@ -1,4 +1,4 @@
-# Task ID: 96
+# Task ID: 85
 # Title: Implement Dynamic Help Menu Generation from CLI Commands
 # Status: pending
 # Dependencies: 2, 4
@@ -237,7 +237,7 @@ This implementation will create a self-documenting CLI that maintains accuracy a
 - Performance testing with large command sets
 
 ## 2. Create Intelligent Command Categorization System [pending]
-### Dependencies: 96.1
+### Dependencies: 85.1
 ### Description: Implement smart categorization logic to group commands into logical categories for the help menu
 ### Details:
 ## Implementation Requirements
@@ -369,7 +369,7 @@ function categorizeCommands(commandMetadata) {
 - Validate category completeness and no duplicates
 
 ## 3. Build Dynamic Help Content Generator [pending]
-### Dependencies: 96.2
+### Dependencies: 85.2
 ### Description: Create the core help content generation system that formats command metadata into user-friendly help text
 ### Details:
 ## Implementation Requirements
@@ -505,7 +505,7 @@ function generateCategorySection(categoryName, categoryData) {
 - Performance testing with large command sets
 
 ## 4. Integrate Dynamic Help System with Existing CLI [pending]
-### Dependencies: 96.3
+### Dependencies: 85.3
 ### Description: Replace the static help system with the new dynamic help generation and ensure seamless integration
 ### Details:
 ## Implementation Requirements
@@ -656,7 +656,7 @@ export function setProgramInstance(program) {
 5. **Phase 5**: Add enhanced help features (search, filtering, etc.)
 
 ## 5. Add Enhanced Help Features and Search Functionality [pending]
-### Dependencies: 96.4
+### Dependencies: 85.4
 ### Description: Implement advanced help features including command search, category filtering, and contextual help suggestions
 ### Details:
 ## Implementation Requirements
@@ -920,7 +920,7 @@ function enhanceErrorWithHelp(error, commandName, commandMetadata) {
    - Integration examples
 
 ## 6. Create Comprehensive Testing Suite and Documentation [pending]
-### Dependencies: 96.5
+### Dependencies: 85.5
 ### Description: Implement thorough testing for the dynamic help system and update all relevant documentation
 ### Details:
 ## Implementation Requirements

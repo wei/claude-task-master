@@ -5508,7 +5508,7 @@
       ]
     },
     {
-      "id": 96,
+      "id": 85,
       "title": "Implement Dynamic Help Menu Generation from CLI Commands",
       "description": "Transform the static help menu in ui.js into a dynamic system that automatically generates help content by introspecting the actual CLI commands, options, and flags defined in commands.js. This ensures the help menu stays synchronized with command implementations and reduces maintenance overhead.",
       "details": "## Core Problem Statement\n\nThe current help menu in `displayHelp()` function (ui.js:434-734) is hardcoded with static command information that can become outdated when:\n\n1. **Command Changes**: New options/flags are added to existing commands\n2. **New Commands**: New commands are added to commands.js but not reflected in help\n3. **Command Removal**: Commands are removed but help text remains\n4. **Inconsistent Documentation**: Help text doesn't match actual command behavior\n5. **Maintenance Burden**: Developers must remember to update help when modifying commands\n\n## Technical Implementation Requirements\n\n### 1. Command Introspection System\n- **Extract Command Metadata**: Parse Commander.js program instance to extract:\n  - Command names and aliases\n  - Command descriptions\n  - All options/flags with their descriptions and default values\n  - Required vs optional parameters\n  - Argument specifications\n- **Command Categorization**: Implement intelligent categorization based on:\n  - Command name patterns (e.g., 'add-*', 'remove-*', 'set-*')\n  - Command descriptions containing keywords\n  - Manual category overrides for edge cases\n- **Validation**: Ensure all registered commands are captured and categorized\n\n### 2. Dynamic Help Generation Engine\n- **Template System**: Create flexible templates for:\n  - Category headers with consistent styling\n  - Command entries with proper formatting\n  - Option/flag documentation with type information\n  - Example usage generation\n- **Formatting Logic**: Implement dynamic column width calculation based on:\n  - Terminal width detection\n  - Content length analysis\n  - Responsive layout adjustments\n- **Content Optimization**: Handle text wrapping, truncation, and spacing automatically\n\n### 3. Enhanced Command Documentation\n- **Auto-Generated Examples**: Create realistic usage examples by:\n  - Combining command names with common option patterns\n  - Using project-specific values (task IDs, file paths)\n  - Showing both simple and complex usage scenarios\n- **Option Details**: Display comprehensive option information:\n  - Short and long flag variants (-f, --file)\n  - Data types and format requirements\n  - Default values and behavior\n  - Required vs optional indicators\n- **Cross-References**: Add intelligent linking between related commands\n\n### 4. Integration Points\n- **Commands.js Integration**: \n  - Access the programInstance after all commands are registered\n  - Extract metadata without affecting command functionality\n  - Handle edge cases like hidden commands or aliases\n- **UI.js Refactoring**:\n  - Replace static commandCategories array with dynamic generation\n  - Maintain existing visual styling and layout\n  - Preserve terminal width responsiveness\n  - Keep configuration and quick start sections\n\n### 5. Category Classification Logic\nImplement smart categorization rules:\n```javascript\nconst categoryRules = {\n  'Project Setup & Configuration': ['init', 'models'],\n  'Task Generation': ['parse-prd', 'generate'],\n  'Task Management': ['list', 'set-status', 'update', 'add-task', 'remove-task'],\n  'Subtask Management': ['add-subtask', 'remove-subtask', 'clear-subtasks'],\n  'Task Analysis & Breakdown': ['analyze-complexity', 'complexity-report', 'expand', 'research'],\n  'Task Navigation & Viewing': ['next', 'show'],\n  'Dependency Management': ['add-dependency', 'remove-dependency', 'validate-dependencies', 'fix-dependencies']\n};\n```\n\n### 6. Error Handling and Fallbacks\n- **Graceful Degradation**: Fall back to static help if introspection fails\n- **Missing Information**: Handle commands with incomplete metadata\n- **Performance Considerations**: Cache generated help content when possible\n- **Debug Mode**: Provide verbose output for troubleshooting categorization\n\n## Implementation Architecture\n\n### Core Functions to Implement:\n1. **`extractCommandMetadata(programInstance)`**\n   - Parse Commander.js instance\n   - Extract all command and option information\n   - Return structured metadata object\n\n2. **`categorizeCommands(commandMetadata)`**\n   - Apply categorization rules\n   - Handle special cases and overrides\n   - Return categorized command structure\n\n3. **`generateDynamicHelp(categorizedCommands)`**\n   - Create formatted help content\n   - Apply consistent styling\n   - Handle responsive layout\n\n4. **`displayDynamicHelp(programInstance)`**\n   - Replace current displayHelp() function\n   - Integrate with existing banner and footer content\n   - Maintain backward compatibility\n\n### File Structure Changes:\n- **ui.js**: Replace static help with dynamic generation\n- **commands.js**: Ensure all commands have proper descriptions and option documentation\n- **New utility functions**: Add command introspection helpers\n\n## Testing Requirements\n\n### Unit Tests:\n- Command metadata extraction accuracy\n- Categorization logic correctness\n- Help content generation formatting\n- Terminal width responsiveness\n\n### Integration Tests:\n- Full help menu generation from actual commands\n- Consistency between help and actual command behavior\n- Performance with large numbers of commands\n\n### Manual Testing:\n- Visual verification of help output\n- Terminal width adaptation testing\n- Comparison with current static help for completeness\n\n## Benefits\n\n1. **Automatic Synchronization**: Help always reflects actual command state\n2. **Reduced Maintenance**: No manual help updates needed for command changes\n3. **Consistency**: Guaranteed alignment between help and implementation\n4. **Extensibility**: Easy to add new categorization rules or formatting\n5. **Accuracy**: Eliminates human error in help documentation\n6. **Developer Experience**: Faster development with automatic documentation\n\n## Migration Strategy\n\n1. **Phase 1**: Implement introspection system alongside existing static help\n2. **Phase 2**: Add categorization and dynamic generation\n3. **Phase 3**: Replace static help with dynamic system\n4. **Phase 4**: Remove static command definitions and add validation tests\n\nThis implementation will create a self-documenting CLI that maintains accuracy and reduces the burden on developers to manually maintain help documentation.",
@@ -5527,7 +5527,7 @@
           "details": "## Implementation Requirements\n\n### Core Function: `extractCommandMetadata(programInstance)`\n\n**Location**: Add to `ui.js` or create new `help-utils.js` module\n\n**Functionality**:\n1. **Command Discovery**:\n   - Iterate through `programInstance.commands` array\n   - Extract command names, aliases, and descriptions\n   - Handle subcommands and nested command structures\n   - Filter out hidden or internal commands\n\n2. **Option Extraction**:\n   - Parse `command.options` array for each command\n   - Extract short flags (-f), long flags (--file), descriptions\n   - Identify required vs optional parameters\n   - Capture default values and data types\n   - Handle boolean flags vs value-accepting options\n\n3. **Argument Processing**:\n   - Extract positional arguments and their descriptions\n   - Identify required vs optional arguments\n   - Handle variadic arguments (e.g., [files...])\n\n4. **Metadata Structure**:\n```javascript\n{\n  commandName: {\n    name: 'command-name',\n    aliases: ['alias1', 'alias2'],\n    description: 'Command description',\n    usage: 'command-name [options] <args>',\n    options: [\n      {\n        flags: '-f, --file <path>',\n        description: 'File path description',\n        required: false,\n        defaultValue: 'default.json',\n        type: 'string'\n      }\n    ],\n    arguments: [\n      {\n        name: 'id',\n        description: 'Task ID',\n        required: true,\n        variadic: false\n      }\n    ]\n  }\n}\n```\n\n### Technical Implementation:\n1. **Commander.js API Usage**:\n   - Access `command._name`, `command._description`\n   - Parse `command.options` for option metadata\n   - Handle `command._args` for positional arguments\n   - Use `command._aliases` for command aliases\n\n2. **Option Parsing Logic**:\n   - Parse option flags using regex to separate short/long forms\n   - Detect required parameters using `<>` vs optional `[]`\n   - Extract default values from option configurations\n   - Identify boolean flags vs value-accepting options\n\n3. **Error Handling**:\n   - Handle commands with missing descriptions\n   - Deal with malformed option definitions\n   - Provide fallbacks for incomplete metadata\n   - Log warnings for problematic command definitions\n\n### Testing Requirements:\n- Unit tests for metadata extraction accuracy\n- Test with various command configurations\n- Verify handling of edge cases (missing descriptions, complex options)\n- Performance testing with large command sets",
           "status": "pending",
           "dependencies": [],
-          "parentTaskId": 96
+          "parentTaskId": 85
         },
         {
           "id": 2,
@@ -5538,7 +5538,7 @@
           "dependencies": [
             1
           ],
-          "parentTaskId": 96
+          "parentTaskId": 85
         },
         {
           "id": 3,
@@ -5549,7 +5549,7 @@
           "dependencies": [
             2
           ],
-          "parentTaskId": 96
+          "parentTaskId": 85
         },
         {
           "id": 4,
@@ -5560,7 +5560,7 @@
           "dependencies": [
             3
           ],
-          "parentTaskId": 96
+          "parentTaskId": 85
         },
         {
           "id": 5,
@@ -5571,7 +5571,7 @@
           "dependencies": [
             4
           ],
-          "parentTaskId": 96
+          "parentTaskId": 85
         },
         {
           "id": 6,
@@ -5582,12 +5582,12 @@
           "dependencies": [
             5
           ],
-          "parentTaskId": 96
+          "parentTaskId": 85
         }
       ]
     },
     {
-      "id": 98,
+      "id": 86,
       "title": "Implement Separate Context Window and Output Token Limits",
       "description": "Replace the ambiguous MAX_TOKENS configuration with separate contextWindowTokens and maxOutputTokens fields to properly handle model token limits and enable dynamic token allocation.",
       "details": "Currently, the MAX_TOKENS configuration entry is ambiguous and doesn't properly differentiate between:\n1. Context window tokens (total input + output capacity)\n2. Maximum output tokens (generation limit)\n\nThis causes issues where:\n- The system can't properly validate prompt lengths against model capabilities\n- Output token allocation is not optimized based on input length\n- Different models with different token architectures are handled inconsistently\n\nThis epic will implement a comprehensive solution that:\n- Updates supported-models.json with accurate contextWindowTokens and maxOutputTokens for each model\n- Modifies config-manager.js to use separate maxInputTokens and maxOutputTokens in role configurations\n- Implements a token counting utility for accurate prompt measurement\n- Updates ai-services-unified.js to dynamically calculate available output tokens\n- Provides migration guidance and validation for existing configurations\n- Adds comprehensive error handling and validation throughout the system\n\nThe end result will be more precise token management, better cost control, and reduced likelihood of hitting model context limits.",
@@ -5606,7 +5606,7 @@
           "dependencies": [],
           "status": "pending",
           "subtasks": [],
-          "parentTaskId": 98
+          "parentTaskId": 86
         }
       ]
     }
