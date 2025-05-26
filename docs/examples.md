@@ -123,3 +123,56 @@ Please add a new task to implement user profile image uploads using Cloudinary, 
 ```
 
 (Agent runs: `task-master add-task --prompt="Implement user profile image uploads using Cloudinary" --research`)
+
+## Research-Driven Development
+
+### Getting Fresh Information
+
+```
+Research the latest best practices for implementing JWT authentication in Node.js applications.
+```
+
+(Agent runs: `task-master research "Latest best practices for JWT authentication in Node.js"`)
+
+### Research with Project Context
+
+```
+I'm working on task 15 which involves API optimization. Can you research current best practices for our specific implementation?
+```
+
+(Agent runs: `task-master research "API optimization best practices" --id=15 --files=src/api.js`)
+
+### Research Before Implementation
+
+```
+Before I implement task 8 (React Query integration), can you research the latest React Query v5 patterns and any breaking changes?
+```
+
+(Agent runs: `task-master research "React Query v5 patterns and breaking changes" --id=8`)
+
+### Research and Update Pattern
+
+```
+Research the latest security recommendations for Express.js applications and update our authentication task with the findings.
+```
+
+(Agent runs:
+
+1. `task-master research "Latest Express.js security recommendations" --id=12`
+2. `task-master update-subtask --id=12.3 --prompt="Updated with latest security findings: [research results]"`)
+
+### Research for Debugging
+
+```
+I'm having issues with our WebSocket implementation in task 20. Can you research common WebSocket problems and solutions?
+```
+
+(Agent runs: `task-master research "Common WebSocket implementation problems and solutions" --id=20 --files=src/websocket.js`)
+
+### Research Technology Comparisons
+
+```
+We need to choose between Redis and Memcached for caching. Can you research the current recommendations for our use case?
+```
+
+(Agent runs: `task-master research "Redis vs Memcached 2024 comparison for session caching" --tree`)

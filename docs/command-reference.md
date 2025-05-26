@@ -280,3 +280,42 @@ task-master models --setup
 ```
 
 Configuration is stored in `.taskmasterconfig` in your project root. API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+
+## Research Fresh Information
+
+```bash
+# Perform AI-powered research with fresh, up-to-date information
+task-master research "What are the latest best practices for JWT authentication in Node.js?"
+
+# Research with specific task context
+task-master research "How to implement OAuth 2.0?" --id=15,16
+
+# Research with file context for code-aware suggestions
+task-master research "How can I optimize this API implementation?" --files=src/api.js,src/auth.js
+
+# Research with custom context and project tree
+task-master research "Best practices for error handling" --context="We're using Express.js" --tree
+
+# Research with different detail levels
+task-master research "React Query v5 migration guide" --detail=high
+
+# Save research results to a file
+task-master research "Database optimization techniques" --save=research/db-optimization.md
+```
+
+**The research command is a powerful tool that provides:**
+
+- **Fresh information beyond AI knowledge cutoffs**
+- **Project-aware context** from your tasks and files
+- **Automatic task discovery** using fuzzy search
+- **Multiple detail levels** (low, medium, high)
+- **Token counting and cost tracking**
+- **Interactive follow-up questions**
+
+**Use research frequently to:**
+
+- Get current best practices before implementing features
+- Research new technologies and libraries
+- Find solutions to complex problems
+- Validate your implementation approaches
+- Stay updated with latest security recommendations

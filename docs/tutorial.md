@@ -443,3 +443,55 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+### Research-Driven Development
+
+Task Master includes a powerful research tool that provides fresh, up-to-date information beyond the AI's knowledge cutoff. This is particularly valuable for:
+
+#### Getting Current Best Practices
+
+```
+Before implementing task 5 (authentication), research the latest JWT security recommendations.
+```
+
+The agent will execute:
+
+```bash
+task-master research "Latest JWT security recommendations 2024" --id=5
+```
+
+#### Research with Project Context
+
+```
+Research React Query v5 migration strategies for our current API implementation.
+```
+
+The agent will execute:
+
+```bash
+task-master research "React Query v5 migration strategies" --files=src/api.js,src/hooks.js
+```
+
+#### Research and Update Pattern
+
+A powerful workflow is to research first, then update tasks with findings:
+
+```
+Research the latest Node.js performance optimization techniques and update task 12 with the findings.
+```
+
+The agent will:
+
+1. Run research: `task-master research "Node.js performance optimization 2024" --id=12`
+2. Update the task: `task-master update-subtask --id=12.2 --prompt="Updated with latest performance findings: [research results]"`
+
+#### When to Use Research
+
+- **Before implementing any new technology**
+- **When encountering security-related tasks**
+- **For performance optimization tasks**
+- **When debugging complex issues**
+- **Before making architectural decisions**
+- **When updating dependencies**
+
+The research tool automatically includes relevant project context and provides fresh information that can significantly improve implementation quality.
