@@ -2712,12 +2712,12 @@
     {
       "id": 45,
       "title": "Implement GitHub Issue Import Feature",
-      "description": "Add a '--from-github' flag to the add-task command that accepts a GitHub issue URL and automatically generates a corresponding task with relevant details. This feature works in conjunction with the GitHub export feature (Task #97) to provide bidirectional linking between Task Master tasks and GitHub issues.",
+      "description": "Implement a comprehensive LLM-powered 'import_task' command that can intelligently import tasks from GitHub Issues and Discussions. The system uses our existing ContextGatherer.js infrastructure to analyze the full context of GitHub content and automatically generate well-structured tasks with appropriate subtasks, priorities, and implementation details. This feature works in conjunction with the GitHub export feature (Task #97) to provide bidirectional linking between Task Master tasks and GitHub issues.",
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "details": "Implement a new flag '--from-github' for the add-task command that allows users to create tasks directly from GitHub issues. The implementation should work seamlessly with the GitHub export feature (Task #97) to provide bidirectional linking capabilities.\n\nCore functionality:\n1. Accept a GitHub issue URL as an argument (e.g., 'taskmaster add-task --from-github https://github.com/owner/repo/issues/123')\n2. Parse the URL to extract the repository owner, name, and issue number\n3. Use the GitHub API to fetch the issue details including:\n   - Issue title (to be used as task title)\n   - Issue description (to be used as task description)\n   - Issue labels (to be potentially used as tags)\n   - Issue assignees (for reference)\n   - Issue status (open/closed)\n4. Generate a well-formatted task with this information\n5. **Automatically add GitHub link metadata** using the same schema as the export feature:\n   - Store the source GitHub issue URL in task metadata\n   - Use consistent metadata structure with export feature for bidirectional compatibility\n   - Enable future synchronization capabilities\n6. Include a reference link back to the original GitHub issue in the task description\n7. Handle authentication for private repositories using GitHub tokens from environment variables or config file\n8. Implement proper error handling for:\n   - Invalid URLs\n   - Non-existent issues\n   - API rate limiting\n   - Authentication failures\n   - Network issues\n9. **Validate GitHub links** during import to ensure they point to valid, accessible issues\n10. Allow users to override or supplement the imported details with additional command-line arguments\n11. Add appropriate documentation in help text and user guide, including information about the complementary export feature\n\nBidirectional Integration:\n- Use the same metadata schema as Task #97 for GitHub links\n- Ensure imported tasks can be identified as GitHub-linked for future export operations\n- Prepare infrastructure for future synchronization between tasks and their source issues\n- Maintain consistency with export feature's link management approach",
-      "testStrategy": "Testing should cover the following scenarios:\n\n1. Unit tests:\n   - Test URL parsing functionality with valid and invalid GitHub issue URLs\n   - Test GitHub API response parsing with mocked API responses\n   - Test error handling for various failure cases\n   - **Test metadata schema consistency with export feature**\n   - **Test GitHub link validation functionality**\n\n2. Integration tests:\n   - Test with real GitHub public issues (use well-known repositories)\n   - Test with both open and closed issues\n   - Test with issues containing various elements (labels, assignees, comments)\n   - **Test bidirectional compatibility with export feature**\n   - **Verify metadata structure matches export feature requirements**\n\n3. Error case tests:\n   - Invalid URL format\n   - Non-existent repository\n   - Non-existent issue number\n   - API rate limit exceeded\n   - Authentication failures for private repos\n   - **Invalid or inaccessible GitHub links**\n\n4. End-to-end tests:\n   - Verify that a task created from a GitHub issue contains all expected information\n   - **Verify that imported tasks contain proper GitHub link metadata**\n   - Verify that the task can be properly managed after creation\n   - Test the interaction with other flags and commands\n   - **Test compatibility with export feature workflows**\n\n5. **Bidirectional feature tests**:\n   - Import a GitHub issue and verify it can be exported back\n   - Test metadata consistency between import and export operations\n   - Verify link validation works correctly\n\nCreate mock GitHub API responses for testing to avoid hitting rate limits during development and testing. Use environment variables to configure test credentials if needed.",
+      "details": "Implement a new 'import_task' command that leverages LLM-powered analysis to create comprehensive tasks from GitHub Issues and Discussions. The system should be designed as an extensible import framework that can support multiple platforms in the future.\n\nCore functionality:\n1. **New Command Structure**: Create 'import_task' command with source-specific subcommands:\n   - 'taskmaster import_task github <URL>' for GitHub imports\n   - Future: 'taskmaster import_task gitlab <URL>', 'taskmaster import_task linear <URL>', etc.\n\n2. **Multi-Source GitHub Support**: Automatically detect and handle:\n   - GitHub Issues: https://github.com/owner/repo/issues/123\n   - GitHub Discussions: https://github.com/owner/repo/discussions/456\n   - Auto-detect URL type and use appropriate API endpoints\n\n3. **LLM-Powered Context Analysis**: Integrate with ContextGatherer.js to:\n   - Fetch complete GitHub content (main post + all comments/replies)\n   - Analyze discussion threads and extract key insights\n   - Identify references to our project components and codebase\n   - Generate comprehensive task descriptions based on full context\n   - Automatically create relevant subtasks from complex discussions\n   - Determine appropriate priority levels based on content analysis\n   - Suggest dependencies based on mentioned components/features\n\n4. **Smart Content Processing**: The LLM should:\n   - Parse markdown content and preserve important formatting\n   - Extract actionable items from discussion threads\n   - Identify implementation requirements and technical details\n   - Convert complex discussions into structured task breakdowns\n   - Generate appropriate test strategies based on the scope\n   - Preserve important context while creating focused task descriptions\n\n5. **Enhanced GitHub API Integration**:\n   - Support GITHUB_API_KEY environment variable for authentication\n   - Handle both public and private repository access\n   - Fetch issue/discussion metadata (labels, assignees, status)\n   - Retrieve complete comment threads with proper threading\n   - Implement rate limiting and error handling\n\n6. **Rich Metadata Storage**:\n   - Source platform and original URL\n   - Import timestamp and LLM model version used\n   - Content hash for change detection and sync capabilities\n   - Participant information and discussion context\n   - GitHub-specific metadata (labels, assignees, status)\n   - **Use consistent metadata schema with export feature (Task #97)**\n\n7. **Future-Proof Architecture**:\n   - Modular design supporting multiple import sources\n   - Plugin-style architecture for new platforms\n   - Extensible content type handling (issues, PRs, discussions, etc.)\n   - Configurable LLM prompts for different content types\n\n8. **Bidirectional Integration**:\n   - Maintain compatibility with GitHub export feature\n   - Enable round-trip workflows (import → modify → export)\n   - Preserve source linking for synchronization capabilities\n   - Support identification of imported vs. native tasks\n\n9. **Error Handling and Validation**:\n   - Validate GitHub URLs and accessibility\n   - Handle API rate limiting gracefully\n   - Provide meaningful error messages for various failure scenarios\n   - Implement retry logic for transient failures\n   - Validate LLM responses and handle generation errors\n\n10. **Configuration and Customization**:\n    - Allow users to customize LLM prompts for task generation\n    - Support different import strategies (full vs. summary)\n    - Enable filtering of comments by date, author, or relevance\n    - Provide options for manual review before task creation",
+      "testStrategy": "Testing should cover the comprehensive LLM-powered import system:\n\n1. **Unit Tests**:\n   - Test URL parsing for GitHub Issues and Discussions\n   - Test GitHub API client with mocked responses\n   - Test LLM integration with ContextGatherer.js\n   - Test metadata schema consistency with export feature\n   - Test content processing and task generation logic\n   - Test error handling for various failure scenarios\n\n2. **Integration Tests**:\n   - Test with real GitHub Issues and Discussions (public repos)\n   - Test LLM-powered analysis with various content types\n   - Test ContextGatherer integration with GitHub content\n   - Test bidirectional compatibility with export feature\n   - Test metadata structure and storage\n   - Test with different GitHub content complexities\n\n3. **LLM and Context Analysis Tests**:\n   - Test task generation quality with various GitHub content types\n   - Test subtask creation from complex discussions\n   - Test priority and dependency inference\n   - Test handling of code references and technical discussions\n   - Test content summarization and structure preservation\n   - Validate LLM prompt effectiveness and response quality\n\n4. **Error Case Tests**:\n   - Invalid or malformed GitHub URLs\n   - Non-existent repositories or issues/discussions\n   - API rate limit handling\n   - Authentication failures for private repos\n   - LLM service unavailability or errors\n   - Network connectivity issues\n   - Malformed or incomplete GitHub content\n\n5. **End-to-End Tests**:\n   - Complete import workflow from GitHub URL to created task\n   - Verify task quality and completeness\n   - Test metadata preservation and linking\n   - Test compatibility with existing task management features\n   - Verify bidirectional workflow with export feature\n\n6. **Performance and Scalability Tests**:\n   - Test with large GitHub discussions (many comments)\n   - Test LLM processing time and resource usage\n   - Test API rate limiting behavior\n   - Test concurrent import operations\n\n7. **Future Platform Preparation Tests**:\n   - Test modular architecture extensibility\n   - Verify plugin-style platform addition capability\n   - Test configuration system flexibility\n\nCreate comprehensive mock data for GitHub API responses including various issue/discussion types, comment structures, and edge cases. Use environment variables for test credentials and LLM service configuration.",
       "subtasks": [
         {
           "id": 1,
@@ -2784,6 +2784,89 @@
             6
           ],
           "details": "Verify that tasks imported from GitHub can be properly exported back to GitHub. Implement checks to prevent duplicate exports of imported issues. Add metadata flags to identify imported tasks and their source repositories. Test round-trip workflows (import → modify → export) to ensure data integrity.",
+          "status": "pending"
+        },
+        {
+          "id": 8,
+          "title": "Design extensible import_task command architecture",
+          "description": "Create the foundational architecture for the new import_task command that supports multiple platforms and content types.",
+          "dependencies": [],
+          "details": "Design modular command structure with platform-specific subcommands. Create plugin-style architecture for adding new import sources. Define interfaces for different content types (issues, discussions, PRs). Plan configuration system for platform-specific settings and LLM prompts. Document extensibility patterns for future platform additions.",
+          "status": "pending"
+        },
+        {
+          "id": 9,
+          "title": "Extend GitHub URL parsing for Issues and Discussions",
+          "description": "Enhance URL parsing to support both GitHub Issues and Discussions with automatic type detection.",
+          "dependencies": [
+            2,
+            8
+          ],
+          "details": "Extend existing URL parser to handle GitHub Discussions URLs. Implement automatic detection of content type (issue vs discussion). Update validation logic for both content types. Ensure consistent data extraction for owner, repo, and content ID regardless of type.",
+          "status": "pending"
+        },
+        {
+          "id": 10,
+          "title": "Implement comprehensive GitHub API client",
+          "description": "Create enhanced GitHub API client supporting both Issues and Discussions APIs with complete content fetching.",
+          "dependencies": [
+            3,
+            9
+          ],
+          "details": "Extend existing API client to support GitHub Discussions API. Implement complete content fetching including all comments and replies. Add support for GITHUB_API_KEY environment variable. Handle threaded discussions and comment hierarchies. Implement robust error handling and rate limiting for both API types.",
+          "status": "pending"
+        },
+        {
+          "id": 11,
+          "title": "Integrate ContextGatherer for LLM-powered analysis",
+          "description": "Integrate with existing ContextGatherer.js to enable LLM-powered analysis of GitHub content.",
+          "dependencies": [
+            10
+          ],
+          "details": "Adapt ContextGatherer.js to work with GitHub content as input source. Create GitHub-specific context gathering strategies. Implement content preprocessing for optimal LLM analysis. Add project component identification for GitHub discussions. Create prompts for task generation from GitHub content.",
+          "status": "pending"
+        },
+        {
+          "id": 12,
+          "title": "Implement LLM-powered task generation",
+          "description": "Create the core LLM integration that analyzes GitHub content and generates comprehensive tasks with subtasks.",
+          "dependencies": [
+            11
+          ],
+          "details": "Design LLM prompts for task generation from GitHub content. Implement automatic subtask creation from complex discussions. Add priority and dependency inference based on content analysis. Create test strategy generation from technical discussions. Implement quality validation for LLM-generated content. Add fallback mechanisms for LLM failures.",
+          "status": "pending"
+        },
+        {
+          "id": 13,
+          "title": "Enhance metadata system for rich import context",
+          "description": "Extend the metadata schema to store comprehensive import context and enable advanced features.",
+          "dependencies": [
+            6,
+            12
+          ],
+          "details": "Extend existing metadata schema with import-specific fields. Add source platform, import timestamp, and LLM model tracking. Implement content hash storage for change detection. Store participant information and discussion context. Add support for custom metadata per platform type. Ensure backward compatibility with existing export feature metadata.",
+          "status": "pending"
+        },
+        {
+          "id": 14,
+          "title": "Implement import_task command interface",
+          "description": "Create the user-facing command interface for the new import_task system with GitHub support.",
+          "dependencies": [
+            8,
+            12,
+            13
+          ],
+          "details": "Implement the main import_task command with GitHub subcommand. Add command-line argument parsing and validation. Create progress indicators for LLM processing. Implement user review and confirmation workflow. Add verbose output options for debugging. Create help documentation and usage examples.",
+          "status": "pending"
+        },
+        {
+          "id": 15,
+          "title": "Add comprehensive testing and validation",
+          "description": "Implement comprehensive testing suite covering all aspects of the LLM-powered import system.",
+          "dependencies": [
+            14
+          ],
+          "details": "Create unit tests for all new components. Implement integration tests with real GitHub content. Add LLM response validation and quality tests. Create performance tests for large discussions. Implement end-to-end workflow testing. Add mock data for consistent testing. Test bidirectional compatibility with export feature.",
           "status": "pending"
         }
       ]
@@ -5583,6 +5666,130 @@
             5
           ],
           "parentTaskId": 85
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "title": "Implement GitHub Issue Export Feature",
+      "description": "Create a comprehensive 'export_task' command that enables exporting Task Master tasks to GitHub Issues, providing bidirectional integration with the existing import functionality.",
+      "details": "Implement a robust 'export_task' command with the following components:\n\n1. **Command Structure**:\n   - Create a new 'export_task' command with destination-specific subcommands\n   - Initial implementation should focus on GitHub integration\n   - Command syntax: `taskmaster export_task github [options] <task_id>`\n   - Support options for repository selection, issue type, and export configuration\n\n2. **GitHub Issue Creation**:\n   - Convert Task Master tasks into properly formatted GitHub issues\n   - Map task title and description to GitHub issue fields\n   - Convert implementation details and test strategy into well-structured issue body sections\n   - Transform subtasks into GitHub task lists or optionally create separate linked issues\n   - Map Task Master priorities, tags, and assignees to GitHub labels and assignees\n   - Add Task Master metadata as hidden comments for bidirectional linking\n\n3. **GitHub API Integration**:\n   - Implement GitHub API client for issue creation and management\n   - Support authentication via GITHUB_API_KEY environment variable\n   - Handle repository access for both public and private repositories\n   - Implement proper error handling for API failures\n   - Add rate limiting support to prevent API abuse\n   - Support milestone assignment if applicable\n\n4. **Bidirectional Linking**:\n   - Store GitHub issue URL and ID in task metadata\n   - Use consistent metadata schema compatible with the import feature\n   - Implement checks to prevent duplicate exports\n   - Support updating existing GitHub issues if task has been modified\n   - Enable round-trip workflows (export → modify in GitHub → re-import)\n\n5. **Extensible Architecture**:\n   - Design the export system to be platform-agnostic\n   - Create adapter interfaces for different export destinations\n   - Implement the GitHub adapter as the first concrete implementation\n   - Allow for custom export templates and formatting rules\n   - Document extension points for future platforms (GitLab, Linear, Jira, etc.)\n\n6. **Content Formatting**:\n   - Implement smart content conversion from Task Master format to GitHub-optimized format\n   - Handle markdown conversion appropriately\n   - Format code blocks, tables, and other structured content\n   - Add appropriate GitHub-specific references and formatting\n   - Ensure proper rendering of task relationships and dependencies\n\n7. **Configuration and Settings**:\n   - Add export-related configuration to Task Master settings\n   - Support default repositories and export preferences\n   - Allow customization of export templates and formatting\n   - Implement export history tracking\n\n8. **Documentation**:\n   - Create comprehensive documentation for the export feature\n   - Include examples and best practices\n   - Document the bidirectional workflow with import feature",
+      "testStrategy": "1. **Unit Tests**:\n   - Create unit tests for each component of the export system\n   - Test GitHub API client with mock responses\n   - Verify correct task-to-issue conversion logic\n   - Test bidirectional linking metadata handling\n   - Validate error handling and edge cases\n\n2. **Integration Tests**:\n   - Test end-to-end export workflow with test GitHub repository\n   - Verify created GitHub issues match expected format and content\n   - Test round-trip workflow (export → import) to ensure data integrity\n   - Validate behavior with various task types and structures\n   - Test with both simple and complex tasks with subtasks\n\n3. **Manual Testing Checklist**:\n   - Export a simple task and verify all fields are correctly mapped\n   - Export a complex task with subtasks and verify correct representation\n   - Test exporting to different repositories and with different user permissions\n   - Verify error messages are clear and helpful\n   - Test updating an already-exported task\n   - Verify bidirectional linking works correctly\n   - Test the round-trip workflow with modifications in GitHub\n\n4. **Edge Case Testing**:\n   - Test with missing GitHub credentials\n   - Test with invalid repository names\n   - Test with rate-limited API responses\n   - Test with very large tasks and content\n   - Test with special characters and formatting in task content\n   - Verify behavior when GitHub is unreachable\n\n5. **Performance Testing**:\n   - Measure export time for different task sizes\n   - Test batch export of multiple tasks\n   - Verify system handles GitHub API rate limits appropriately",
+      "status": "pending",
+      "dependencies": [
+        45
+      ],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design CLI Command Structure",
+          "description": "Define the command-line interface structure for the GitHub Issue Export Feature",
+          "dependencies": [],
+          "details": "Create a comprehensive CLI design including command syntax, argument parsing, help documentation, and user feedback mechanisms. Define flags for filtering issues by state, labels, assignees, and date ranges. Include options for output format selection (JSON, CSV, XLSX) and destination path configuration.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Develop GitHub API Client",
+          "description": "Create a robust client for interacting with GitHub's REST and GraphQL APIs",
+          "dependencies": [],
+          "details": "Implement a client library that handles API rate limiting, pagination, and response parsing. Support both REST and GraphQL endpoints for optimal performance. Include methods for fetching issues, comments, labels, milestones, and user data with appropriate caching mechanisms to minimize API calls.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Implement Authentication System",
+          "description": "Build a secure authentication system for GitHub API access",
+          "dependencies": [
+            2
+          ],
+          "details": "Develop authentication flows supporting personal access tokens, OAuth, and GitHub Apps. Implement secure credential storage with appropriate encryption. Create comprehensive error handling for authentication failures, token expiration, and permission issues with clear user feedback.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create Task-to-Issue Mapping Logic",
+          "description": "Develop the core logic for mapping GitHub issues to task structures",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Implement data models and transformation logic to convert GitHub issues into structured task objects. Handle relationships between issues including parent-child relationships, dependencies, and linked issues. Support task lists within issue bodies and map them to subtasks with appropriate status tracking.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Build Content Formatting Engine",
+          "description": "Create a system for formatting and converting issue content",
+          "dependencies": [
+            4
+          ],
+          "details": "Develop a markdown processing engine that handles GitHub Flavored Markdown. Implement converters for transforming content to various formats (plain text, HTML, etc.). Create utilities for handling embedded images, code blocks, and other rich content elements while preserving formatting integrity.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Implement Bidirectional Linking System",
+          "description": "Develop mechanisms for maintaining bidirectional links between exported data and GitHub",
+          "dependencies": [
+            4,
+            5
+          ],
+          "details": "Create a reference system that maintains links between exported tasks and their source GitHub issues. Implement metadata preservation to enable round-trip workflows. Design a change tracking system to support future synchronization capabilities between exported data and GitHub.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Design Extensible Architecture",
+          "description": "Create an adapter-based architecture for supporting multiple export formats and destinations",
+          "dependencies": [
+            4,
+            5,
+            6
+          ],
+          "details": "Implement a plugin architecture with adapter interfaces for different output formats (JSON, CSV, XLSX) and destinations (file system, cloud storage, third-party tools). Create a registry system for dynamically loading adapters. Design clean separation between core logic and format-specific implementations.",
+          "status": "pending"
+        },
+        {
+          "id": 8,
+          "title": "Develop Configuration Management",
+          "description": "Build a robust system for managing user configurations and preferences",
+          "dependencies": [
+            1,
+            7
+          ],
+          "details": "Implement configuration file handling with support for multiple locations (global, project-specific). Create a settings management system with validation and defaults. Support environment variable overrides and command-line parameter precedence. Include migration paths for configuration format changes.",
+          "status": "pending"
+        },
+        {
+          "id": 9,
+          "title": "Create Comprehensive Documentation",
+          "description": "Develop detailed documentation for users and contributors",
+          "dependencies": [
+            1,
+            7,
+            8
+          ],
+          "details": "Write user-facing documentation including installation guides, command references, and usage examples. Create developer documentation covering architecture, extension points, and contribution guidelines. Implement automated documentation generation from code comments. Prepare tutorials for common use cases and integration scenarios.",
+          "status": "pending"
+        },
+        {
+          "id": 10,
+          "title": "Implement Testing Framework",
+          "description": "Develop a comprehensive testing strategy and implementation",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "details": "Create unit tests for all core components with high coverage targets. Implement integration tests for GitHub API interactions using mocks and fixtures. Design end-to-end tests for complete workflows. Develop performance tests for large repositories and stress testing. Create a test suite for edge cases including rate limiting, network failures, and malformed data.",
+          "status": "pending"
         }
       ]
     }

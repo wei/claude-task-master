@@ -112,9 +112,10 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **CLI Command:** `task-master show [id] [options]`
 *   **Description:** `Display detailed information for a specific Taskmaster task or subtask by its ID.`
 *   **Key Parameters/Options:**
-    *   `id`: `Required. The ID of the Taskmaster task, e.g., '15', or subtask, e.g., '15.2', you want to view.` (CLI: `[id]` positional or `-i, --id <id>`)
+    *   `id`: `Required. The ID of the Taskmaster task, e.g., '15', or subtask, e.g., '15.2', you want to view.` (CLI: `[id]. Supports comma-separated list of tasks to get multiple tasks at once.` positional or `-i, --id <id>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Understand the full details, implementation notes, and test strategy for a specific task before starting work.
+*   **CRITICAL INFORMATION** If you need to collect information from multiple tasks, use comma-separated IDs (i.e. 1,2,3) to receive an array of tasks. Do not needlessly get tasks one at a time if you need to get many as that is wasteful.
 
 ---
 
