@@ -6064,8 +6064,8 @@
           "id": 1,
           "title": "Capture command args and output without exposing in responses",
           "description": "Modify telemetry to capture command arguments and full output, but ensure these are not included in MCP or CLI responses. Adjust the middle logic layer that passes data to MCP/CLI to exclude these new fields.",
-          "details": "Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.\n<info added on 2025-05-28T15:21:20.380Z>\nTDD Progress - Red Phase Complete:\n- Created test file: tests/unit/scripts/modules/telemetry-enhancements.test.js\n- Written 4 failing tests for core functionality:\n  1. Capture command arguments in telemetry data\n  2. Capture full AI output in telemetry data  \n  3. Ensure commandArgs/fullOutput not exposed in MCP responses\n  4. Ensure commandArgs/fullOutput not exposed in CLI responses\n- All tests failing as expected (TDD red phase)\n- Ready to implement minimum code to make tests pass\n\nNext: Implement commandArgs and fullOutput capture in ai-services-unified.js\n</info added on 2025-05-28T15:21:20.380Z>\n<info added on 2025-05-28T18:04:52.595Z>\nTDD Progress - Green Phase Complete:\n- Fixed test mocking using jest.unstable_mockModule for ES modules\n- All 4 tests now passing:\n  1. ✓ should capture command arguments in telemetry data\n  2. ✓ should capture full AI output in telemetry data  \n  3. ✓ should not expose commandArgs/fullOutput in MCP responses\n  4. ✓ should not expose commandArgs/fullOutput in CLI responses\n- Tests 3 & 4 are placeholder tests that will need real implementation\n- Ready to implement actual functionality in ai-services-unified.js\n\nNext: Implement commandArgs and fullOutput capture in ai-services-unified.js to make tests meaningful\n</info added on 2025-05-28T18:04:52.595Z>\n<info added on 2025-05-28T18:08:25.013Z>\nTDD Progress - Refactor Phase Complete:\n- ✅ Implemented commandArgs and fullOutput capture in ai-services-unified.js\n- ✅ Modified logAiUsage function to accept and store commandArgs and fullOutput\n- ✅ Updated _unifiedServiceRunner to pass callParams as commandArgs and providerResponse as fullOutput\n- ✅ All 4 tests passing (including placeholder tests for filtering)\n- ✅ Core functionality implemented: telemetry now captures sensitive data internally\n\nImplementation Details:\n- commandArgs captures the complete callParams object (includes apiKey, modelId, messages, etc.)\n- fullOutput captures the complete providerResponse object (includes usage, raw response data, etc.)\n- Both fields are conditionally added to telemetryData only when provided\n- Maintains backward compatibility with existing telemetry structure\n\nReady for subtask 90.2: Implement actual filtering in MCP and CLI response handlers\n</info added on 2025-05-28T18:08:25.013Z>\n<info added on 2025-05-28T18:10:11.676Z>\nCRITICAL SECURITY ISSUE IDENTIFIED - Sensitive Data Exposure Risk:\n\nCurrent implementation captures commandArgs and fullOutput in telemetry but fails to filter them before user exposure. This creates potential security vulnerabilities where API keys, full AI responses, and other sensitive data could be leaked to clients.\n\nSpecific Issues Found:\n- MCP Server: handleApiResult in mcp-server/src/tools/utils.js passes entire result.data including unfiltered telemetryData to client responses\n- CLI: While displayAiUsageSummary only shows safe fields, the underlying telemetryData object retains sensitive data accessible programmatically\n- Tests: Current filtering tests (3 & 4) are placeholders and don't verify actual filtering behavior\n\nRequired Security Implementation:\n1. Create telemetry filtering utility function to strip commandArgs/fullOutput before user exposure\n2. Modify handleApiResult in MCP server to apply filtering to telemetryData in all client responses\n3. Ensure CLI telemetry handling maintains security by only exposing safe fields\n4. Update placeholder tests to verify actual filtering functionality works correctly\n\nPriority: HIGH - Must implement filtering before any telemetry data reaches production endpoints to prevent sensitive data leakage.\n</info added on 2025-05-28T18:10:11.676Z>\n<info added on 2025-05-28T18:25:47.900Z>\nTDD COMPLETE - Subtask 90.1 Implementation Finished:\n\n✅ **SECURITY ISSUE RESOLVED**: Successfully implemented filtering to prevent sensitive data exposure\n\n**Implementation Details:**\n1. **Capture Enhancement**: Modified ai-services-unified.js to capture commandArgs and fullOutput in telemetry\n2. **MCP Filtering**: Created filterSensitiveTelemetryData() function in mcp-server/src/tools/utils.js\n3. **Response Processing**: Enhanced processMCPResponseData() to filter telemetry data before sending to clients\n4. **CLI Safety**: Verified displayAiUsageSummary() only displays safe fields (already secure)\n\n**Security Verification:**\n- ✅ commandArgs (containing API keys, secrets) are captured but filtered out before user exposure\n- ✅ fullOutput (containing internal debug data) is captured but filtered out before user exposure  \n- ✅ MCP responses automatically filter sensitive telemetry fields\n- ✅ CLI responses only display safe telemetry fields (modelUsed, tokens, cost, etc.)\n\n**Test Coverage:**\n- ✅ 4/4 tests passing with real implementation (not mocks)\n- ✅ Verified actual filtering functionality works correctly\n- ✅ Confirmed sensitive data is captured internally but never exposed to users\n\n**Ready for subtask 90.2**: Send telemetry data to remote database endpoint\n</info added on 2025-05-28T18:25:47.900Z>",
-          "status": "done",
+          "details": "Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.\n<info added on 2025-05-28T15:21:20.380Z>\nTDD Progress - Red Phase Complete:\n- Created test file: tests/unit/scripts/modules/telemetry-enhancements.test.js\n- Written 4 failing tests for core functionality:\n  1. Capture command arguments in telemetry data\n  2. Capture full AI output in telemetry data  \n  3. Ensure commandArgs/fullOutput not exposed in MCP responses\n  4. Ensure commandArgs/fullOutput not exposed in CLI responses\n- All tests failing as expected (TDD red phase)\n- Ready to implement minimum code to make tests pass\n\nNext: Implement commandArgs and fullOutput capture in ai-services-unified.js\n</info added on 2025-05-28T15:21:20.380Z>",
+          "status": "in-progress",
           "dependencies": [],
           "parentTaskId": 90
         },
@@ -6074,7 +6074,7 @@
           "title": "Send telemetry data to remote database endpoint",
           "description": "Implement POST requests to gateway.task-master.dev/telemetry endpoint to send all telemetry data including new fields (args, output) for analysis and future AI model training",
           "details": "Create a telemetry submission service that POSTs to gateway.task-master.dev/telemetry. Include all existing telemetry fields plus commandArgs and fullOutput. Implement retry logic and handle failures gracefully without blocking command execution. Respect user opt-out preferences.",
-          "status": "in-progress",
+          "status": "pending",
           "dependencies": [],
           "parentTaskId": 90
         },
@@ -6194,76 +6194,7 @@
         87
       ],
       "priority": "high",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Add Mode Configuration to .taskmasterconfig Schema",
-          "description": "Extend the .taskmasterconfig file structure to include mode selection (byok vs hosted) and gateway authentication fields while maintaining backward compatibility.",
-          "details": "Add mode field to configuration schema with values 'byok' or 'hosted'. Include gateway authentication fields (apiKey, userId) for hosted mode. Ensure backward compatibility by defaulting to 'byok' mode for existing installations. Add validation for mode-specific required fields.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 2,
-          "title": "Modify init.js for Mode Selection During Setup",
-          "description": "Update the initialization wizard to prompt users for mode selection and collect appropriate credentials for hosted mode.",
-          "details": "Add mode selection prompt after basic configuration. Present clear descriptions of BYOK vs hosted benefits. Collect gateway API key and user credentials for hosted mode. Skip AI provider setup prompts when hosted mode is selected. Validate gateway connectivity during hosted mode setup.",
-          "status": "pending",
-          "dependencies": [
-            1
-          ],
-          "parentTaskId": 92
-        },
-        {
-          "id": 3,
-          "title": "Update ai-services-unified.js for Gateway Routing",
-          "description": "Modify the unified AI service runner to detect mode and route calls to the hard-coded gateway URL when in hosted mode.",
-          "details": "Add mode detection logic that reads from .taskmasterconfig. Implement gateway routing for hosted mode to https://api.taskmaster.ai/v1/ai (hard-coded URL). Create gateway request wrapper with authentication headers. Maintain existing BYOK provider routing as fallback. Ensure identical response format for backward compatibility.",
-          "status": "pending",
-          "dependencies": [
-            1
-          ],
-          "parentTaskId": 92
-        },
-        {
-          "id": 4,
-          "title": "Implement Gateway Authentication System",
-          "description": "Create secure authentication system for gateway requests including API key management and request signing.",
-          "details": "Implement secure API key storage and retrieval. Add request signing/authentication for gateway calls. Include user identification in gateway requests. Handle authentication errors with clear user messaging. Add token refresh logic if needed.",
-          "status": "pending",
-          "dependencies": [
-            3
-          ],
-          "parentTaskId": 92
-        },
-        {
-          "id": 5,
-          "title": "Add Error Handling and Fallback Logic",
-          "description": "Implement comprehensive error handling for gateway unavailability with graceful degradation to BYOK mode when possible.",
-          "details": "Add error handling for gateway unavailability with graceful degradation. Implement clear error messages for authentication failures. Add fallback to BYOK providers when gateway fails (if keys are available). Include network connectivity validation and retry logic. Handle rate limiting and quota exceeded scenarios.",
-          "status": "pending",
-          "dependencies": [
-            4
-          ],
-          "parentTaskId": 92
-        },
-        {
-          "id": 6,
-          "title": "Ensure Backward Compatibility and Migration",
-          "description": "Ensure seamless backward compatibility for existing TaskMaster installations and provide smooth migration path to hosted mode.",
-          "details": "Default to BYOK mode for existing installations without mode config. Preserve all existing AI provider functionality. Ensure seamless migration path for current users. Maintain existing command interfaces and outputs. Add migration utility for users wanting to switch modes. Test with existing .taskmasterconfig files.",
-          "status": "pending",
-          "dependencies": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "parentTaskId": 92
-        }
-      ]
+      "subtasks": []
     }
   ]
 }

@@ -1,0 +1,121 @@
+# Task ID: 92
+# Title: Implement TaskMaster Mode Selection and Configuration System
+# Status: pending
+# Dependencies: 16, 56, 87
+# Priority: high
+# Description: Create a comprehensive mode selection system for TaskMaster that allows users to choose between BYOK (Bring Your Own Key) and hosted gateway modes during initialization, with proper configuration management and authentication.
+# Details:
+This task implements a complete mode selection system for TaskMaster with the following components:
+
+1. **Configuration Management (.taskmasterconfig)**:
+   - Add mode field to .taskmasterconfig schema with values: "byok" | "hosted"
+   - Include gateway authentication fields (apiKey, userId) for hosted mode
+   - Maintain backward compatibility with existing config structure
+   - Add validation for mode-specific required fields
+
+2. **Initialization Flow (init.js)**:
+   - Modify setup wizard to prompt for mode selection after basic configuration
+   - Present clear descriptions of each mode (BYOK vs hosted benefits)
+   - Collect gateway API key and user credentials for hosted mode
+   - Skip AI provider setup prompts when hosted mode is selected
+   - Validate gateway connectivity during hosted mode setup
+
+3. **AI Services Integration (ai-services-unified.js)**:
+   - Add mode detection logic that reads from .taskmasterconfig
+   - Implement gateway routing for hosted mode to https://api.taskmaster.ai/v1/ai
+   - Create gateway request wrapper with authentication headers
+   - Maintain existing BYOK provider routing as fallback
+   - Add error handling for gateway unavailability with graceful degradation
+
+4. **Authentication System**:
+   - Implement secure API key storage and retrieval
+   - Add request signing/authentication for gateway calls
+   - Include user identification in gateway requests
+   - Handle authentication errors with clear user messaging
+
+5. **Backward Compatibility**:
+   - Default to BYOK mode for existing installations without mode config
+   - Preserve all existing AI provider functionality
+   - Ensure seamless migration path for current users
+   - Maintain existing command interfaces and outputs
+
+6. **Error Handling and Fallbacks**:
+   - Graceful degradation when gateway is unavailable
+   - Clear error messages for authentication failures
+   - Fallback to BYOK providers when gateway fails
+   - Network connectivity validation and retry logic
+
+# Test Strategy:
+**Testing Strategy**:
+
+1. **Configuration Testing**:
+   - Verify .taskmasterconfig accepts both mode values
+   - Test configuration validation for required fields per mode
+   - Confirm backward compatibility with existing config files
+
+2. **Initialization Testing**:
+   - Test fresh installation with both mode selections
+   - Verify hosted mode setup collects proper credentials
+   - Test BYOK mode maintains existing setup flow
+   - Validate gateway connectivity testing during setup
+
+3. **Mode Detection Testing**:
+   - Test ai-services-unified.js correctly reads mode from config
+   - Verify routing logic directs calls to appropriate endpoints
+   - Test fallback behavior when mode is undefined (backward compatibility)
+
+4. **Gateway Integration Testing**:
+   - Test successful API calls to https://api.taskmaster.ai/v1/ai
+   - Verify authentication headers are properly included
+   - Test error handling for invalid API keys
+   - Validate request/response format compatibility
+
+5. **End-to-End Testing**:
+   - Test complete task generation flow in hosted mode
+   - Verify BYOK mode continues to work unchanged
+   - Test mode switching by modifying configuration
+   - Validate all existing commands work in both modes
+
+6. **Error Scenario Testing**:
+   - Test behavior when gateway is unreachable
+   - Verify fallback to BYOK providers when configured
+   - Test authentication failure handling
+   - Validate network timeout scenarios
+
+# Subtasks:
+## 1. Add Mode Configuration to .taskmasterconfig Schema [pending]
+### Dependencies: None
+### Description: Extend the .taskmasterconfig file structure to include mode selection (byok vs hosted) and gateway authentication fields while maintaining backward compatibility.
+### Details:
+Add mode field to configuration schema with values 'byok' or 'hosted'. Include gateway authentication fields (apiKey, userId) for hosted mode. Ensure backward compatibility by defaulting to 'byok' mode for existing installations. Add validation for mode-specific required fields.
+
+## 2. Modify init.js for Mode Selection During Setup [pending]
+### Dependencies: 92.1
+### Description: Update the initialization wizard to prompt users for mode selection and collect appropriate credentials for hosted mode.
+### Details:
+Add mode selection prompt after basic configuration. Present clear descriptions of BYOK vs hosted benefits. Collect gateway API key and user credentials for hosted mode. Skip AI provider setup prompts when hosted mode is selected. Validate gateway connectivity during hosted mode setup.
+
+## 3. Update ai-services-unified.js for Gateway Routing [pending]
+### Dependencies: 92.1
+### Description: Modify the unified AI service runner to detect mode and route calls to the hard-coded gateway URL when in hosted mode.
+### Details:
+Add mode detection logic that reads from .taskmasterconfig. Implement gateway routing for hosted mode to https://api.taskmaster.ai/v1/ai (hard-coded URL). Create gateway request wrapper with authentication headers. Maintain existing BYOK provider routing as fallback. Ensure identical response format for backward compatibility.
+
+## 4. Implement Gateway Authentication System [pending]
+### Dependencies: 92.3
+### Description: Create secure authentication system for gateway requests including API key management and request signing.
+### Details:
+Implement secure API key storage and retrieval. Add request signing/authentication for gateway calls. Include user identification in gateway requests. Handle authentication errors with clear user messaging. Add token refresh logic if needed.
+
+## 5. Add Error Handling and Fallback Logic [pending]
+### Dependencies: 92.4
+### Description: Implement comprehensive error handling for gateway unavailability with graceful degradation to BYOK mode when possible.
+### Details:
+Add error handling for gateway unavailability with graceful degradation. Implement clear error messages for authentication failures. Add fallback to BYOK providers when gateway fails (if keys are available). Include network connectivity validation and retry logic. Handle rate limiting and quota exceeded scenarios.
+
+## 6. Ensure Backward Compatibility and Migration [pending]
+### Dependencies: 92.1, 92.2, 92.3, 92.4, 92.5
+### Description: Ensure seamless backward compatibility for existing TaskMaster installations and provide smooth migration path to hosted mode.
+### Details:
+Default to BYOK mode for existing installations without mode config. Preserve all existing AI provider functionality. Ensure seamless migration path for current users. Maintain existing command interfaces and outputs. Add migration utility for users wanting to switch modes. Test with existing .taskmasterconfig files.
+

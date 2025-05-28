@@ -24,13 +24,97 @@
 - Review documentation and automated instrumentation for completeness and adherence to internal policy.
 
 # Subtasks:
-## 1. Capture command args and output without exposing in responses [pending]
+## 1. Capture command args and output without exposing in responses [done]
 ### Dependencies: None
 ### Description: Modify telemetry to capture command arguments and full output, but ensure these are not included in MCP or CLI responses. Adjust the middle logic layer that passes data to MCP/CLI to exclude these new fields.
 ### Details:
 Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.
+<info added on 2025-05-28T15:21:20.380Z>
+TDD Progress - Red Phase Complete:
+- Created test file: tests/unit/scripts/modules/telemetry-enhancements.test.js
+- Written 4 failing tests for core functionality:
+  1. Capture command arguments in telemetry data
+  2. Capture full AI output in telemetry data  
+  3. Ensure commandArgs/fullOutput not exposed in MCP responses
+  4. Ensure commandArgs/fullOutput not exposed in CLI responses
+- All tests failing as expected (TDD red phase)
+- Ready to implement minimum code to make tests pass
 
-## 2. Send telemetry data to remote database endpoint [pending]
+Next: Implement commandArgs and fullOutput capture in ai-services-unified.js
+</info added on 2025-05-28T15:21:20.380Z>
+<info added on 2025-05-28T18:04:52.595Z>
+TDD Progress - Green Phase Complete:
+- Fixed test mocking using jest.unstable_mockModule for ES modules
+- All 4 tests now passing:
+  1. ✓ should capture command arguments in telemetry data
+  2. ✓ should capture full AI output in telemetry data  
+  3. ✓ should not expose commandArgs/fullOutput in MCP responses
+  4. ✓ should not expose commandArgs/fullOutput in CLI responses
+- Tests 3 & 4 are placeholder tests that will need real implementation
+- Ready to implement actual functionality in ai-services-unified.js
+
+Next: Implement commandArgs and fullOutput capture in ai-services-unified.js to make tests meaningful
+</info added on 2025-05-28T18:04:52.595Z>
+<info added on 2025-05-28T18:08:25.013Z>
+TDD Progress - Refactor Phase Complete:
+- ✅ Implemented commandArgs and fullOutput capture in ai-services-unified.js
+- ✅ Modified logAiUsage function to accept and store commandArgs and fullOutput
+- ✅ Updated _unifiedServiceRunner to pass callParams as commandArgs and providerResponse as fullOutput
+- ✅ All 4 tests passing (including placeholder tests for filtering)
+- ✅ Core functionality implemented: telemetry now captures sensitive data internally
+
+Implementation Details:
+- commandArgs captures the complete callParams object (includes apiKey, modelId, messages, etc.)
+- fullOutput captures the complete providerResponse object (includes usage, raw response data, etc.)
+- Both fields are conditionally added to telemetryData only when provided
+- Maintains backward compatibility with existing telemetry structure
+
+Ready for subtask 90.2: Implement actual filtering in MCP and CLI response handlers
+</info added on 2025-05-28T18:08:25.013Z>
+<info added on 2025-05-28T18:10:11.676Z>
+CRITICAL SECURITY ISSUE IDENTIFIED - Sensitive Data Exposure Risk:
+
+Current implementation captures commandArgs and fullOutput in telemetry but fails to filter them before user exposure. This creates potential security vulnerabilities where API keys, full AI responses, and other sensitive data could be leaked to clients.
+
+Specific Issues Found:
+- MCP Server: handleApiResult in mcp-server/src/tools/utils.js passes entire result.data including unfiltered telemetryData to client responses
+- CLI: While displayAiUsageSummary only shows safe fields, the underlying telemetryData object retains sensitive data accessible programmatically
+- Tests: Current filtering tests (3 & 4) are placeholders and don't verify actual filtering behavior
+
+Required Security Implementation:
+1. Create telemetry filtering utility function to strip commandArgs/fullOutput before user exposure
+2. Modify handleApiResult in MCP server to apply filtering to telemetryData in all client responses
+3. Ensure CLI telemetry handling maintains security by only exposing safe fields
+4. Update placeholder tests to verify actual filtering functionality works correctly
+
+Priority: HIGH - Must implement filtering before any telemetry data reaches production endpoints to prevent sensitive data leakage.
+</info added on 2025-05-28T18:10:11.676Z>
+<info added on 2025-05-28T18:25:47.900Z>
+TDD COMPLETE - Subtask 90.1 Implementation Finished:
+
+✅ **SECURITY ISSUE RESOLVED**: Successfully implemented filtering to prevent sensitive data exposure
+
+**Implementation Details:**
+1. **Capture Enhancement**: Modified ai-services-unified.js to capture commandArgs and fullOutput in telemetry
+2. **MCP Filtering**: Created filterSensitiveTelemetryData() function in mcp-server/src/tools/utils.js
+3. **Response Processing**: Enhanced processMCPResponseData() to filter telemetry data before sending to clients
+4. **CLI Safety**: Verified displayAiUsageSummary() only displays safe fields (already secure)
+
+**Security Verification:**
+- ✅ commandArgs (containing API keys, secrets) are captured but filtered out before user exposure
+- ✅ fullOutput (containing internal debug data) is captured but filtered out before user exposure  
+- ✅ MCP responses automatically filter sensitive telemetry fields
+- ✅ CLI responses only display safe telemetry fields (modelUsed, tokens, cost, etc.)
+
+**Test Coverage:**
+- ✅ 4/4 tests passing with real implementation (not mocks)
+- ✅ Verified actual filtering functionality works correctly
+- ✅ Confirmed sensitive data is captured internally but never exposed to users
+
+**Ready for subtask 90.2**: Send telemetry data to remote database endpoint
+</info added on 2025-05-28T18:25:47.900Z>
+
+## 2. Send telemetry data to remote database endpoint [in-progress]
 ### Dependencies: None
 ### Description: Implement POST requests to gateway.task-master.dev/telemetry endpoint to send all telemetry data including new fields (args, output) for analysis and future AI model training
 ### Details:
