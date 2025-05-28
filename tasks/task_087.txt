@@ -1,0 +1,56 @@
+# Task ID: 87
+# Title: Implement Comprehensive Telemetry Improvements for Task Master
+# Status: pending
+# Dependencies: 2, 3, 17
+# Priority: high
+# Description: Enhance Task Master with robust telemetry capabilities, including secure capture of command arguments and outputs, remote telemetry submission, DAU and active user tracking, extension to non-AI commands, and opt-out preferences during initialization.
+# Details:
+1. Instrument all CLI commands (including non-AI commands) to capture execution metadata, command arguments, and outputs, ensuring that sensitive data is never exposed in user-facing responses or logs. Use in-memory redaction and encryption techniques to protect sensitive information before transmission.
+2. Implement a telemetry client that securely sends anonymized and aggregated telemetry data to the remote endpoint (gateway.task-master.dev/telemetry) using HTTPS/TLS. Ensure data is encrypted in transit and at rest, following best practices for privacy and compliance.
+3. Track daily active users (DAU) and active user sessions by generating anonymized user/session identifiers, and aggregate usage metrics to analyze user patterns and feature adoption.
+4. Extend telemetry instrumentation to all command types, not just AI-powered commands, ensuring consistent and comprehensive observability across the application.
+5. During Task Master initialization, prompt users with clear opt-out options for telemetry collection, store their preferences securely, and respect these settings throughout the application lifecycle.
+6. Design telemetry payloads to support future analysis of user patterns, operational costs, and to provide data for potential custom AI model training, while maintaining strict privacy standards.
+7. Document the internal instrumentation policy, including guidelines for data collection, aggregation, and export, and automate as much of the instrumentation as possible to ensure consistency and minimize manual errors.
+8. Ensure minimal performance impact by implementing efficient sampling, aggregation, and rate limiting strategies within the telemetry pipeline.
+
+# Test Strategy:
+- Verify that all command executions (including non-AI commands) generate appropriate telemetry events without exposing sensitive data in logs or responses.
+- Confirm that telemetry data is securely transmitted to the remote endpoint using encrypted channels, and that data at rest is also encrypted.
+- Test DAU and active user tracking by simulating multiple user sessions and verifying correct aggregation and anonymization.
+- Validate that users are prompted for telemetry opt-out during initialization, and that their preferences are respected and persisted.
+- Inspect telemetry payloads for completeness, privacy compliance, and suitability for downstream analytics and AI training.
+- Conduct performance testing to ensure telemetry instrumentation does not introduce significant overhead or degrade user experience.
+- Review documentation and automated instrumentation for completeness and adherence to internal policy.
+
+# Subtasks:
+## 1. Capture command args and output without exposing in responses [pending]
+### Dependencies: None
+### Description: Modify telemetry to capture command arguments and full output, but ensure these are not included in MCP or CLI responses. Adjust the middle logic layer that passes data to MCP/CLI to exclude these new fields.
+### Details:
+Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.
+
+## 2. Send telemetry data to remote database endpoint [pending]
+### Dependencies: None
+### Description: Implement POST requests to gateway.task-master.dev/telemetry endpoint to send all telemetry data including new fields (args, output) for analysis and future AI model training
+### Details:
+Create a telemetry submission service that POSTs to gateway.task-master.dev/telemetry. Include all existing telemetry fields plus commandArgs and fullOutput. Implement retry logic and handle failures gracefully without blocking command execution. Respect user opt-out preferences.
+
+## 3. Implement DAU and active user tracking [pending]
+### Dependencies: None
+### Description: Enhance telemetry to track Daily Active Users (DAU) and identify active users through unique user IDs and usage patterns
+### Details:
+Ensure userId generation is consistent and persistent. Track command execution timestamps to calculate DAU. Include session tracking to understand user engagement patterns. Add fields for tracking unique daily users, command frequency, and session duration.
+
+## 4. Extend telemetry to non-AI commands [pending]
+### Dependencies: None
+### Description: Implement telemetry collection for all Task Master commands, not just AI-powered ones, to get complete usage analytics
+### Details:
+Create a unified telemetry collection mechanism for all commands in commands.js. Track command name, execution time, success/failure status, and basic metrics. Ensure non-AI commands generate appropriate telemetry without AI-specific fields like tokens or costs.
+
+## 5. Add opt-out data collection prompt to init command [pending]
+### Dependencies: None
+### Description: Modify init.js to prompt users about telemetry opt-out with default as 'yes' to data collection, storing preference in .taskmasterconfig
+### Details:
+Add a prompt during task-master init that asks users if they want to opt-out of telemetry (default: no/continue with telemetry). Store the preference as 'telemetryOptOut: boolean' in .taskmasterconfig. Ensure all telemetry collection respects this setting. Include clear explanation of what data is collected and why.
+
