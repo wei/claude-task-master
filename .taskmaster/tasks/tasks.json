@@ -2374,10 +2374,7 @@
           "id": 9,
           "title": "Extend GitHub URL parsing for Issues and Discussions",
           "description": "Enhance URL parsing to support both GitHub Issues and Discussions with automatic type detection.",
-          "dependencies": [
-            2,
-            8
-          ],
+          "dependencies": [2, 8],
           "details": "Extend existing URL parser to handle GitHub Discussions URLs. Implement automatic detection of content type (issue vs discussion). Update validation logic for both content types. Ensure consistent data extraction for owner, repo, and content ID regardless of type.",
           "status": "pending"
         },
@@ -2385,10 +2382,7 @@
           "id": 10,
           "title": "Implement comprehensive GitHub API client",
           "description": "Create enhanced GitHub API client supporting both Issues and Discussions APIs with complete content fetching.",
-          "dependencies": [
-            3,
-            9
-          ],
+          "dependencies": [3, 9],
           "details": "Extend existing API client to support GitHub Discussions API. Implement complete content fetching including all comments and replies. Add support for GITHUB_API_KEY environment variable. Handle threaded discussions and comment hierarchies. Implement robust error handling and rate limiting for both API types.",
           "status": "pending"
         },
@@ -2396,9 +2390,7 @@
           "id": 11,
           "title": "Integrate ContextGatherer for LLM-powered analysis",
           "description": "Integrate with existing ContextGatherer.js to enable LLM-powered analysis of GitHub content.",
-          "dependencies": [
-            10
-          ],
+          "dependencies": [10],
           "details": "Adapt ContextGatherer.js to work with GitHub content as input source. Create GitHub-specific context gathering strategies. Implement content preprocessing for optimal LLM analysis. Add project component identification for GitHub discussions. Create prompts for task generation from GitHub content.",
           "status": "pending"
         },
@@ -2406,9 +2398,7 @@
           "id": 12,
           "title": "Implement LLM-powered task generation",
           "description": "Create the core LLM integration that analyzes GitHub content and generates comprehensive tasks with subtasks.",
-          "dependencies": [
-            11
-          ],
+          "dependencies": [11],
           "details": "Design LLM prompts for task generation from GitHub content. Implement automatic subtask creation from complex discussions. Add priority and dependency inference based on content analysis. Create test strategy generation from technical discussions. Implement quality validation for LLM-generated content. Add fallback mechanisms for LLM failures.",
           "status": "pending"
         },
@@ -2416,10 +2406,7 @@
           "id": 13,
           "title": "Enhance metadata system for rich import context",
           "description": "Extend the metadata schema to store comprehensive import context and enable advanced features.",
-          "dependencies": [
-            6,
-            12
-          ],
+          "dependencies": [6, 12],
           "details": "Extend existing metadata schema with import-specific fields. Add source platform, import timestamp, and LLM model tracking. Implement content hash storage for change detection. Store participant information and discussion context. Add support for custom metadata per platform type. Ensure backward compatibility with existing export feature metadata.",
           "status": "pending"
         },
@@ -2427,11 +2414,7 @@
           "id": 14,
           "title": "Implement import_task command interface",
           "description": "Create the user-facing command interface for the new import_task system with GitHub support.",
-          "dependencies": [
-            8,
-            12,
-            13
-          ],
+          "dependencies": [8, 12, 13],
           "details": "Implement the main import_task command with GitHub subcommand. Add command-line argument parsing and validation. Create progress indicators for LLM processing. Implement user review and confirmation workflow. Add verbose output options for debugging. Create help documentation and usage examples.",
           "status": "pending"
         },
@@ -2439,9 +2422,7 @@
           "id": 15,
           "title": "Add comprehensive testing and validation",
           "description": "Implement comprehensive testing suite covering all aspects of the LLM-powered import system.",
-          "dependencies": [
-            14
-          ],
+          "dependencies": [14],
           "details": "Create unit tests for all new components. Implement integration tests with real GitHub content. Add LLM response validation and quality tests. Create performance tests for large discussions. Implement end-to-end workflow testing. Add mock data for consistent testing. Test bidirectional compatibility with export feature.",
           "status": "pending"
         }
@@ -5463,9 +5444,7 @@
       "details": "Implement a robust 'export_task' command with the following components:\n\n1. **Command Structure**:\n   - Create a new 'export_task' command with destination-specific subcommands\n   - Initial implementation should focus on GitHub integration\n   - Command syntax: `taskmaster export_task github [options] <task_id>`\n   - Support options for repository selection, issue type, and export configuration\n\n2. **GitHub Issue Creation**:\n   - Convert Task Master tasks into properly formatted GitHub issues\n   - Map task title and description to GitHub issue fields\n   - Convert implementation details and test strategy into well-structured issue body sections\n   - Transform subtasks into GitHub task lists or optionally create separate linked issues\n   - Map Task Master priorities, tags, and assignees to GitHub labels and assignees\n   - Add Task Master metadata as hidden comments for bidirectional linking\n\n3. **GitHub API Integration**:\n   - Implement GitHub API client for issue creation and management\n   - Support authentication via GITHUB_API_KEY environment variable\n   - Handle repository access for both public and private repositories\n   - Implement proper error handling for API failures\n   - Add rate limiting support to prevent API abuse\n   - Support milestone assignment if applicable\n\n4. **Bidirectional Linking**:\n   - Store GitHub issue URL and ID in task metadata\n   - Use consistent metadata schema compatible with the import feature\n   - Implement checks to prevent duplicate exports\n   - Support updating existing GitHub issues if task has been modified\n   - Enable round-trip workflows (export → modify in GitHub → re-import)\n\n5. **Extensible Architecture**:\n   - Design the export system to be platform-agnostic\n   - Create adapter interfaces for different export destinations\n   - Implement the GitHub adapter as the first concrete implementation\n   - Allow for custom export templates and formatting rules\n   - Document extension points for future platforms (GitLab, Linear, Jira, etc.)\n\n6. **Content Formatting**:\n   - Implement smart content conversion from Task Master format to GitHub-optimized format\n   - Handle markdown conversion appropriately\n   - Format code blocks, tables, and other structured content\n   - Add appropriate GitHub-specific references and formatting\n   - Ensure proper rendering of task relationships and dependencies\n\n7. **Configuration and Settings**:\n   - Add export-related configuration to Task Master settings\n   - Support default repositories and export preferences\n   - Allow customization of export templates and formatting\n   - Implement export history tracking\n\n8. **Documentation**:\n   - Create comprehensive documentation for the export feature\n   - Include examples and best practices\n   - Document the bidirectional workflow with import feature",
       "testStrategy": "1. **Unit Tests**:\n   - Create unit tests for each component of the export system\n   - Test GitHub API client with mock responses\n   - Verify correct task-to-issue conversion logic\n   - Test bidirectional linking metadata handling\n   - Validate error handling and edge cases\n\n2. **Integration Tests**:\n   - Test end-to-end export workflow with test GitHub repository\n   - Verify created GitHub issues match expected format and content\n   - Test round-trip workflow (export → import) to ensure data integrity\n   - Validate behavior with various task types and structures\n   - Test with both simple and complex tasks with subtasks\n\n3. **Manual Testing Checklist**:\n   - Export a simple task and verify all fields are correctly mapped\n   - Export a complex task with subtasks and verify correct representation\n   - Test exporting to different repositories and with different user permissions\n   - Verify error messages are clear and helpful\n   - Test updating an already-exported task\n   - Verify bidirectional linking works correctly\n   - Test the round-trip workflow with modifications in GitHub\n\n4. **Edge Case Testing**:\n   - Test with missing GitHub credentials\n   - Test with invalid repository names\n   - Test with rate-limited API responses\n   - Test with very large tasks and content\n   - Test with special characters and formatting in task content\n   - Verify behavior when GitHub is unreachable\n\n5. **Performance Testing**:\n   - Measure export time for different task sizes\n   - Test batch export of multiple tasks\n   - Verify system handles GitHub API rate limits appropriately",
       "status": "pending",
-      "dependencies": [
-        45
-      ],
+      "dependencies": [45],
       "priority": "high",
       "subtasks": [
         {
@@ -5488,9 +5467,7 @@
           "id": 3,
           "title": "Implement Authentication System",
           "description": "Build a secure authentication system for GitHub API access",
-          "dependencies": [
-            2
-          ],
+          "dependencies": [2],
           "details": "Develop authentication flows supporting personal access tokens, OAuth, and GitHub Apps. Implement secure credential storage with appropriate encryption. Create comprehensive error handling for authentication failures, token expiration, and permission issues with clear user feedback.",
           "status": "pending"
         },
@@ -5498,10 +5475,7 @@
           "id": 4,
           "title": "Create Task-to-Issue Mapping Logic",
           "description": "Develop the core logic for mapping GitHub issues to task structures",
-          "dependencies": [
-            2,
-            3
-          ],
+          "dependencies": [2, 3],
           "details": "Implement data models and transformation logic to convert GitHub issues into structured task objects. Handle relationships between issues including parent-child relationships, dependencies, and linked issues. Support task lists within issue bodies and map them to subtasks with appropriate status tracking.",
           "status": "pending"
         },
@@ -5509,9 +5483,7 @@
           "id": 5,
           "title": "Build Content Formatting Engine",
           "description": "Create a system for formatting and converting issue content",
-          "dependencies": [
-            4
-          ],
+          "dependencies": [4],
           "details": "Develop a markdown processing engine that handles GitHub Flavored Markdown. Implement converters for transforming content to various formats (plain text, HTML, etc.). Create utilities for handling embedded images, code blocks, and other rich content elements while preserving formatting integrity.",
           "status": "pending"
         },
@@ -5519,10 +5491,7 @@
           "id": 6,
           "title": "Implement Bidirectional Linking System",
           "description": "Develop mechanisms for maintaining bidirectional links between exported data and GitHub",
-          "dependencies": [
-            4,
-            5
-          ],
+          "dependencies": [4, 5],
           "details": "Create a reference system that maintains links between exported tasks and their source GitHub issues. Implement metadata preservation to enable round-trip workflows. Design a change tracking system to support future synchronization capabilities between exported data and GitHub.",
           "status": "pending"
         },
@@ -5530,11 +5499,7 @@
           "id": 7,
           "title": "Design Extensible Architecture",
           "description": "Create an adapter-based architecture for supporting multiple export formats and destinations",
-          "dependencies": [
-            4,
-            5,
-            6
-          ],
+          "dependencies": [4, 5, 6],
           "details": "Implement a plugin architecture with adapter interfaces for different output formats (JSON, CSV, XLSX) and destinations (file system, cloud storage, third-party tools). Create a registry system for dynamically loading adapters. Design clean separation between core logic and format-specific implementations.",
           "status": "pending"
         },
@@ -5542,10 +5507,7 @@
           "id": 8,
           "title": "Develop Configuration Management",
           "description": "Build a robust system for managing user configurations and preferences",
-          "dependencies": [
-            1,
-            7
-          ],
+          "dependencies": [1, 7],
           "details": "Implement configuration file handling with support for multiple locations (global, project-specific). Create a settings management system with validation and defaults. Support environment variable overrides and command-line parameter precedence. Include migration paths for configuration format changes.",
           "status": "pending"
         },
@@ -5553,11 +5515,7 @@
           "id": 9,
           "title": "Create Comprehensive Documentation",
           "description": "Develop detailed documentation for users and contributors",
-          "dependencies": [
-            1,
-            7,
-            8
-          ],
+          "dependencies": [1, 7, 8],
           "details": "Write user-facing documentation including installation guides, command references, and usage examples. Create developer documentation covering architecture, extension points, and contribution guidelines. Implement automated documentation generation from code comments. Prepare tutorials for common use cases and integration scenarios.",
           "status": "pending"
         },
@@ -5565,18 +5523,235 @@
           "id": 10,
           "title": "Implement Testing Framework",
           "description": "Develop a comprehensive testing strategy and implementation",
-          "dependencies": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8
-          ],
+          "dependencies": [1, 2, 3, 4, 5, 6, 7, 8],
           "details": "Create unit tests for all core components with high coverage targets. Implement integration tests for GitHub API interactions using mocks and fixtures. Design end-to-end tests for complete workflows. Develop performance tests for large repositories and stress testing. Create a test suite for edge cases including rate limiting, network failures, and malformed data.",
           "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "title": "Task Master Gateway Integration",
+      "description": "Integrate Task Master with premium gateway services for enhanced testing and git workflow capabilities",
+      "details": "Add gateway integration to Task Master (open source) that enables users to access premium AI-powered test generation, TDD orchestration, and smart git workflows through API key authentication. Maintains local file operations while leveraging remote AI intelligence.",
+      "testStrategy": "",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Add gateway integration foundation",
+          "description": "Create base infrastructure for connecting to premium gateway services",
+          "details": "Implement configuration management for API keys, endpoint URLs, and feature flags. Create HTTP client wrapper with authentication, error handling, and retry logic.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 2,
+          "title": "Implement test-gen command",
+          "description": "Add test generation command that uses gateway API",
+          "details": "Create command that gathers local context (code, tasks, patterns), sends to gateway API for intelligent test generation, then writes generated tests to local filesystem with proper structure.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 3,
+          "title": "Create TDD workflow command",
+          "description": "Implement TDD orchestration for red-green-refactor cycle",
+          "details": "Build TDD state machine that manages test phases, integrates with test watchers, and provides real-time feedback during development cycles.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 4,
+          "title": "Add git-flow command",
+          "description": "Implement automated git workflow with smart commits",
+          "details": "Create git workflow automation including branch management, smart commit message generation via gateway API, and PR creation with comprehensive descriptions.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 5,
+          "title": "Enhance task structure for testing metadata",
+          "description": "Extend task schema to support test and git information",
+          "details": "Add fields for test files, coverage data, git branches, commit history, and TDD phase tracking to task structure.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 6,
+          "title": "Add MCP tools for test-gen and TDD commands",
+          "description": "Create MCP tool interfaces for IDE integration",
+          "details": "Implement MCP tools that expose test generation and TDD workflow commands to IDEs like Cursor, enabling seamless integration with development environment.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 7,
+          "title": "Create test pattern detection for existing codebase",
+          "description": "Analyze existing tests to learn project patterns",
+          "details": "Implement pattern detection that analyzes existing test files to understand project conventions, naming patterns, and testing approaches for consistency.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 8,
+          "title": "Add coverage analysis integration",
+          "description": "Integrate with coverage tools and provide insights",
+          "details": "Connect with Jest, NYC, and other coverage tools to analyze test coverage, identify gaps, and suggest improvements through gateway API.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 9,
+          "title": "Implement test watcher with phase transitions",
+          "description": "Create intelligent test watcher for TDD automation",
+          "details": "Build test watcher that monitors test results and automatically transitions between TDD phases (red/green/refactor) based on test outcomes.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        },
+        {
+          "id": 10,
+          "title": "Add fallback mode when gateway is unavailable",
+          "description": "Ensure Task Master works without gateway access",
+          "details": "Implement graceful degradation when gateway API is unavailable, falling back to local AI models or basic functionality while maintaining core Task Master features.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 87
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "title": "Implement Google Vertex AI Provider Integration",
+      "description": "Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.",
+      "details": "1. Create a new provider class in `src/ai-providers/google-vertex.js` that extends the existing BaseAIProvider, following the established structure used by other providers (e.g., google.js, openai.js).\n2. Integrate the Vercel AI SDK's `@ai-sdk/google-vertex` package. Use the default `vertex` provider for standard usage, and allow for custom configuration via `createVertex` for advanced scenarios (e.g., specifying project ID, location, and credentials).\n3. Implement all required interface methods (such as `getClient`, `generateText`, etc.) to ensure compatibility with the provider system. Reference the implementation patterns from other providers for consistency.\n4. Handle Vertex AI-specific configuration, including project ID, location, and Google Cloud authentication. Support both environment-based authentication and explicit service account credentials via `googleAuthOptions`.\n5. Implement robust error handling for Vertex-specific issues, including authentication failures and API errors, leveraging the system-wide error handling patterns.\n6. Update `src/ai-providers/index.js` to export the new provider, and add the 'vertex' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`.\n7. Update documentation to provide clear setup instructions for Google Vertex AI, including required environment variables, service account setup, and configuration examples.\n8. Ensure the implementation is modular and maintainable, supporting future expansion for additional Vertex AI features or models.",
+      "testStrategy": "- Write unit tests for the new provider class, covering all interface methods and configuration scenarios (default, custom, error cases).\n- Verify that the provider can successfully authenticate using both environment-based and explicit service account credentials.\n- Test integration with the provider system by selecting 'vertex' as the provider and generating text using supported Vertex AI models (e.g., Gemini).\n- Simulate authentication and API errors to confirm robust error handling and user feedback.\n- Confirm that the provider is correctly exported and available in the PROVIDERS object.\n- Review and validate the updated documentation for accuracy and completeness.",
+      "status": "pending",
+      "dependencies": [19, 89],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Google Vertex AI Provider Class",
+          "description": "Develop a new provider class in `src/ai-providers/google-vertex.js` that extends the BaseAIProvider, following the structure of existing providers.",
+          "dependencies": [],
+          "details": "Ensure the new class is consistent with the architecture of other providers such as google.js and openai.js, and is ready to integrate with the AI SDK.",
+          "status": "pending",
+          "testStrategy": "Verify the class structure matches other providers and can be instantiated without errors.",
+          "parentTaskId": 88
+        },
+        {
+          "id": 2,
+          "title": "Integrate Vercel AI SDK Google Vertex Package",
+          "description": "Integrate the `@ai-sdk/google-vertex` package, supporting both the default provider and custom configuration via `createVertex`.",
+          "dependencies": [1],
+          "details": "Allow for standard usage with the default `vertex` provider and advanced scenarios using `createVertex` for custom project ID, location, and credentials as per SDK documentation.",
+          "status": "pending",
+          "testStrategy": "Write unit tests to ensure both default and custom provider instances can be created and configured.",
+          "parentTaskId": 88
+        },
+        {
+          "id": 3,
+          "title": "Implement Provider Interface Methods",
+          "description": "Implement all required interface methods (e.g., `getClient`, `generateText`) to ensure compatibility with the provider system.",
+          "dependencies": [2],
+          "details": "Reference implementation patterns from other providers to maintain consistency and ensure all required methods are present and functional.",
+          "status": "pending",
+          "testStrategy": "Run integration tests to confirm the provider responds correctly to all interface method calls.",
+          "parentTaskId": 88
+        },
+        {
+          "id": 4,
+          "title": "Handle Vertex AI Configuration and Authentication",
+          "description": "Implement support for Vertex AI-specific configuration, including project ID, location, and authentication via environment variables or explicit service account credentials.",
+          "dependencies": [3],
+          "details": "Support both environment-based authentication and explicit credentials using `googleAuthOptions`, following Google Cloud and Vertex AI setup best practices.",
+          "status": "pending",
+          "testStrategy": "Test with both environment variable-based and explicit service account authentication to ensure both methods work as expected.",
+          "parentTaskId": 88
+        },
+        {
+          "id": 5,
+          "title": "Update Exports, Documentation, and Error Handling",
+          "description": "Export the new provider, update the PROVIDERS object, and document setup instructions, including robust error handling for Vertex-specific issues.",
+          "dependencies": [4],
+          "details": "Update `src/ai-providers/index.js` and `scripts/modules/ai-services-unified.js`, and provide clear documentation for setup, configuration, and error handling patterns.",
+          "status": "pending",
+          "testStrategy": "Verify the provider is available for import, documentation is accurate, and error handling works by simulating common failure scenarios.",
+          "parentTaskId": 88
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "title": "Implement Azure OpenAI Provider Integration",
+      "description": "Create a comprehensive Azure OpenAI provider implementation that integrates with the existing AI provider system, enabling users to leverage Azure-hosted OpenAI models through proper authentication and configuration.",
+      "details": "Implement the Azure OpenAI provider following the established provider pattern:\n\n1. **Create Azure Provider Class** (`src/ai-providers/azure.js`):\n   - Extend BaseAIProvider class following the same pattern as openai.js and google.js\n   - Import and use `createAzureOpenAI` from `@ai-sdk/azure` package\n   - Implement required interface methods: `getClient()`, `validateConfig()`, and any other abstract methods\n   - Handle Azure-specific configuration: endpoint URL, API key, and deployment name\n   - Add proper error handling for missing or invalid Azure configuration\n\n2. **Configuration Management**:\n   - Support environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n   - Validate that both endpoint and API key are provided\n   - Provide clear error messages for configuration issues\n   - Follow the same configuration pattern as other providers\n\n3. **Integration Updates**:\n   - Update `src/ai-providers/index.js` to export the new AzureProvider\n   - Add 'azure' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`\n   - Ensure the provider is properly registered and accessible through the unified AI services\n\n4. **Error Handling**:\n   - Implement Azure-specific error handling for authentication failures\n   - Handle endpoint connectivity issues with helpful error messages\n   - Validate deployment name and provide guidance for common configuration mistakes\n   - Follow the established error handling patterns from Task 19\n\n5. **Documentation Updates**:\n   - Update any provider documentation to include Azure OpenAI setup instructions\n   - Add configuration examples for Azure OpenAI environment variables\n   - Include troubleshooting guidance for common Azure-specific issues\n\nThe implementation should maintain consistency with existing provider implementations while handling Azure's unique authentication and endpoint requirements.",
+      "testStrategy": "Verify the Azure OpenAI provider implementation through comprehensive testing:\n\n1. **Unit Testing**:\n   - Test provider class instantiation and configuration validation\n   - Verify getClient() method returns properly configured Azure OpenAI client\n   - Test error handling for missing/invalid configuration parameters\n   - Validate that the provider correctly extends BaseAIProvider\n\n2. **Integration Testing**:\n   - Test provider registration in the unified AI services system\n   - Verify the provider appears in the PROVIDERS object and is accessible\n   - Test end-to-end functionality with valid Azure OpenAI credentials\n   - Validate that the provider works with existing AI operation workflows\n\n3. **Configuration Testing**:\n   - Test with various environment variable combinations\n   - Verify proper error messages for missing endpoint or API key\n   - Test with invalid endpoint URLs and ensure graceful error handling\n   - Validate deployment name handling and error reporting\n\n4. **Manual Verification**:\n   - Set up test Azure OpenAI credentials and verify successful connection\n   - Test actual AI operations (like task expansion) using the Azure provider\n   - Verify that the provider selection works correctly in the CLI\n   - Confirm that error messages are helpful and actionable for users\n\n5. **Documentation Verification**:\n   - Ensure all configuration examples work as documented\n   - Verify that setup instructions are complete and accurate\n   - Test troubleshooting guidance with common error scenarios",
+      "status": "done",
+      "dependencies": [19, 26],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Azure Provider Class",
+          "description": "Implement the AzureProvider class that extends BaseAIProvider to handle Azure OpenAI integration",
+          "dependencies": [],
+          "details": "Create the AzureProvider class in src/ai-providers/azure.js that extends BaseAIProvider. Import createAzureOpenAI from @ai-sdk/azure package. Implement required interface methods including getClient() and validateConfig(). Handle Azure-specific configuration parameters: endpoint URL, API key, and deployment name. Follow the established pattern in openai.js and google.js. Ensure proper error handling for missing or invalid configuration.",
+          "status": "done",
+          "testStrategy": "Create unit tests that verify the AzureProvider class correctly initializes with valid configuration and throws appropriate errors with invalid configuration. Test the getClient() method returns a properly configured client instance.",
+          "parentTaskId": 89
+        },
+        {
+          "id": 2,
+          "title": "Implement Configuration Management",
+          "description": "Add support for Azure OpenAI environment variables and configuration validation",
+          "dependencies": [1],
+          "details": "Implement configuration management for Azure OpenAI provider that supports environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT. Add validation logic to ensure both endpoint and API key are provided. Create clear error messages for configuration issues. Follow the same configuration pattern as implemented in other providers. Ensure the validateConfig() method properly checks all required Azure configuration parameters.",
+          "status": "done",
+          "testStrategy": "Test configuration validation with various combinations of missing or invalid parameters. Verify environment variables are correctly loaded and applied to the provider configuration.",
+          "parentTaskId": 89
+        },
+        {
+          "id": 3,
+          "title": "Update Provider Integration",
+          "description": "Integrate the Azure provider into the existing AI provider system",
+          "dependencies": [1, 2],
+          "details": "Update src/ai-providers/index.js to export the new AzureProvider class. Add 'azure' entry to the PROVIDERS object in scripts/modules/ai-services-unified.js. Ensure the provider is properly registered and accessible through the unified AI services. Test that the provider can be instantiated and used through the provider selection mechanism. Follow the same integration pattern used for existing providers.",
+          "status": "done",
+          "testStrategy": "Create integration tests that verify the Azure provider is correctly registered and can be selected through the provider system. Test that the provider is properly initialized when selected.",
+          "parentTaskId": 89
+        },
+        {
+          "id": 4,
+          "title": "Implement Azure-Specific Error Handling",
+          "description": "Add specialized error handling for Azure OpenAI-specific issues",
+          "dependencies": [1, 2],
+          "details": "Implement Azure-specific error handling for authentication failures, endpoint connectivity issues, and deployment name validation. Provide helpful error messages that guide users to resolve common configuration mistakes. Follow the established error handling patterns from Task 19. Create custom error classes if needed for Azure-specific errors. Ensure errors are properly propagated and formatted for user display.",
+          "status": "done",
+          "testStrategy": "Test error handling by simulating various failure scenarios including authentication failures, invalid endpoints, and missing deployment names. Verify appropriate error messages are generated.",
+          "parentTaskId": 89
+        },
+        {
+          "id": 5,
+          "title": "Update Documentation",
+          "description": "Create comprehensive documentation for the Azure OpenAI provider integration",
+          "dependencies": [1, 2, 3, 4],
+          "details": "Update provider documentation to include Azure OpenAI setup instructions. Add configuration examples for Azure OpenAI environment variables. Include troubleshooting guidance for common Azure-specific issues. Document the required Azure resource creation process with references to Microsoft's documentation. Provide examples of valid configuration settings and explain each required parameter. Include information about Azure OpenAI model deployment requirements.",
+          "status": "done",
+          "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation.",
+          "parentTaskId": 89
         }
       ]
     }
