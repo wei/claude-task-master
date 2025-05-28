@@ -13,7 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON } from './utils.js';
+import { log, readJSON, findProjectRoot } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -77,7 +77,6 @@ import {
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
-import { findProjectRoot } from './utils.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
@@ -157,11 +156,11 @@ async function runInteractiveSetup(projectRoot) {
 	}
 
 	// Helper function to fetch Ollama models (duplicated for CLI context)
-	function fetchOllamaModelsCLI(baseUrl = 'http://localhost:11434/api') {
+	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
 		return new Promise((resolve) => {
 			try {
 				// Parse the base URL to extract hostname, port, and base path
-				const url = new URL(baseUrl);
+				const url = new URL(baseURL);
 				const isHttps = url.protocol === 'https:';
 				const port = url.port || (isHttps ? 443 : 80);
 				const basePath = url.pathname.endsWith('/')
@@ -246,6 +245,11 @@ async function runInteractiveSetup(projectRoot) {
 			value: '__CUSTOM_OLLAMA__'
 		};
 
+		const customBedrockOption = {
+			name: '* Custom Bedrock model', // Add Bedrock custom option
+			value: '__CUSTOM_BEDROCK__'
+		};
+
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
 
@@ -292,6 +296,7 @@ async function runInteractiveSetup(projectRoot) {
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
 		commonPrefix.push(customOllamaOption);
+		commonPrefix.push(customBedrockOption);
 
 		let prefixLength = commonPrefix.length; // Initial prefix length
 
@@ -438,13 +443,13 @@ async function runInteractiveSetup(projectRoot) {
 			modelIdToSet = customId;
 			providerHint = 'ollama';
 			// Get the Ollama base URL from config for this role
-			const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
+			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
 			// Validate against live Ollama list
-			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseUrl);
+			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseURL);
 			if (ollamaModels === null) {
 				console.error(
 					chalk.red(
-						`Error: Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+						`Error: Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 					)
 				);
 				setupSuccess = false;
@@ -457,12 +462,47 @@ async function runInteractiveSetup(projectRoot) {
 				);
 				console.log(
 					chalk.yellow(
-						`You can check available models with: curl ${ollamaBaseUrl}/tags`
+						`You can check available models with: curl ${ollamaBaseURL}/tags`
 					)
 				);
 				setupSuccess = false;
 				return true; // Continue setup, but mark as failed
 			}
+		} else if (selectedValue === '__CUSTOM_BEDROCK__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Bedrock Model ID for the ${role} role (e.g., anthropic.claude-3-sonnet-20240229-v1:0):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'bedrock';
+
+			// Check if AWS environment variables exist
+			if (
+				!process.env.AWS_ACCESS_KEY_ID ||
+				!process.env.AWS_SECRET_ACCESS_KEY
+			) {
+				console.error(
+					chalk.red(
+						`Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
 		} else if (
 			selectedValue &&
 			typeof selectedValue === 'object' &&
@@ -2553,6 +2593,10 @@ ${result.result}
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
+		.option(
+			'--bedrock',
+			'Allow setting a custom Bedrock model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2562,17 +2606,26 @@ Examples:
   $ task-master models --set-research sonar-pro       # Set research model
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
+  $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
-
-			// Validate flags: cannot use both --openrouter and --ollama simultaneously
-			if (options.openrouter && options.ollama) {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+			// Validate flags: cannot use multiple provider flags simultaneously
+			const providerFlags = [
+				options.openrouter,
+				options.ollama,
+				options.bedrock
+			].filter(Boolean).length;
+			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use both --openrouter and --ollama flags simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -2612,7 +2665,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2632,7 +2687,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2654,7 +2711,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
