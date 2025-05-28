@@ -1,4 +1,4 @@
-# Task ID: 88
+# Task ID: 91
 # Title: Integrate Gateway AI Service Mode into ai-services-unified.js
 # Status: pending
 # Dependencies: 2, 3, 17
@@ -32,25 +32,25 @@
 Implement a configuration option that allows users to select between BYOK (Bring Your Own Key) and hosted gateway modes during system initialization. Create appropriate configuration parameters and storage mechanisms to persist this selection. Ensure the configuration is accessible throughout the application, particularly in ai-services-unified.js.
 
 ## 2. Implement gateway mode detection in ai-services-unified.js [pending]
-### Dependencies: 88.1
+### Dependencies: 91.1
 ### Description: Add logic to detect when the hosted gateway mode is active and prepare the system for gateway-specific processing.
 ### Details:
 Modify ai-services-unified.js to check the configuration and determine if the system is operating in gateway mode. Create helper functions to facilitate gateway-specific operations. Ensure this detection happens early in the processing flow to properly route subsequent operations.
 
 ## 3. Refactor AI call flow for gateway integration [pending]
-### Dependencies: 88.2
+### Dependencies: 91.2
 ### Description: Modify the AI call flow to intercept requests and route them to the gateway endpoint when in gateway mode.
 ### Details:
 Refactor the existing AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries methods are called. When gateway mode is active, construct appropriate gateway requests containing the full messages array, modelId, roleParams, and commandName. Implement the routing logic to direct these requests to the gateway endpoint instead of directly to the provider.
 
 ## 4. Implement gateway response handling and telemetry [pending]
-### Dependencies: 88.3
+### Dependencies: 91.3
 ### Description: Develop logic to parse gateway responses, extract AI results, and handle gateway-specific telemetry data.
 ### Details:
 Create functions to parse responses from the gateway, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update the internal telemetry handling system to support both gateway and traditional formats. Ensure all relevant metrics are captured and properly stored.
 
 ## 5. Implement error handling, logging, and documentation [pending]
-### Dependencies: 88.4
+### Dependencies: 91.4
 ### Description: Add comprehensive logging, error handling, and update documentation for the gateway integration.
 ### Details:
 Implement robust error handling and fallback logic for gateway failures. Add detailed logging for gateway interactions, including request/response payloads and credit telemetry, using the existing logging system. Update documentation to describe the new gateway mode, configuration options, and how the system behaves differently when in gateway mode versus BYOK mode. Ensure the command structure and response handling remain compatible with existing provider integrations.
