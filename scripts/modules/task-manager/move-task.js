@@ -236,18 +236,6 @@ async function moveSingleTask(
 				destTask = data.tasks[destTaskIndex];
 			} else {
 				destTask = data.tasks[destTaskIndex];
-
-				// Check if destination task is already a "real" task with content
-				// Only allow moving to destination IDs that don't have meaningful content
-				if (
-					destTask.title !== `Task ${destTask.id}` ||
-					destTask.description !== '' ||
-					destTask.details !== ''
-				) {
-					throw new Error(
-						`Cannot move to task ID ${destIdNum} as it already contains content. Choose a different destination ID.`
-					);
-				}
 			}
 		}
 
@@ -281,24 +269,16 @@ async function moveSingleTask(
 
 		// Handle different move scenarios
 		if (!isSourceSubtask && !isDestinationSubtask) {
-			// Check if destination is a placeholder we just created
-			if (
-				destTask.title === `Task ${destTask.id}` &&
-				destTask.description === '' &&
-				destTask.details === ''
-			) {
-				// Case 0: Move task to a new position/ID (destination is a placeholder)
-				movedTask = moveTaskToNewId(
-					data,
-					sourceTask,
-					sourceTaskIndex,
-					destTask,
-					destTaskIndex
-				);
-			} else {
-				// Case 1: Move standalone task to become a subtask of another task
-				movedTask = moveTaskToTask(data, sourceTask, sourceTaskIndex, destTask);
-			}
+			// Case: Moving task to task position
+			// Always treat this as a task replacement/move to new ID
+			// The destination task will be replaced by the source task
+			movedTask = moveTaskToNewId(
+				data,
+				sourceTask,
+				sourceTaskIndex,
+				destTask,
+				destTaskIndex
+			);
 		} else if (!isSourceSubtask && isDestinationSubtask) {
 			// Case 2: Move standalone task to become a subtask at a specific position
 			movedTask = moveTaskToSubtaskPosition(
@@ -602,7 +582,7 @@ function moveSubtaskToAnotherParent(
  * @param {Object} data - Tasks data object
  * @param {Object} sourceTask - Source task to move
  * @param {number} sourceTaskIndex - Index of source task in data.tasks
- * @param {Object} destTask - Destination placeholder task
+ * @param {Object} destTask - Destination task (will be replaced)
  * @param {number} destTaskIndex - Index of destination task in data.tasks
  * @returns {Object} Moved task object
  */
@@ -632,15 +612,15 @@ function moveTaskToNewId(
 		}));
 	}
 
-	// Update any dependencies in other tasks that referenced the old ID
+	// Update any dependencies in other tasks that referenced the old source ID
 	data.tasks.forEach((task) => {
 		if (task.dependencies && task.dependencies.includes(sourceIdNum)) {
-			// Replace the old ID with the new ID
+			// Replace the old source ID with the new destination ID
 			const depIndex = task.dependencies.indexOf(sourceIdNum);
 			task.dependencies[depIndex] = destIdNum;
 		}
 
-		// Also check for subtask dependencies that might reference this task
+		// Also check for subtask dependencies that might reference the source task
 		if (task.subtasks && task.subtasks.length > 0) {
 			task.subtasks.forEach((subtask) => {
 				if (
@@ -654,22 +634,23 @@ function moveTaskToNewId(
 		}
 	});
 
-	// We need to be careful about the order of operations to avoid index issues
-	// The strategy: remove the source first, then replace the destination
-	// This avoids index shifting problems
+	// Remove tasks in the correct order to avoid index shifting issues
+	// Always remove the higher index first to avoid shifting the lower index
+	if (sourceTaskIndex > destTaskIndex) {
+		// Remove source first (higher index), then destination
+		data.tasks.splice(sourceTaskIndex, 1);
+		data.tasks.splice(destTaskIndex, 1);
+		// Insert the moved task at the destination position
+		data.tasks.splice(destTaskIndex, 0, movedTask);
+	} else {
+		// Remove destination first (higher index), then source
+		data.tasks.splice(destTaskIndex, 1);
+		data.tasks.splice(sourceTaskIndex, 1);
+		// Insert the moved task at the original destination position (now shifted down by 1)
+		data.tasks.splice(sourceTaskIndex, 0, movedTask);
+	}
 
-	// Remove the source task first
-	data.tasks.splice(sourceTaskIndex, 1);
-
-	// Adjust the destination index if the source was before the destination
-	// Since we removed the source, indices after it shift down by 1
-	const adjustedDestIndex =
-		sourceTaskIndex < destTaskIndex ? destTaskIndex - 1 : destTaskIndex;
-
-	// Replace the placeholder destination task with the moved task
-	data.tasks[adjustedDestIndex] = movedTask;
-
-	log('info', `Moved task ${sourceIdNum} to new ID ${destIdNum}`);
+	log('info', `Moved task ${sourceIdNum} to replace task ${destIdNum}`);
 
 	return movedTask;
 }
