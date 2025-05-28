@@ -28,6 +28,32 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 /**
+ * Get telemetry configuration from environment or config
+ * @returns {Object} Configuration object with apiKey, userId, and email
+ */
+function getTelemetryConfig() {
+  // Try environment variables first (for testing)
+  const envApiKey =
+    process.env.GATEWAY_API_KEY || process.env.TELEMETRY_API_KEY;
+  const envUserId =
+    process.env.GATEWAY_USER_ID || process.env.TELEMETRY_USER_ID;
+  const envEmail =
+    process.env.GATEWAY_USER_EMAIL || process.env.TELEMETRY_USER_EMAIL;
+
+  if (envApiKey && envUserId && envEmail) {
+    return { apiKey: envApiKey, userId: envUserId, email: envEmail };
+  }
+
+  // Fall back to config file
+  const config = getConfig();
+  return {
+    apiKey: config?.telemetryApiKey,
+    userId: config?.telemetryUserId,
+    email: config?.telemetryUserEmail,
+  };
+}
+
+/**
  * Submits telemetry data to the remote gateway endpoint
  * @param {Object} telemetryData - The telemetry data to submit
  * @returns {Promise<Object>} - Result object with success status and details
@@ -44,6 +70,20 @@ export async function submitTelemetryData(telemetryData) {
       };
     }
 
+    // Get telemetry configuration
+    const telemetryConfig = getTelemetryConfig();
+    if (
+      !telemetryConfig.apiKey ||
+      !telemetryConfig.userId ||
+      !telemetryConfig.email
+    ) {
+      return {
+        success: false,
+        error:
+          "Telemetry configuration incomplete. Set GATEWAY_API_KEY, GATEWAY_USER_ID, and GATEWAY_USER_EMAIL environment variables or configure in .taskmasterconfig",
+      };
+    }
+
     // Validate telemetry data
     try {
       TelemetryDataSchema.parse(telemetryData);
@@ -54,8 +94,9 @@ export async function submitTelemetryData(telemetryData) {
       };
     }
 
-    // Filter out sensitive fields before submission
+    // Filter out sensitive fields before submission and ensure userId is set
     const { commandArgs, fullOutput, ...safeTelemetryData } = telemetryData;
+    safeTelemetryData.userId = telemetryConfig.userId; // Ensure correct userId
 
     // Attempt submission with retry logic
     let lastError;
@@ -65,6 +106,8 @@ export async function submitTelemetryData(telemetryData) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${telemetryConfig.apiKey}`, // Use Bearer token format
+            "X-User-Email": telemetryConfig.email, // Add required email header
           },
           body: JSON.stringify(safeTelemetryData),
         });
