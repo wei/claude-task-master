@@ -1,0 +1,408 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Test Workflow & Development Process
+
+## **Test-Driven Development (TDD) Integration**
+
+### **Core TDD Cycle with Jest**
+```bash
+# 1. Start development with watch mode
+npm run test:watch
+
+# 2. Write failing test first
+# Create test file: src/utils/newFeature.test.ts
+# Write test that describes expected behavior
+
+# 3. Implement minimum code to make test pass
+# 4. Refactor while keeping tests green
+# 5. Add edge cases and error scenarios
+```
+
+### **TDD Workflow Per Subtask**
+```bash
+# When starting a new subtask:
+task-master set-status --id=4.1 --status=in-progress
+
+# Begin TDD cycle:
+npm run test:watch  # Keep running during development
+
+# Document TDD progress in subtask:
+task-master update-subtask --id=4.1 --prompt="TDD Progress:
+- Written 3 failing tests for core functionality
+- Implemented basic feature, tests now passing
+- Adding edge case tests for error handling"
+
+# Complete subtask with test summary:
+task-master update-subtask --id=4.1 --prompt="Implementation complete:
+- Feature implemented with 8 unit tests
+- Coverage: 95% statements, 88% branches  
+- All tests passing, TDD cycle complete"
+```
+
+## **Testing Commands & Usage**
+
+### **Development Commands**
+```bash
+# Primary development command - use during coding
+npm run test:watch              # Watch mode with Jest
+npm run test:watch -- --testNamePattern="auth"  # Watch specific tests
+
+# Targeted testing during development
+npm run test:unit               # Run only unit tests
+npm run test:unit -- --coverage # Unit tests with coverage
+
+# Integration testing when APIs are ready
+npm run test:integration        # Run integration tests
+npm run test:integration -- --detectOpenHandles  # Debug hanging tests
+
+# End-to-end testing for workflows
+npm run test:e2e               # Run E2E tests
+npm run test:e2e -- --timeout=30000  # Extended timeout for E2E
+```
+
+### **Quality Assurance Commands**
+```bash
+# Full test suite with coverage (before commits)
+npm run test:coverage          # Complete coverage analysis
+
+# All tests (CI/CD pipeline)
+npm test                       # Run all test projects
+
+# Specific test file execution
+npm test -- auth.test.ts       # Run specific test file
+npm test -- --testNamePattern="should handle errors"  # Run specific tests
+```
+
+## **Test Implementation Patterns**
+
+### **Unit Test Development**
+```typescript
+// ✅ DO: Follow established patterns from auth.test.ts
+describe('FeatureName', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Setup mocks with proper typing
+  });
+
+  describe('functionName', () => {
+    it('should handle normal case', () => {
+      // Test implementation with specific assertions
+    });
+    
+    it('should throw error for invalid input', async () => {
+      // Error scenario testing
+      await expect(functionName(invalidInput))
+        .rejects.toThrow('Specific error message');
+    });
+  });
+});
+```
+
+### **Integration Test Development**  
+```typescript
+// ✅ DO: Use supertest for API endpoint testing
+import request from 'supertest';
+import { app } from '../../src/app';
+
+describe('POST /api/auth/register', () => {
+  beforeEach(async () => {
+    await integrationTestUtils.cleanupTestData();
+  });
+  
+  it('should register user successfully', async () => {
+    const userData = createTestUser();
+    
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send(userData)
+      .expect(201);
+      
+    expect(response.body).toMatchObject({
+      id: expect.any(String),
+      email: userData.email
+    });
+    
+    // Verify database state
+    const user = await prisma.user.findUnique({
+      where: { email: userData.email }
+    });
+    expect(user).toBeTruthy();
+  });
+});
+```
+
+### **E2E Test Development**
+```typescript
+// ✅ DO: Test complete user workflows
+describe('User Authentication Flow', () => {
+  it('should complete registration → login → protected access', async () => {
+    // Step 1: Register
+    const userData = createTestUser();
+    await request(app)
+      .post('/api/auth/register')
+      .send(userData)
+      .expect(201);
+    
+    // Step 2: Login
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ email: userData.email, password: userData.password })
+      .expect(200);
+    
+    const { token } = loginResponse.body;
+    
+    // Step 3: Access protected resource
+    await request(app)
+      .get('/api/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+  }, 30000); // Extended timeout for E2E
+});
+```
+
+## **Mocking & Test Utilities**
+
+### **Established Mocking Patterns**
+```typescript
+// ✅ DO: Use established bcrypt mocking pattern
+jest.mock('bcrypt');
+import bcrypt from 'bcrypt';
+const mockHash = bcrypt.hash as jest.MockedFunction<typeof bcrypt.hash>;
+const mockCompare = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
+
+// ✅ DO: Use Prisma mocking for unit tests
+jest.mock('@prisma/client', () => ({
+  PrismaClient: jest.fn().mockImplementation(() => ({
+    user: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+  })),
+}));
+```
+
+### **Test Fixtures Usage**
+```typescript
+// ✅ DO: Use centralized test fixtures
+import { createTestUser, adminUser, invalidUser } from '../fixtures/users';
+
+describe('User Service', () => {
+  it('should handle admin user creation', async () => {
+    const userData = createTestUser(adminUser);
+    // Test implementation
+  });
+  
+  it('should reject invalid user data', async () => {
+    const userData = createTestUser(invalidUser);
+    // Error testing
+  });
+});
+```
+
+## **Coverage Standards & Monitoring**
+
+### **Coverage Thresholds**
+- **Global Standards**: 80% lines/functions, 70% branches
+- **Critical Code**: 90% utils, 85% middleware
+- **New Features**: Must meet or exceed global thresholds
+- **Legacy Code**: Gradual improvement with each change
+
+### **Coverage Reporting & Analysis**
+```bash
+# Generate coverage reports
+npm run test:coverage
+
+# View detailed HTML report
+open coverage/lcov-report/index.html
+
+# Coverage files generated:
+# - coverage/lcov-report/index.html  # Detailed HTML report
+# - coverage/lcov.info               # LCOV format for IDE integration  
+# - coverage/coverage-final.json     # JSON format for tooling
+```
+
+### **Coverage Quality Checks**
+```typescript
+// ✅ DO: Test all code paths
+describe('validateInput', () => {
+  it('should return true for valid input', () => {
+    expect(validateInput('valid')).toBe(true);
+  });
+  
+  it('should return false for various invalid inputs', () => {
+    expect(validateInput('')).toBe(false);      // Empty string
+    expect(validateInput(null)).toBe(false);    // Null value
+    expect(validateInput(undefined)).toBe(false); // Undefined
+  });
+  
+  it('should throw for unexpected input types', () => {
+    expect(() => validateInput(123)).toThrow('Invalid input type');
+  });
+});
+```
+
+## **Testing During Development Phases**
+
+### **Feature Development Phase**
+```bash
+# 1. Start feature development
+task-master set-status --id=X.Y --status=in-progress
+
+# 2. Begin TDD cycle  
+npm run test:watch
+
+# 3. Document test progress in subtask
+task-master update-subtask --id=X.Y --prompt="Test development:
+- Created test file with 5 failing tests
+- Implemented core functionality
+- Tests passing, adding error scenarios"
+
+# 4. Verify coverage before completion
+npm run test:coverage
+
+# 5. Update subtask with final test status
+task-master update-subtask --id=X.Y --prompt="Testing complete:
+- 12 unit tests with full coverage
+- All edge cases and error scenarios covered
+- Ready for integration testing"
+```
+
+### **Integration Testing Phase**
+```bash
+# After API endpoints are implemented
+npm run test:integration
+
+# Update integration test templates
+# Replace placeholder tests with real endpoint calls
+
+# Document integration test results
+task-master update-subtask --id=X.Y --prompt="Integration tests:
+- Updated auth endpoint tests  
+- Database integration verified
+- All HTTP status codes and responses tested"
+```
+
+### **Pre-Commit Testing Phase**
+```bash
+# Before committing code
+npm run test:coverage         # Verify all tests pass with coverage
+npm run test:unit            # Quick unit test verification
+npm run test:integration     # Integration test verification (if applicable)
+
+# Commit pattern for test updates
+git add tests/ src/**/*.test.ts
+git commit -m "test(task-X): Add comprehensive tests for Feature Y
+
+- Unit tests with 95% coverage (exceeds 90% threshold)
+- Integration tests for API endpoints
+- Test fixtures for data generation
+- Proper mocking patterns established
+
+Task X: Feature Y - Testing complete"
+```
+
+## **Error Handling & Debugging**
+
+### **Test Debugging Techniques**
+```typescript
+// ✅ DO: Use test utilities for debugging
+import { testUtils } from '../setup';
+
+it('should debug complex operation', () => {
+  testUtils.withConsole(() => {
+    // Console output visible only for this test
+    console.log('Debug info:', complexData);
+    service.complexOperation();
+  });
+});
+
+// ✅ DO: Use proper async debugging
+it('should handle async operations', async () => {
+  const promise = service.asyncOperation();
+  
+  // Test intermediate state
+  expect(service.isProcessing()).toBe(true);
+  
+  const result = await promise;
+  expect(result).toBe('expected');
+  expect(service.isProcessing()).toBe(false);
+});
+```
+
+### **Common Test Issues & Solutions**
+```bash
+# Hanging tests (common with database connections)
+npm run test:integration -- --detectOpenHandles
+
+# Memory leaks in tests
+npm run test:unit -- --logHeapUsage
+
+# Slow tests identification
+npm run test:coverage -- --verbose
+
+# Mock not working properly
+# Check: mock is declared before imports
+# Check: jest.clearAllMocks() in beforeEach
+# Check: TypeScript typing is correct
+```
+
+## **Continuous Integration Integration**
+
+### **CI/CD Pipeline Testing**
+```yaml
+# Example GitHub Actions integration
+- name: Run tests
+  run: |
+    npm ci
+    npm run test:coverage
+    
+- name: Upload coverage reports
+  uses: codecov/codecov-action@v3
+  with:
+    file: ./coverage/lcov.info
+```
+
+### **Pre-commit Hooks**
+```bash
+# Setup pre-commit testing (recommended)
+# In package.json scripts:
+"pre-commit": "npm run test:unit && npm run test:integration"
+
+# Husky integration example:
+npx husky add .husky/pre-commit "npm run test:unit"
+```
+
+## **Test Maintenance & Evolution**
+
+### **Adding Tests for New Features**
+1. **Create test file** alongside source code or in `tests/unit/`
+2. **Follow established patterns** from `src/utils/auth.test.ts`
+3. **Use existing fixtures** from `tests/fixtures/`
+4. **Apply proper mocking** patterns for dependencies
+5. **Meet coverage thresholds** for the module
+
+### **Updating Integration/E2E Tests**
+1. **Update templates** in `tests/integration/` when APIs change
+2. **Modify E2E workflows** in `tests/e2e/` for new user journeys  
+3. **Update test fixtures** for new data requirements
+4. **Maintain database cleanup** utilities
+
+### **Test Performance Optimization**
+- **Parallel execution**: Jest runs tests in parallel by default
+- **Test isolation**: Use proper setup/teardown for independence
+- **Mock optimization**: Mock heavy dependencies appropriately  
+- **Database efficiency**: Use transaction rollbacks where possible
+
+---
+
+**Key References:**
+- [Testing Standards](mdc:.cursor/rules/tests.mdc)
+- [Git Workflow](mdc:.cursor/rules/git_workflow.mdc)
+- [Development Workflow](mdc:.cursor/rules/dev_workflow.mdc)
+- [Jest Configuration](mdc:jest.config.js)
+- [Auth Test Example](mdc:src/utils/auth.test.ts)

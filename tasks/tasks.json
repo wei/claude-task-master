@@ -5799,7 +5799,7 @@
       "description": "Enhance Task Master with robust telemetry capabilities, including secure capture of command arguments and outputs, remote telemetry submission, DAU and active user tracking, extension to non-AI commands, and opt-out preferences during initialization.",
       "details": "1. Instrument all CLI commands (including non-AI commands) to capture execution metadata, command arguments, and outputs, ensuring that sensitive data is never exposed in user-facing responses or logs. Use in-memory redaction and encryption techniques to protect sensitive information before transmission.\n2. Implement a telemetry client that securely sends anonymized and aggregated telemetry data to the remote endpoint (gateway.task-master.dev/telemetry) using HTTPS/TLS. Ensure data is encrypted in transit and at rest, following best practices for privacy and compliance.\n3. Track daily active users (DAU) and active user sessions by generating anonymized user/session identifiers, and aggregate usage metrics to analyze user patterns and feature adoption.\n4. Extend telemetry instrumentation to all command types, not just AI-powered commands, ensuring consistent and comprehensive observability across the application.\n5. During Task Master initialization, prompt users with clear opt-out options for telemetry collection, store their preferences securely, and respect these settings throughout the application lifecycle.\n6. Design telemetry payloads to support future analysis of user patterns, operational costs, and to provide data for potential custom AI model training, while maintaining strict privacy standards.\n7. Document the internal instrumentation policy, including guidelines for data collection, aggregation, and export, and automate as much of the instrumentation as possible to ensure consistency and minimize manual errors.\n8. Ensure minimal performance impact by implementing efficient sampling, aggregation, and rate limiting strategies within the telemetry pipeline.",
       "testStrategy": "- Verify that all command executions (including non-AI commands) generate appropriate telemetry events without exposing sensitive data in logs or responses.\n- Confirm that telemetry data is securely transmitted to the remote endpoint using encrypted channels, and that data at rest is also encrypted.\n- Test DAU and active user tracking by simulating multiple user sessions and verifying correct aggregation and anonymization.\n- Validate that users are prompted for telemetry opt-out during initialization, and that their preferences are respected and persisted.\n- Inspect telemetry payloads for completeness, privacy compliance, and suitability for downstream analytics and AI training.\n- Conduct performance testing to ensure telemetry instrumentation does not introduce significant overhead or degrade user experience.\n- Review documentation and automated instrumentation for completeness and adherence to internal policy.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         2,
         3,
@@ -5920,6 +5920,108 @@
           "details": "Implement robust error handling and fallback logic for gateway failures. Add detailed logging for gateway interactions, including request/response payloads and credit telemetry, using the existing logging system. Update documentation to describe the new gateway mode, configuration options, and how the system behaves differently when in gateway mode versus BYOK mode. Ensure the command structure and response handling remain compatible with existing provider integrations.",
           "status": "pending",
           "testStrategy": "Test error scenarios by simulating gateway failures and verifying proper fallback behavior. Review logs to ensure appropriate information is captured. Conduct a documentation review to verify completeness and accuracy."
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "title": "Task Master Gateway Integration",
+      "description": "Integrate Task Master with premium gateway services for enhanced testing and git workflow capabilities",
+      "details": "Add gateway integration to Task Master (open source) that enables users to access premium AI-powered test generation, TDD orchestration, and smart git workflows through API key authentication. Maintains local file operations while leveraging remote AI intelligence.",
+      "testStrategy": "",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Add gateway integration foundation",
+          "description": "Create base infrastructure for connecting to premium gateway services",
+          "details": "Implement configuration management for API keys, endpoint URLs, and feature flags. Create HTTP client wrapper with authentication, error handling, and retry logic.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 2,
+          "title": "Implement test-gen command",
+          "description": "Add test generation command that uses gateway API",
+          "details": "Create command that gathers local context (code, tasks, patterns), sends to gateway API for intelligent test generation, then writes generated tests to local filesystem with proper structure.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 3,
+          "title": "Create TDD workflow command",
+          "description": "Implement TDD orchestration for red-green-refactor cycle",
+          "details": "Build TDD state machine that manages test phases, integrates with test watchers, and provides real-time feedback during development cycles.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 4,
+          "title": "Add git-flow command",
+          "description": "Implement automated git workflow with smart commits",
+          "details": "Create git workflow automation including branch management, smart commit message generation via gateway API, and PR creation with comprehensive descriptions.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 5,
+          "title": "Enhance task structure for testing metadata",
+          "description": "Extend task schema to support test and git information",
+          "details": "Add fields for test files, coverage data, git branches, commit history, and TDD phase tracking to task structure.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 6,
+          "title": "Add MCP tools for test-gen and TDD commands",
+          "description": "Create MCP tool interfaces for IDE integration",
+          "details": "Implement MCP tools that expose test generation and TDD workflow commands to IDEs like Cursor, enabling seamless integration with development environment.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 7,
+          "title": "Create test pattern detection for existing codebase",
+          "description": "Analyze existing tests to learn project patterns",
+          "details": "Implement pattern detection that analyzes existing test files to understand project conventions, naming patterns, and testing approaches for consistency.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 8,
+          "title": "Add coverage analysis integration",
+          "description": "Integrate with coverage tools and provide insights",
+          "details": "Connect with Jest, NYC, and other coverage tools to analyze test coverage, identify gaps, and suggest improvements through gateway API.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 9,
+          "title": "Implement test watcher with phase transitions",
+          "description": "Create intelligent test watcher for TDD automation",
+          "details": "Build test watcher that monitors test results and automatically transitions between TDD phases (red/green/refactor) based on test outcomes.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
+        },
+        {
+          "id": 10,
+          "title": "Add fallback mode when gateway is unavailable",
+          "description": "Ensure Task Master works without gateway access",
+          "details": "Implement graceful degradation when gateway API is unavailable, falling back to local AI models or basic functionality while maintaining core Task Master features.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 89
         }
       ]
     }

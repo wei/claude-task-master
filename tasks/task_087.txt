@@ -1,6 +1,6 @@
 # Task ID: 87
 # Title: Implement Comprehensive Telemetry Improvements for Task Master
-# Status: pending
+# Status: in-progress
 # Dependencies: 2, 3, 17
 # Priority: high
 # Description: Enhance Task Master with robust telemetry capabilities, including secure capture of command arguments and outputs, remote telemetry submission, DAU and active user tracking, extension to non-AI commands, and opt-out preferences during initialization.
