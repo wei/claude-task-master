@@ -5794,243 +5794,6 @@
       ]
     },
     {
-      "id": 90,
-      "title": "Implement Comprehensive Telemetry Improvements for Task Master",
-      "description": "Enhance Task Master with robust telemetry capabilities, including secure capture of command arguments and outputs, remote telemetry submission, DAU and active user tracking, extension to non-AI commands, and opt-out preferences during initialization.",
-      "details": "1. Instrument all CLI commands (including non-AI commands) to capture execution metadata, command arguments, and outputs, ensuring that sensitive data is never exposed in user-facing responses or logs. Use in-memory redaction and encryption techniques to protect sensitive information before transmission.\n2. Implement a telemetry client that securely sends anonymized and aggregated telemetry data to the remote endpoint (gateway.task-master.dev/telemetry) using HTTPS/TLS. Ensure data is encrypted in transit and at rest, following best practices for privacy and compliance.\n3. Track daily active users (DAU) and active user sessions by generating anonymized user/session identifiers, and aggregate usage metrics to analyze user patterns and feature adoption.\n4. Extend telemetry instrumentation to all command types, not just AI-powered commands, ensuring consistent and comprehensive observability across the application.\n5. During Task Master initialization, prompt users with clear opt-out options for telemetry collection, store their preferences securely, and respect these settings throughout the application lifecycle.\n6. Design telemetry payloads to support future analysis of user patterns, operational costs, and to provide data for potential custom AI model training, while maintaining strict privacy standards.\n7. Document the internal instrumentation policy, including guidelines for data collection, aggregation, and export, and automate as much of the instrumentation as possible to ensure consistency and minimize manual errors.\n8. Ensure minimal performance impact by implementing efficient sampling, aggregation, and rate limiting strategies within the telemetry pipeline.",
-      "testStrategy": "- Verify that all command executions (including non-AI commands) generate appropriate telemetry events without exposing sensitive data in logs or responses.\n- Confirm that telemetry data is securely transmitted to the remote endpoint using encrypted channels, and that data at rest is also encrypted.\n- Test DAU and active user tracking by simulating multiple user sessions and verifying correct aggregation and anonymization.\n- Validate that users are prompted for telemetry opt-out during initialization, and that their preferences are respected and persisted.\n- Inspect telemetry payloads for completeness, privacy compliance, and suitability for downstream analytics and AI training.\n- Conduct performance testing to ensure telemetry instrumentation does not introduce significant overhead or degrade user experience.\n- Review documentation and automated instrumentation for completeness and adherence to internal policy.",
-      "status": "in-progress",
-      "dependencies": [
-        2,
-        3,
-        17
-      ],
-      "priority": "high",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Capture command args and output without exposing in responses",
-          "description": "Modify telemetry to capture command arguments and full output, but ensure these are not included in MCP or CLI responses. Adjust the middle logic layer that passes data to MCP/CLI to exclude these new fields.",
-          "details": "Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 90
-        },
-        {
-          "id": 2,
-          "title": "Send telemetry data to remote database endpoint",
-          "description": "Implement POST requests to gateway.task-master.dev/telemetry endpoint to send all telemetry data including new fields (args, output) for analysis and future AI model training",
-          "details": "Create a telemetry submission service that POSTs to gateway.task-master.dev/telemetry. Include all existing telemetry fields plus commandArgs and fullOutput. Implement retry logic and handle failures gracefully without blocking command execution. Respect user opt-out preferences.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 90
-        },
-        {
-          "id": 3,
-          "title": "Implement DAU and active user tracking",
-          "description": "Enhance telemetry to track Daily Active Users (DAU) and identify active users through unique user IDs and usage patterns",
-          "details": "Ensure userId generation is consistent and persistent. Track command execution timestamps to calculate DAU. Include session tracking to understand user engagement patterns. Add fields for tracking unique daily users, command frequency, and session duration.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 90
-        },
-        {
-          "id": 4,
-          "title": "Extend telemetry to non-AI commands",
-          "description": "Implement telemetry collection for all Task Master commands, not just AI-powered ones, to get complete usage analytics",
-          "details": "Create a unified telemetry collection mechanism for all commands in commands.js. Track command name, execution time, success/failure status, and basic metrics. Ensure non-AI commands generate appropriate telemetry without AI-specific fields like tokens or costs.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 90
-        },
-        {
-          "id": 5,
-          "title": "Add opt-out data collection prompt to init command",
-          "description": "Modify init.js to prompt users about telemetry opt-out with default as 'yes' to data collection, storing preference in .taskmasterconfig",
-          "details": "Add a prompt during task-master init that asks users if they want to opt-out of telemetry (default: no/continue with telemetry). Store the preference as 'telemetryOptOut: boolean' in .taskmasterconfig. Ensure all telemetry collection respects this setting. Include clear explanation of what data is collected and why.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 90
-        }
-      ]
-    },
-    {
-      "id": 91,
-      "title": "Integrate Gateway AI Service Mode into ai-services-unified.js",
-      "description": "Implement support for a hosted AI gateway service in Task Master, allowing users to select between BYOK and hosted gateway modes during initialization. Ensure gateway integration intercepts and routes AI calls appropriately, handles gateway-specific telemetry, and maintains compatibility with existing command structures.",
-      "details": "1. Update the initialization logic to allow users to select between BYOK (Bring Your Own Key) and hosted gateway service modes, storing the selection in the configuration system.\n2. In ai-services-unified.js, detect when the hosted gateway mode is active.\n3. Refactor the AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries. When in gateway mode, route calls to the gateway endpoint instead of directly to the provider.\n4. Construct gateway requests with the full messages array, modelId, roleParams, and commandName, ensuring all required data is passed.\n5. Parse gateway responses, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update internal telemetry handling to support both formats.\n6. Ensure the command structure and response handling remain compatible with existing provider integrations, so downstream consumers are unaffected.\n7. Add comprehensive logging for gateway interactions, including request/response payloads and credit telemetry, leveraging the existing logging system.\n8. Maintain robust error handling and fallback logic for gateway failures.\n9. Update documentation to describe the new gateway mode and configuration options.",
-      "testStrategy": "- Unit test initialization logic to verify correct mode selection and configuration persistence.\n- Mock gateway endpoints to test interception and routing of AI calls in gateway mode, ensuring correct request formatting and response parsing.\n- Validate that credits telemetry is correctly extracted and logged, and that legacy token/cost telemetry remains supported in BYOK mode.\n- Perform integration tests to confirm that command execution and AI responses are consistent across both BYOK and gateway modes.\n- Simulate gateway errors and verify error handling and fallback mechanisms.\n- Review logs to ensure gateway interactions are properly recorded.\n- Confirm documentation updates accurately reflect new functionality and usage.",
-      "status": "pending",
-      "dependencies": [
-        2,
-        3,
-        17
-      ],
-      "priority": "high",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Update initialization logic for gateway mode selection",
-          "description": "Modify the initialization logic to allow users to choose between BYOK and hosted gateway service modes, storing this selection in the configuration system.",
-          "dependencies": [],
-          "details": "Implement a configuration option that allows users to select between BYOK (Bring Your Own Key) and hosted gateway modes during system initialization. Create appropriate configuration parameters and storage mechanisms to persist this selection. Ensure the configuration is accessible throughout the application, particularly in ai-services-unified.js.",
-          "status": "pending",
-          "testStrategy": "Create unit tests that verify the configuration is correctly set and retrieved based on user selection. Test both BYOK and gateway mode configurations.",
-          "parentTaskId": 91
-        },
-        {
-          "id": 2,
-          "title": "Implement gateway mode detection in ai-services-unified.js",
-          "description": "Add logic to detect when the hosted gateway mode is active and prepare the system for gateway-specific processing.",
-          "dependencies": [
-            1
-          ],
-          "details": "Modify ai-services-unified.js to check the configuration and determine if the system is operating in gateway mode. Create helper functions to facilitate gateway-specific operations. Ensure this detection happens early in the processing flow to properly route subsequent operations.",
-          "status": "pending",
-          "testStrategy": "Write tests that confirm the system correctly identifies when it's in gateway mode versus BYOK mode based on the configuration set in subtask 1.",
-          "parentTaskId": 91
-        },
-        {
-          "id": 3,
-          "title": "Refactor AI call flow for gateway integration",
-          "description": "Modify the AI call flow to intercept requests and route them to the gateway endpoint when in gateway mode.",
-          "dependencies": [
-            2
-          ],
-          "details": "Refactor the existing AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries methods are called. When gateway mode is active, construct appropriate gateway requests containing the full messages array, modelId, roleParams, and commandName. Implement the routing logic to direct these requests to the gateway endpoint instead of directly to the provider.",
-          "status": "pending",
-          "testStrategy": "Create integration tests that verify requests are correctly intercepted and routed to the gateway endpoint when in gateway mode, and to the provider directly when in BYOK mode.",
-          "parentTaskId": 91
-        },
-        {
-          "id": 4,
-          "title": "Implement gateway response handling and telemetry",
-          "description": "Develop logic to parse gateway responses, extract AI results, and handle gateway-specific telemetry data.",
-          "dependencies": [
-            3
-          ],
-          "details": "Create functions to parse responses from the gateway, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update the internal telemetry handling system to support both gateway and traditional formats. Ensure all relevant metrics are captured and properly stored.",
-          "status": "pending",
-          "testStrategy": "Test the response parsing with various mock gateway responses, verifying that AI results are correctly extracted and telemetry data is properly processed for both gateway and traditional formats.",
-          "parentTaskId": 91
-        },
-        {
-          "id": 5,
-          "title": "Implement error handling, logging, and documentation",
-          "description": "Add comprehensive logging, error handling, and update documentation for the gateway integration.",
-          "dependencies": [
-            4
-          ],
-          "details": "Implement robust error handling and fallback logic for gateway failures. Add detailed logging for gateway interactions, including request/response payloads and credit telemetry, using the existing logging system. Update documentation to describe the new gateway mode, configuration options, and how the system behaves differently when in gateway mode versus BYOK mode. Ensure the command structure and response handling remain compatible with existing provider integrations.",
-          "status": "pending",
-          "testStrategy": "Test error scenarios by simulating gateway failures and verifying proper fallback behavior. Review logs to ensure appropriate information is captured. Conduct a documentation review to verify completeness and accuracy.",
-          "parentTaskId": 91
-        }
-      ]
-    },
-    {
-      "id": 92,
-      "title": "Task Master Gateway Integration",
-      "description": "Integrate Task Master with premium gateway services for enhanced testing and git workflow capabilities",
-      "details": "Add gateway integration to Task Master (open source) that enables users to access premium AI-powered test generation, TDD orchestration, and smart git workflows through API key authentication. Maintains local file operations while leveraging remote AI intelligence.",
-      "testStrategy": "",
-      "status": "pending",
-      "dependencies": [],
-      "priority": "high",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Add gateway integration foundation",
-          "description": "Create base infrastructure for connecting to premium gateway services",
-          "details": "Implement configuration management for API keys, endpoint URLs, and feature flags. Create HTTP client wrapper with authentication, error handling, and retry logic.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 2,
-          "title": "Implement test-gen command",
-          "description": "Add test generation command that uses gateway API",
-          "details": "Create command that gathers local context (code, tasks, patterns), sends to gateway API for intelligent test generation, then writes generated tests to local filesystem with proper structure.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 3,
-          "title": "Create TDD workflow command",
-          "description": "Implement TDD orchestration for red-green-refactor cycle",
-          "details": "Build TDD state machine that manages test phases, integrates with test watchers, and provides real-time feedback during development cycles.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 4,
-          "title": "Add git-flow command",
-          "description": "Implement automated git workflow with smart commits",
-          "details": "Create git workflow automation including branch management, smart commit message generation via gateway API, and PR creation with comprehensive descriptions.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 5,
-          "title": "Enhance task structure for testing metadata",
-          "description": "Extend task schema to support test and git information",
-          "details": "Add fields for test files, coverage data, git branches, commit history, and TDD phase tracking to task structure.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 6,
-          "title": "Add MCP tools for test-gen and TDD commands",
-          "description": "Create MCP tool interfaces for IDE integration",
-          "details": "Implement MCP tools that expose test generation and TDD workflow commands to IDEs like Cursor, enabling seamless integration with development environment.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 7,
-          "title": "Create test pattern detection for existing codebase",
-          "description": "Analyze existing tests to learn project patterns",
-          "details": "Implement pattern detection that analyzes existing test files to understand project conventions, naming patterns, and testing approaches for consistency.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 8,
-          "title": "Add coverage analysis integration",
-          "description": "Integrate with coverage tools and provide insights",
-          "details": "Connect with Jest, NYC, and other coverage tools to analyze test coverage, identify gaps, and suggest improvements through gateway API.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 9,
-          "title": "Implement test watcher with phase transitions",
-          "description": "Create intelligent test watcher for TDD automation",
-          "details": "Build test watcher that monitors test results and automatically transitions between TDD phases (red/green/refactor) based on test outcomes.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        },
-        {
-          "id": 10,
-          "title": "Add fallback mode when gateway is unavailable",
-          "description": "Ensure Task Master works without gateway access",
-          "details": "Implement graceful degradation when gateway API is unavailable, falling back to local AI models or basic functionality while maintaining core Task Master features.",
-          "status": "pending",
-          "dependencies": [],
-          "parentTaskId": 92
-        }
-      ]
-    },
-    {
       "id": 87,
       "title": "Task Master Gateway Integration",
       "description": "Integrate Task Master with premium gateway services for enhanced testing and git workflow capabilities",
@@ -6280,6 +6043,141 @@
           "status": "done",
           "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation.",
           "parentTaskId": 89
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "title": "Implement Comprehensive Telemetry Improvements for Task Master",
+      "description": "Enhance Task Master with robust telemetry capabilities, including secure capture of command arguments and outputs, remote telemetry submission, DAU and active user tracking, extension to non-AI commands, and opt-out preferences during initialization.",
+      "details": "1. Instrument all CLI commands (including non-AI commands) to capture execution metadata, command arguments, and outputs, ensuring that sensitive data is never exposed in user-facing responses or logs. Use in-memory redaction and encryption techniques to protect sensitive information before transmission.\n2. Implement a telemetry client that securely sends anonymized and aggregated telemetry data to the remote endpoint (gateway.task-master.dev/telemetry) using HTTPS/TLS. Ensure data is encrypted in transit and at rest, following best practices for privacy and compliance.\n3. Track daily active users (DAU) and active user sessions by generating anonymized user/session identifiers, and aggregate usage metrics to analyze user patterns and feature adoption.\n4. Extend telemetry instrumentation to all command types, not just AI-powered commands, ensuring consistent and comprehensive observability across the application.\n5. During Task Master initialization, prompt users with clear opt-out options for telemetry collection, store their preferences securely, and respect these settings throughout the application lifecycle.\n6. Design telemetry payloads to support future analysis of user patterns, operational costs, and to provide data for potential custom AI model training, while maintaining strict privacy standards.\n7. Document the internal instrumentation policy, including guidelines for data collection, aggregation, and export, and automate as much of the instrumentation as possible to ensure consistency and minimize manual errors.\n8. Ensure minimal performance impact by implementing efficient sampling, aggregation, and rate limiting strategies within the telemetry pipeline.",
+      "testStrategy": "- Verify that all command executions (including non-AI commands) generate appropriate telemetry events without exposing sensitive data in logs or responses.\n- Confirm that telemetry data is securely transmitted to the remote endpoint using encrypted channels, and that data at rest is also encrypted.\n- Test DAU and active user tracking by simulating multiple user sessions and verifying correct aggregation and anonymization.\n- Validate that users are prompted for telemetry opt-out during initialization, and that their preferences are respected and persisted.\n- Inspect telemetry payloads for completeness, privacy compliance, and suitability for downstream analytics and AI training.\n- Conduct performance testing to ensure telemetry instrumentation does not introduce significant overhead or degrade user experience.\n- Review documentation and automated instrumentation for completeness and adherence to internal policy.",
+      "status": "in-progress",
+      "dependencies": [
+        2,
+        3,
+        17
+      ],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Capture command args and output without exposing in responses",
+          "description": "Modify telemetry to capture command arguments and full output, but ensure these are not included in MCP or CLI responses. Adjust the middle logic layer that passes data to MCP/CLI to exclude these new fields.",
+          "details": "Update ai-services-unified.js to capture the initial args passed to the AI service and the full output. Modify the telemetryData object structure to include 'commandArgs' and 'fullOutput' fields. Ensure handleApiResult in MCP and displayAiUsageSummary in CLI do not expose these fields to end users.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 90
+        },
+        {
+          "id": 2,
+          "title": "Send telemetry data to remote database endpoint",
+          "description": "Implement POST requests to gateway.task-master.dev/telemetry endpoint to send all telemetry data including new fields (args, output) for analysis and future AI model training",
+          "details": "Create a telemetry submission service that POSTs to gateway.task-master.dev/telemetry. Include all existing telemetry fields plus commandArgs and fullOutput. Implement retry logic and handle failures gracefully without blocking command execution. Respect user opt-out preferences.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 90
+        },
+        {
+          "id": 3,
+          "title": "Implement DAU and active user tracking",
+          "description": "Enhance telemetry to track Daily Active Users (DAU) and identify active users through unique user IDs and usage patterns",
+          "details": "Ensure userId generation is consistent and persistent. Track command execution timestamps to calculate DAU. Include session tracking to understand user engagement patterns. Add fields for tracking unique daily users, command frequency, and session duration.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 90
+        },
+        {
+          "id": 4,
+          "title": "Extend telemetry to non-AI commands",
+          "description": "Implement telemetry collection for all Task Master commands, not just AI-powered ones, to get complete usage analytics",
+          "details": "Create a unified telemetry collection mechanism for all commands in commands.js. Track command name, execution time, success/failure status, and basic metrics. Ensure non-AI commands generate appropriate telemetry without AI-specific fields like tokens or costs.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 90
+        },
+        {
+          "id": 5,
+          "title": "Add opt-out data collection prompt to init command",
+          "description": "Modify init.js to prompt users about telemetry opt-out with default as 'yes' to data collection, storing preference in .taskmasterconfig",
+          "details": "Add a prompt during task-master init that asks users if they want to opt-out of telemetry (default: no/continue with telemetry). Store the preference as 'telemetryOptOut: boolean' in .taskmasterconfig. Ensure all telemetry collection respects this setting. Include clear explanation of what data is collected and why.",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 90
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "title": "Integrate Gateway AI Service Mode into ai-services-unified.js",
+      "description": "Implement support for a hosted AI gateway service in Task Master, allowing users to select between BYOK and hosted gateway modes during initialization. Ensure gateway integration intercepts and routes AI calls appropriately, handles gateway-specific telemetry, and maintains compatibility with existing command structures.",
+      "details": "1. Update the initialization logic to allow users to select between BYOK (Bring Your Own Key) and hosted gateway service modes, storing the selection in the configuration system.\n2. In ai-services-unified.js, detect when the hosted gateway mode is active.\n3. Refactor the AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries. When in gateway mode, route calls to the gateway endpoint instead of directly to the provider.\n4. Construct gateway requests with the full messages array, modelId, roleParams, and commandName, ensuring all required data is passed.\n5. Parse gateway responses, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update internal telemetry handling to support both formats.\n6. Ensure the command structure and response handling remain compatible with existing provider integrations, so downstream consumers are unaffected.\n7. Add comprehensive logging for gateway interactions, including request/response payloads and credit telemetry, leveraging the existing logging system.\n8. Maintain robust error handling and fallback logic for gateway failures.\n9. Update documentation to describe the new gateway mode and configuration options.",
+      "testStrategy": "- Unit test initialization logic to verify correct mode selection and configuration persistence.\n- Mock gateway endpoints to test interception and routing of AI calls in gateway mode, ensuring correct request formatting and response parsing.\n- Validate that credits telemetry is correctly extracted and logged, and that legacy token/cost telemetry remains supported in BYOK mode.\n- Perform integration tests to confirm that command execution and AI responses are consistent across both BYOK and gateway modes.\n- Simulate gateway errors and verify error handling and fallback mechanisms.\n- Review logs to ensure gateway interactions are properly recorded.\n- Confirm documentation updates accurately reflect new functionality and usage.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        3,
+        17
+      ],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update initialization logic for gateway mode selection",
+          "description": "Modify the initialization logic to allow users to choose between BYOK and hosted gateway service modes, storing this selection in the configuration system.",
+          "dependencies": [],
+          "details": "Implement a configuration option that allows users to select between BYOK (Bring Your Own Key) and hosted gateway modes during system initialization. Create appropriate configuration parameters and storage mechanisms to persist this selection. Ensure the configuration is accessible throughout the application, particularly in ai-services-unified.js.",
+          "status": "pending",
+          "testStrategy": "Create unit tests that verify the configuration is correctly set and retrieved based on user selection. Test both BYOK and gateway mode configurations.",
+          "parentTaskId": 91
+        },
+        {
+          "id": 2,
+          "title": "Implement gateway mode detection in ai-services-unified.js",
+          "description": "Add logic to detect when the hosted gateway mode is active and prepare the system for gateway-specific processing.",
+          "dependencies": [
+            1
+          ],
+          "details": "Modify ai-services-unified.js to check the configuration and determine if the system is operating in gateway mode. Create helper functions to facilitate gateway-specific operations. Ensure this detection happens early in the processing flow to properly route subsequent operations.",
+          "status": "pending",
+          "testStrategy": "Write tests that confirm the system correctly identifies when it's in gateway mode versus BYOK mode based on the configuration set in subtask 1.",
+          "parentTaskId": 91
+        },
+        {
+          "id": 3,
+          "title": "Refactor AI call flow for gateway integration",
+          "description": "Modify the AI call flow to intercept requests and route them to the gateway endpoint when in gateway mode.",
+          "dependencies": [
+            2
+          ],
+          "details": "Refactor the existing AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries methods are called. When gateway mode is active, construct appropriate gateway requests containing the full messages array, modelId, roleParams, and commandName. Implement the routing logic to direct these requests to the gateway endpoint instead of directly to the provider.",
+          "status": "pending",
+          "testStrategy": "Create integration tests that verify requests are correctly intercepted and routed to the gateway endpoint when in gateway mode, and to the provider directly when in BYOK mode.",
+          "parentTaskId": 91
+        },
+        {
+          "id": 4,
+          "title": "Implement gateway response handling and telemetry",
+          "description": "Develop logic to parse gateway responses, extract AI results, and handle gateway-specific telemetry data.",
+          "dependencies": [
+            3
+          ],
+          "details": "Create functions to parse responses from the gateway, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update the internal telemetry handling system to support both gateway and traditional formats. Ensure all relevant metrics are captured and properly stored.",
+          "status": "pending",
+          "testStrategy": "Test the response parsing with various mock gateway responses, verifying that AI results are correctly extracted and telemetry data is properly processed for both gateway and traditional formats.",
+          "parentTaskId": 91
+        },
+        {
+          "id": 5,
+          "title": "Implement error handling, logging, and documentation",
+          "description": "Add comprehensive logging, error handling, and update documentation for the gateway integration.",
+          "dependencies": [
+            4
+          ],
+          "details": "Implement robust error handling and fallback logic for gateway failures. Add detailed logging for gateway interactions, including request/response payloads and credit telemetry, using the existing logging system. Update documentation to describe the new gateway mode, configuration options, and how the system behaves differently when in gateway mode versus BYOK mode. Ensure the command structure and response handling remain compatible with existing provider integrations.",
+          "status": "pending",
+          "testStrategy": "Test error scenarios by simulating gateway failures and verifying proper fallback behavior. Review logs to ensure appropriate information is captured. Conduct a documentation review to verify completeness and accuracy.",
+          "parentTaskId": 91
         }
       ]
     }
