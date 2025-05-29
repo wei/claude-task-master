@@ -217,90 +217,128 @@ describe("Telemetry Submission Service - Task 90.2", () => {
     });
   });
 
-  describe("User Registration with Gateway", () => {
-    it("should successfully register new user with gateway", async () => {
+  describe("Gateway User Registration", () => {
+    it("should successfully register a user with gateway using /auth/init", async () => {
+      const mockResponse = {
+        success: true,
+        message: "New user created successfully",
+        data: {
+          userId: "test-user-id",
+          isNewUser: true,
+          user: {
+            email: "test@example.com",
+            planType: "free",
+            creditsBalance: 0,
+          },
+          token: "test-api-key",
+        },
+        timestamp: new Date().toISOString(),
+      };
+
       global.fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          apiKey: "new-api-key-123",
-          userId: "new-user-id-456",
-          email: "newuser@example.com",
-          isNewUser: true,
-        }),
+        json: async () => mockResponse,
       });
 
-      const result = await registerUserWithGateway("newuser@example.com");
+      const result = await registerUserWithGateway("test@example.com");
 
-      expect(result.success).toBe(true);
-      expect(result.apiKey).toBe("new-api-key-123");
-      expect(result.userId).toBe("new-user-id-456");
-      expect(result.email).toBe("newuser@example.com");
-      expect(result.isNewUser).toBe(true);
+      expect(result).toEqual({
+        success: true,
+        apiKey: "test-api-key",
+        userId: "test-user-id",
+        email: "test@example.com",
+        isNewUser: true,
+      });
 
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:4444/api/v1/users",
-        expect.objectContaining({
+        "http://localhost:4444/auth/init",
+        {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: "newuser@example.com" }),
-        })
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: "test@example.com" }),
+        }
       );
     });
 
-    it("should find existing user with provided userId", async () => {
+    it("should handle existing user with /auth/init", async () => {
+      const mockResponse = {
+        success: true,
+        message: "Existing user found",
+        data: {
+          userId: "existing-user-id",
+          isNewUser: false,
+          user: {
+            email: "existing@example.com",
+            planType: "free",
+            creditsBalance: 20,
+          },
+          token: "existing-api-key",
+        },
+        timestamp: new Date().toISOString(),
+      };
+
       global.fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          apiKey: "existing-api-key",
-          userId: "existing-user-id",
-          email: "existing@example.com",
-          isNewUser: false,
-        }),
+        json: async () => mockResponse,
       });
 
-      const result = await registerUserWithGateway(
-        "existing@example.com",
-        "existing-user-id"
-      );
+      const result = await registerUserWithGateway("existing@example.com");
 
-      expect(result.success).toBe(true);
-      expect(result.isNewUser).toBe(false);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:4444/api/v1/users",
-        expect.objectContaining({
-          body: JSON.stringify({
-            email: "existing@example.com",
-            userId: "existing-user-id",
-          }),
-        })
-      );
+      expect(result).toEqual({
+        success: true,
+        apiKey: "existing-api-key",
+        userId: "existing-user-id",
+        email: "existing@example.com",
+        isNewUser: false,
+      });
     });
 
     it("should handle registration failures gracefully", async () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,
-        status: 400,
-        statusText: "Bad Request",
-        json: async () => ({ error: "Invalid email format" }),
+        status: 500,
+        statusText: "Internal Server Error",
+      });
+
+      const result = await registerUserWithGateway("test@example.com");
+
+      expect(result).toEqual({
+        success: false,
+        error: "Gateway registration failed: 500 Internal Server Error",
+      });
+    });
+
+    it("should handle network errors during registration", async () => {
+      global.fetch.mockRejectedValueOnce(new Error("Network error"));
+
+      const result = await registerUserWithGateway("test@example.com");
+
+      expect(result).toEqual({
+        success: false,
+        error: "Gateway registration error: Network error",
+      });
+    });
+
+    it("should handle invalid response format from /auth/init", async () => {
+      const mockResponse = {
+        success: false,
+        error: "Invalid email format",
+        timestamp: new Date().toISOString(),
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
       });
 
       const result = await registerUserWithGateway("invalid-email");
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Registration failed: 400 Bad Request");
-      expect(result.details).toEqual({ error: "Invalid email format" });
-    });
-
-    it("should handle network errors during registration", async () => {
-      global.fetch.mockRejectedValueOnce(new Error("Connection refused"));
-
-      const result = await registerUserWithGateway("test@example.com");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain(
-        "Registration request failed: Connection refused"
-      );
+      expect(result).toEqual({
+        success: false,
+        error: "Invalid email format",
+      });
     });
   });
 });

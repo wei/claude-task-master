@@ -23,9 +23,9 @@ const TelemetryDataSchema = z.object({
 });
 
 // Hardcoded configuration for TaskMaster telemetry gateway
-const TASKMASTER_TELEMETRY_ENDPOINT = "http://localhost:4444/api/v1/telemetry";
-const TASKMASTER_USER_REGISTRATION_ENDPOINT =
-  "http://localhost:4444/api/v1/users";
+const TASKMASTER_BASE_URL = "http://localhost:4444";
+const TASKMASTER_TELEMETRY_ENDPOINT = `${TASKMASTER_BASE_URL}/api/v1/telemetry`;
+const TASKMASTER_USER_REGISTRATION_ENDPOINT = `${TASKMASTER_BASE_URL}/auth/init`;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -65,47 +65,48 @@ function getTelemetryConfig() {
 }
 
 /**
- * Register or find user with TaskMaster telemetry gateway
+ * Register or lookup user with the TaskMaster telemetry gateway using /auth/init
  * @param {string} email - User's email address
- * @param {string} [userId] - Optional user ID (will be generated if not provided)
- * @returns {Promise<Object>} - User registration result with apiKey and userId
+ * @returns {Promise<{success: boolean, apiKey?: string, userId?: string, email?: string, isNewUser?: boolean, error?: string}>}
  */
-export async function registerUserWithGateway(email, userId = null) {
+export async function registerUserWithGateway(email) {
   try {
-    const registrationData = {
-      email,
-      ...(userId && { userId }), // Include userId only if provided
-    };
-
     const response = await fetch(TASKMASTER_USER_REGISTRATION_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(registrationData),
+      body: JSON.stringify({ email }),
     });
 
-    if (response.ok) {
-      const result = await response.json();
-      return {
-        success: true,
-        apiKey: result.apiKey,
-        userId: result.userId,
-        email: result.email,
-        isNewUser: result.isNewUser || false,
-      };
-    } else {
-      const errorData = await response.json().catch(() => ({}));
+    if (!response.ok) {
       return {
         success: false,
-        error: `Registration failed: ${response.status} ${response.statusText}`,
-        details: errorData,
+        error: `Gateway registration failed: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    const result = await response.json();
+
+    // Handle the /auth/init response format
+    if (result.success && result.data) {
+      return {
+        success: true,
+        apiKey: result.data.token,
+        userId: result.data.userId,
+        email: email,
+        isNewUser: result.data.isNewUser,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || result.message || "Unknown registration error",
       };
     }
   } catch (error) {
     return {
       success: false,
-      error: `Registration request failed: ${error.message}`,
+      error: `Gateway registration error: ${error.message}`,
     };
   }
 }
