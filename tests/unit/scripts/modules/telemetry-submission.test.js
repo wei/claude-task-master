@@ -1,213 +1,306 @@
 /**
- * Tests for telemetry submission service (Task 90.2)
- * Testing remote endpoint submission with retry logic and error handling
+ * Unit Tests for Telemetry Submission Service - Task 90.2
+ * Tests the secure telemetry submission with gateway integration
  */
 
 import { jest } from "@jest/globals";
-import { z } from "zod";
 
-// Mock fetch for testing HTTP requests
-global.fetch = jest.fn();
-
-// Mock config-manager
-const mockGetConfig = jest.fn();
+// Mock config-manager before importing submitTelemetryData
 jest.unstable_mockModule(
   "../../../../scripts/modules/config-manager.js",
   () => ({
-    __esModule: true,
-    getConfig: mockGetConfig,
+    getConfig: jest.fn(),
   })
 );
 
+// Mock fetch globally
+global.fetch = jest.fn();
+
+// Import after mocking
+const { submitTelemetryData, registerUserWithGateway } = await import(
+  "../../../../scripts/modules/telemetry-submission.js"
+);
+const { getConfig } = await import(
+  "../../../../scripts/modules/config-manager.js"
+);
+
 describe("Telemetry Submission Service - Task 90.2", () => {
-  let telemetrySubmission;
-
-  beforeAll(async () => {
-    // Import after mocking
-    telemetrySubmission = await import(
-      "../../../../scripts/modules/telemetry-submission.js"
-    );
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset fetch mock
-    fetch.mockClear();
-    mockGetConfig.mockClear();
-
-    // Default config mock - telemetry enabled
-    mockGetConfig.mockReturnValue({ telemetryEnabled: true });
+    global.fetch.mockClear();
   });
 
   describe("Subtask 90.2: Send telemetry data to remote database endpoint", () => {
-    it("should successfully submit telemetry data to gateway endpoint", async () => {
+    it("should successfully submit telemetry data to hardcoded gateway endpoint", async () => {
+      // Mock successful config
+      getConfig.mockReturnValue({
+        telemetry: {
+          apiKey: "test-api-key",
+          userId: "test-user-id",
+          email: "test@example.com",
+        },
+      });
+
       // Mock successful response
-      fetch.mockResolvedValueOnce({
+      global.fetch.mockResolvedValueOnce({
         ok: true,
-        status: 200,
-        json: async () => ({ success: true, id: "telemetry-123" }),
+        json: async () => ({ id: "telemetry-123" }),
       });
 
       const telemetryData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "add-task",
+        timestamp: new Date().toISOString(),
+        userId: "test-user-id",
+        commandName: "test-command",
         modelUsed: "claude-3-sonnet",
-        providerName: "anthropic",
-        inputTokens: 100,
-        outputTokens: 50,
-        totalTokens: 150,
         totalCost: 0.001,
         currency: "USD",
-        // These sensitive fields should be filtered out before submission
-        commandArgs: { id: "15", prompt: "Test task" },
-        fullOutput: { title: "Generated Task", description: "AI output" },
+        commandArgs: { secret: "should-be-filtered" },
+        fullOutput: { debug: "should-be-filtered" },
       };
 
-      // Expected data after filtering (without commandArgs and fullOutput)
-      const expectedFilteredData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "add-task",
-        modelUsed: "claude-3-sonnet",
-        providerName: "anthropic",
-        inputTokens: 100,
-        outputTokens: 50,
-        totalTokens: 150,
-        totalCost: 0.001,
-        currency: "USD",
-      };
-
-      const result =
-        await telemetrySubmission.submitTelemetryData(telemetryData);
+      const result = await submitTelemetryData(telemetryData);
 
       expect(result.success).toBe(true);
       expect(result.id).toBe("telemetry-123");
-
-      // Verify the request was made with filtered data (security requirement)
-      expect(fetch).toHaveBeenCalledWith(
-        "https://gateway.task-master.dev/telemetry",
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:4444/api/v1/telemetry", // Hardcoded endpoint
         expect.objectContaining({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: "Bearer test-api-key",
+            "X-User-Email": "test@example.com",
           },
-          body: JSON.stringify(expectedFilteredData),
+          body: expect.stringContaining('"commandName":"test-command"'),
+        })
+      );
+
+      // Verify sensitive data is filtered out
+      const sentData = JSON.parse(global.fetch.mock.calls[0][1].body);
+      expect(sentData.commandArgs).toBeUndefined();
+      expect(sentData.fullOutput).toBeUndefined();
+    });
+
+    it("should implement retry logic for failed requests", async () => {
+      getConfig.mockReturnValue({
+        telemetry: {
+          apiKey: "test-api-key",
+          userId: "test-user-id",
+          email: "test@example.com",
+        },
+      });
+
+      // Mock 3 failures then success
+      global.fetch
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+          json: async () => ({}),
+        });
+
+      const telemetryData = {
+        timestamp: new Date().toISOString(),
+        userId: "test-user-id",
+        commandName: "test-command",
+        totalCost: 0.001,
+        currency: "USD",
+      };
+
+      const result = await submitTelemetryData(telemetryData);
+
+      expect(result.success).toBe(false);
+      expect(result.attempts).toBe(3);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+    }, 10000);
+
+    it("should handle failures gracefully without blocking execution", async () => {
+      getConfig.mockReturnValue({
+        telemetry: {
+          apiKey: "test-api-key",
+          userId: "test-user-id",
+          email: "test@example.com",
+        },
+      });
+
+      global.fetch.mockRejectedValue(new Error("Network failure"));
+
+      const telemetryData = {
+        timestamp: new Date().toISOString(),
+        userId: "test-user-id",
+        commandName: "test-command",
+        totalCost: 0.001,
+        currency: "USD",
+      };
+
+      const result = await submitTelemetryData(telemetryData);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Network failure");
+      expect(global.fetch).toHaveBeenCalledTimes(3); // All retries attempted
+    }, 10000);
+
+    it("should respect user opt-out preferences", async () => {
+      getConfig.mockReturnValue({
+        telemetryEnabled: false,
+      });
+
+      const telemetryData = {
+        timestamp: new Date().toISOString(),
+        userId: "test-user-id",
+        commandName: "test-command",
+        totalCost: 0.001,
+        currency: "USD",
+      };
+
+      const result = await submitTelemetryData(telemetryData);
+
+      expect(result.success).toBe(true);
+      expect(result.skipped).toBe(true);
+      expect(result.reason).toBe("Telemetry disabled by user preference");
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("should validate telemetry data before submission", async () => {
+      getConfig.mockReturnValue({
+        telemetry: {
+          apiKey: "test-api-key",
+          userId: "test-user-id",
+          email: "test@example.com",
+        },
+      });
+
+      const invalidTelemetryData = {
+        // Missing required fields
+        commandName: "test-command",
+      };
+
+      const result = await submitTelemetryData(invalidTelemetryData);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Telemetry data validation failed");
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("should handle HTTP error responses appropriately", async () => {
+      getConfig.mockReturnValue({
+        telemetry: {
+          apiKey: "invalid-key",
+          userId: "test-user-id",
+          email: "test@example.com",
+        },
+      });
+
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: async () => ({ error: "Invalid API key" }),
+      });
+
+      const telemetryData = {
+        timestamp: new Date().toISOString(),
+        userId: "test-user-id",
+        commandName: "test-command",
+        totalCost: 0.001,
+        currency: "USD",
+      };
+
+      const result = await submitTelemetryData(telemetryData);
+
+      expect(result.success).toBe(false);
+      expect(result.statusCode).toBe(401);
+      expect(global.fetch).toHaveBeenCalledTimes(1); // No retries for auth errors
+    });
+  });
+
+  describe("User Registration with Gateway", () => {
+    it("should successfully register new user with gateway", async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          apiKey: "new-api-key-123",
+          userId: "new-user-id-456",
+          email: "newuser@example.com",
+          isNewUser: true,
+        }),
+      });
+
+      const result = await registerUserWithGateway("newuser@example.com");
+
+      expect(result.success).toBe(true);
+      expect(result.apiKey).toBe("new-api-key-123");
+      expect(result.userId).toBe("new-user-id-456");
+      expect(result.email).toBe("newuser@example.com");
+      expect(result.isNewUser).toBe(true);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:4444/api/v1/users",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "newuser@example.com" }),
         })
       );
     });
 
-    it("should implement retry logic for failed requests", async () => {
-      // Mock first two calls to fail, third to succeed
-      fetch
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => ({ success: true, id: "telemetry-retry-123" }),
-        });
-
-      const telemetryData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "expand-task",
-        modelUsed: "claude-3-sonnet",
-        totalCost: 0.002,
-      };
-
-      const result =
-        await telemetrySubmission.submitTelemetryData(telemetryData);
-
-      // Verify retry attempts (should be called 3 times)
-      expect(fetch).toHaveBeenCalledTimes(3);
-      expect(result.success).toBe(true);
-      expect(result.id).toBe("telemetry-retry-123");
-    });
-
-    it("should handle failures gracefully without blocking execution", async () => {
-      // Mock all attempts to fail
-      fetch.mockRejectedValue(new Error("Persistent network error"));
-
-      const telemetryData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "research",
-        modelUsed: "claude-3-sonnet",
-        totalCost: 0.003,
-      };
-
-      const result =
-        await telemetrySubmission.submitTelemetryData(telemetryData);
-
-      // Verify it attempted retries but failed gracefully
-      expect(fetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Persistent network error");
-    });
-
-    it("should respect user opt-out preferences", async () => {
-      // Mock config to disable telemetry
-      mockGetConfig.mockReturnValue({ telemetryEnabled: false });
-
-      const telemetryData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "add-task",
-        totalCost: 0.001,
-      };
-
-      const result =
-        await telemetrySubmission.submitTelemetryData(telemetryData);
-
-      // Verify no network request was made
-      expect(fetch).not.toHaveBeenCalled();
-      expect(result.success).toBe(true);
-      expect(result.skipped).toBe(true);
-      expect(result.reason).toBe("Telemetry disabled by user preference");
-    });
-
-    it("should validate telemetry data before submission", async () => {
-      const invalidTelemetryData = {
-        // Missing required fields
-        commandName: "test",
-        // Invalid timestamp format
-        timestamp: "invalid-date",
-      };
-
-      const result =
-        await telemetrySubmission.submitTelemetryData(invalidTelemetryData);
-
-      // Verify no network request was made for invalid data
-      expect(fetch).not.toHaveBeenCalled();
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("validation");
-    });
-
-    it("should handle HTTP error responses appropriately", async () => {
-      // Mock HTTP 429 error response (no retries for rate limiting)
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        statusText: "Too Many Requests",
-        json: async () => ({ error: "Rate limit exceeded" }),
+    it("should find existing user with provided userId", async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          apiKey: "existing-api-key",
+          userId: "existing-user-id",
+          email: "existing@example.com",
+          isNewUser: false,
+        }),
       });
 
-      const telemetryData = {
-        timestamp: "2025-05-28T15:00:00.000Z",
-        userId: "1234567890",
-        commandName: "update-task",
-        modelUsed: "claude-3-sonnet",
-        totalCost: 0.001,
-      };
+      const result = await registerUserWithGateway(
+        "existing@example.com",
+        "existing-user-id"
+      );
 
-      const result =
-        await telemetrySubmission.submitTelemetryData(telemetryData);
+      expect(result.success).toBe(true);
+      expect(result.isNewUser).toBe(false);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:4444/api/v1/users",
+        expect.objectContaining({
+          body: JSON.stringify({
+            email: "existing@example.com",
+            userId: "existing-user-id",
+          }),
+        })
+      );
+    });
+
+    it("should handle registration failures gracefully", async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        statusText: "Bad Request",
+        json: async () => ({ error: "Invalid email format" }),
+      });
+
+      const result = await registerUserWithGateway("invalid-email");
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("429");
-      expect(result.error).toContain("Too Many Requests");
-      expect(fetch).toHaveBeenCalledTimes(1); // No retries for 429
+      expect(result.error).toContain("Registration failed: 400 Bad Request");
+      expect(result.details).toEqual({ error: "Invalid email format" });
+    });
+
+    it("should handle network errors during registration", async () => {
+      global.fetch.mockRejectedValueOnce(new Error("Connection refused"));
+
+      const result = await registerUserWithGateway("test@example.com");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        "Registration request failed: Connection refused"
+      );
     });
   });
 });

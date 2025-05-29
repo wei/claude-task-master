@@ -22,8 +22,10 @@ const TelemetryDataSchema = z.object({
   fullOutput: z.any().optional(),
 });
 
-// Configuration
-const GATEWAY_ENDPOINT = "http://localhost:4444/api/v1/telemetry";
+// Hardcoded configuration for TaskMaster telemetry gateway
+const TASKMASTER_TELEMETRY_ENDPOINT = "http://localhost:4444/api/v1/telemetry";
+const TASKMASTER_USER_REGISTRATION_ENDPOINT =
+  "http://localhost:4444/api/v1/users";
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -32,25 +34,80 @@ const RETRY_DELAY = 1000; // 1 second
  * @returns {Object} Configuration object with apiKey, userId, and email
  */
 function getTelemetryConfig() {
-  // Try environment variables first (for testing)
+  // Try environment variables first (for testing and manual setup)
   const envApiKey =
-    process.env.GATEWAY_API_KEY || process.env.TELEMETRY_API_KEY;
+    process.env.TASKMASTER_API_KEY ||
+    process.env.GATEWAY_API_KEY ||
+    process.env.TELEMETRY_API_KEY;
   const envUserId =
-    process.env.GATEWAY_USER_ID || process.env.TELEMETRY_USER_ID;
+    process.env.TASKMASTER_USER_ID ||
+    process.env.GATEWAY_USER_ID ||
+    process.env.TELEMETRY_USER_ID;
   const envEmail =
-    process.env.GATEWAY_USER_EMAIL || process.env.TELEMETRY_USER_EMAIL;
+    process.env.TASKMASTER_USER_EMAIL ||
+    process.env.GATEWAY_USER_EMAIL ||
+    process.env.TELEMETRY_USER_EMAIL;
 
   if (envApiKey && envUserId && envEmail) {
     return { apiKey: envApiKey, userId: envUserId, email: envEmail };
   }
 
-  // Fall back to config file
+  // Fall back to config file (preferred for hosted gateway setup)
   const config = getConfig();
   return {
-    apiKey: config?.telemetryApiKey,
-    userId: config?.telemetryUserId,
-    email: config?.telemetryUserEmail,
+    apiKey: config?.telemetry?.apiKey || config?.telemetryApiKey,
+    userId:
+      config?.telemetry?.userId ||
+      config?.telemetryUserId ||
+      config?.global?.userId,
+    email: config?.telemetry?.email || config?.telemetryUserEmail,
   };
+}
+
+/**
+ * Register or find user with TaskMaster telemetry gateway
+ * @param {string} email - User's email address
+ * @param {string} [userId] - Optional user ID (will be generated if not provided)
+ * @returns {Promise<Object>} - User registration result with apiKey and userId
+ */
+export async function registerUserWithGateway(email, userId = null) {
+  try {
+    const registrationData = {
+      email,
+      ...(userId && { userId }), // Include userId only if provided
+    };
+
+    const response = await fetch(TASKMASTER_USER_REGISTRATION_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(registrationData),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      return {
+        success: true,
+        apiKey: result.apiKey,
+        userId: result.userId,
+        email: result.email,
+        isNewUser: result.isNewUser || false,
+      };
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: `Registration failed: ${response.status} ${response.statusText}`,
+        details: errorData,
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: `Registration request failed: ${error.message}`,
+    };
+  }
 }
 
 /**
@@ -80,7 +137,7 @@ export async function submitTelemetryData(telemetryData) {
       return {
         success: false,
         error:
-          "Telemetry configuration incomplete. Set GATEWAY_API_KEY, GATEWAY_USER_ID, and GATEWAY_USER_EMAIL environment variables or configure in .taskmasterconfig",
+          "Telemetry configuration incomplete. Run 'task-master init' and select hosted gateway option, or manually set TASKMASTER_API_KEY, TASKMASTER_USER_ID, and TASKMASTER_USER_EMAIL environment variables",
       };
     }
 
@@ -102,7 +159,7 @@ export async function submitTelemetryData(telemetryData) {
     let lastError;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(GATEWAY_ENDPOINT, {
+        const response = await fetch(TASKMASTER_TELEMETRY_ENDPOINT, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
