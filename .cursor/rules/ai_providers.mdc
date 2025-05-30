@@ -50,6 +50,7 @@ This rule guides AI assistants on how to view, configure, and interact with the 
     -   **Key Locations** (See [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) - Configuration Management):
         -   **MCP/Cursor:** Set keys in the `env` section of `.cursor/mcp.json`.
         -   **CLI:** Set keys in a `.env` file in the project root.
+        - As the AI agent, you do not have access to read the .env -- but do not attempt to recreate it!
     -   **Provider List & Keys:**
         -   **`anthropic`**: Requires `ANTHROPIC_API_KEY`.
         -   **`google`**: Requires `GOOGLE_API_KEY`.

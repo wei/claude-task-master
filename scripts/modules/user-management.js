@@ -77,14 +77,14 @@ function updateUserConfig(userId, token, mode, explicitRoot = null) {
   try {
     const config = getConfig(explicitRoot);
 
-    // Ensure global section exists
-    if (!config.global) {
-      config.global = {};
+    // Ensure account section exists
+    if (!config.account) {
+      config.account = {};
     }
 
-    // Update user configuration
-    config.global.userId = userId;
-    config.global.mode = mode; // 'byok' or 'hosted'
+    // Update user configuration in account section
+    config.account.userId = userId;
+    config.account.mode = mode; // 'byok' or 'hosted'
 
     // Write API token to .env file (not config)
     if (token) {
@@ -169,7 +169,7 @@ function writeApiKeyToEnv(token, explicitRoot = null) {
 function getUserMode(explicitRoot = null) {
   try {
     const config = getConfig(explicitRoot);
-    return config?.global?.mode || "unknown";
+    return config?.account?.mode || "unknown";
   } catch (error) {
     log("error", `Error getting user mode: ${error.message}`);
     return "unknown";

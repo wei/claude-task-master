@@ -39,11 +39,11 @@ describe("TaskMaster Init Configuration Tests", () => {
   });
 
   describe("getUserId functionality", () => {
-    it("should read userId from config.global.userId", async () => {
-      // Create config with userId in global section
+    it("should read userId from config.account.userId", async () => {
+      // Create config with userId in account section
       const config = {
-        mode: "byok",
-        global: {
+        account: {
+          mode: "byok",
           userId: "test-user-123",
         },
       };
@@ -61,8 +61,9 @@ describe("TaskMaster Init Configuration Tests", () => {
     it("should set default userId if none exists", async () => {
       // Create config without userId
       const config = {
-        mode: "byok",
-        global: {},
+        account: {
+          mode: "byok",
+        },
       };
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
@@ -76,14 +77,14 @@ describe("TaskMaster Init Configuration Tests", () => {
 
       // Verify it was written to config
       const savedConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      expect(savedConfig.global.userId).toBe("1234567890");
+      expect(savedConfig.account.userId).toBe("1234567890");
     });
 
     it("should return existing userId even if it's the default value", async () => {
       // Create config with default userId already set
       const config = {
-        mode: "byok",
-        global: {
+        account: {
+          mode: "byok",
           userId: "1234567890",
         },
       };
@@ -103,27 +104,17 @@ describe("TaskMaster Init Configuration Tests", () => {
     it("should store mode (byok/hosted) in config", () => {
       // Test that mode gets stored correctly
       const config = {
-        mode: "hosted",
-        global: {
+        account: {
+          mode: "hosted",
           userId: "test-user-789",
-        },
-        subscription: {
-          plan: "starter",
-          credits: 50,
-          price: 5,
         },
       };
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       // Read config back
       const savedConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      expect(savedConfig.mode).toBe("hosted");
-      expect(savedConfig.global.userId).toBe("test-user-789");
-      expect(savedConfig.subscription).toEqual({
-        plan: "starter",
-        credits: 50,
-        price: 5,
-      });
+      expect(savedConfig.account.mode).toBe("hosted");
+      expect(savedConfig.account.userId).toBe("test-user-789");
     });
 
     it("should store API key in .env file (NOT config)", () => {
@@ -138,8 +129,8 @@ describe("TaskMaster Init Configuration Tests", () => {
 
       // Test that API key is NOT in config
       const config = {
-        mode: "byok",
-        global: {
+        account: {
+          mode: "byok",
           userId: "test-user-abc",
         },
       };
@@ -200,51 +191,42 @@ describe("TaskMaster Init Configuration Tests", () => {
     it("should maintain consistent structure for both BYOK and hosted modes", () => {
       // Test BYOK mode structure
       const byokConfig = {
-        mode: "byok",
-        global: {
+        account: {
+          mode: "byok",
           userId: "byok-user-123",
+          telemetryEnabled: false,
         },
-        telemetryEnabled: false,
       };
       fs.writeFileSync(configPath, JSON.stringify(byokConfig, null, 2));
 
       let config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      expect(config.mode).toBe("byok");
-      expect(config.global.userId).toBe("byok-user-123");
-      expect(config.telemetryEnabled).toBe(false);
-      expect(config.subscription).toBeUndefined();
+      expect(config.account.mode).toBe("byok");
+      expect(config.account.userId).toBe("byok-user-123");
+      expect(config.account.telemetryEnabled).toBe(false);
 
       // Test hosted mode structure
       const hostedConfig = {
-        mode: "hosted",
-        global: {
+        account: {
+          mode: "hosted",
           userId: "hosted-user-456",
-        },
-        telemetryEnabled: true,
-        subscription: {
-          plan: "pro",
-          credits: 250,
-          price: 20,
+          telemetryEnabled: true,
         },
       };
       fs.writeFileSync(configPath, JSON.stringify(hostedConfig, null, 2));
 
       config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      expect(config.mode).toBe("hosted");
-      expect(config.global.userId).toBe("hosted-user-456");
-      expect(config.telemetryEnabled).toBe(true);
-      expect(config.subscription).toEqual({
-        plan: "pro",
-        credits: 250,
-        price: 20,
-      });
+      expect(config.account.mode).toBe("hosted");
+      expect(config.account.userId).toBe("hosted-user-456");
+      expect(config.account.telemetryEnabled).toBe(true);
     });
 
-    it("should use consistent userId location (config.global.userId)", async () => {
+    it("should use consistent userId location (config.account.userId)", async () => {
       const config = {
-        mode: "byok",
-        global: {
+        account: {
+          mode: "byok",
           userId: "consistent-user-789",
+        },
+        global: {
           logLevel: "info",
         },
       };
@@ -260,9 +242,9 @@ describe("TaskMaster Init Configuration Tests", () => {
 
       expect(userId).toBe("consistent-user-789");
 
-      // Verify it's in global section, not root
+      // Verify it's in account section, not root
       const savedConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      expect(savedConfig.global.userId).toBe("consistent-user-789");
+      expect(savedConfig.account.userId).toBe("consistent-user-789");
       expect(savedConfig.userId).toBeUndefined(); // Should NOT be in root
     });
   });

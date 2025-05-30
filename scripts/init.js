@@ -390,64 +390,25 @@ async function initializeProject(options = {}) {
         const existingConfig = JSON.parse(
           fs.readFileSync(existingConfigPath, "utf8")
         );
-        userId = existingConfig.userId;
+        userId = existingConfig.account?.userId;
+        const existingUserEmail = existingConfig.account?.userEmail;
 
-        if (userId) {
-          if (!isSilentMode()) {
-            console.log(
-              chalk.green(`✅ Found existing user ID: ${chalk.dim(userId)}`)
-            );
-          }
-        }
-      }
-
-      if (!userId) {
-        // No existing userId - register with gateway to get proper userId
-        if (!isSilentMode()) {
-          console.log(
-            chalk.blue("🔗 Connecting to TaskMaster Gateway to create user...")
-          );
-        }
-
-        // Generate temporary email for user registration
-        const tempEmail = `user_${Date.now()}@taskmaster.dev`;
-        gatewayRegistration = await registerUserWithGateway(tempEmail);
+        // Pass existing data to gateway for validation/lookup
+        gatewayRegistration = await registerUserWithGateway(
+          existingUserEmail || tempEmail,
+          userId
+        );
 
         if (gatewayRegistration.success) {
           userId = gatewayRegistration.userId;
-          if (!isSilentMode()) {
-            console.log(
-              chalk.green(
-                `✅ Created new user ID from gateway: ${chalk.dim(userId)}`
-              )
-            );
-          }
         } else {
-          // Fallback to local generation if gateway is unavailable
+          // Generate fallback userId if gateway unavailable
           userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-          if (!isSilentMode()) {
-            console.log(
-              chalk.yellow(
-                `⚠️ Gateway unavailable, using local user ID: ${chalk.dim(userId)}`
-              )
-            );
-            console.log(
-              chalk.dim(`Gateway error: ${gatewayRegistration.error}`)
-            );
-          }
         }
       }
     } catch (error) {
-      // Fallback to local generation on any error
+      // Generate fallback userId on any error
       userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-      if (!isSilentMode()) {
-        console.log(
-          chalk.yellow(
-            `⚠️ Error connecting to gateway, using local user ID: ${chalk.dim(userId)}`
-          )
-        );
-        console.log(chalk.dim(`Error: ${error.message}`));
-      }
     }
 
     // For non-interactive mode, default to BYOK mode with proper userId
@@ -497,54 +458,25 @@ async function initializeProject(options = {}) {
           const existingConfig = JSON.parse(
             fs.readFileSync(existingConfigPath, "utf8")
           );
-          userId = existingConfig.userId;
+          userId = existingConfig.account?.userId;
+          const existingUserEmail = existingConfig.account?.userEmail;
 
-          if (userId) {
-            console.log(
-              chalk.green(`✅ Found existing user ID: ${chalk.dim(userId)}`)
-            );
-          }
-        }
-
-        if (!userId) {
-          // No existing userId - register with gateway to get proper userId
-          console.log(
-            chalk.blue("🔗 Connecting to TaskMaster Gateway to create user...")
+          // Pass existing data to gateway for validation/lookup
+          gatewayRegistration = await registerUserWithGateway(
+            existingUserEmail || tempEmail,
+            userId
           );
-
-          // Generate temporary email for user registration
-          const tempEmail = `user_${Date.now()}@taskmaster.dev`;
-          gatewayRegistration = await registerUserWithGateway(tempEmail);
 
           if (gatewayRegistration.success) {
             userId = gatewayRegistration.userId;
-            console.log(
-              chalk.green(
-                `✅ Created new user ID from gateway: ${chalk.dim(userId)}`
-              )
-            );
           } else {
-            // Fallback to local generation if gateway is unavailable
+            // Generate fallback userId if gateway unavailable
             userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-            console.log(
-              chalk.yellow(
-                `⚠️ Gateway unavailable, using local user ID: ${chalk.dim(userId)}`
-              )
-            );
-            console.log(
-              chalk.dim(`Gateway error: ${gatewayRegistration.error}`)
-            );
           }
         }
       } catch (error) {
-        // Fallback to local generation on any error
+        // Generate fallback userId on any error
         userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-        console.log(
-          chalk.yellow(
-            `⚠️ Error connecting to gateway, using local user ID: ${chalk.dim(userId)}`
-          )
-        );
-        console.log(chalk.dim(`Error: ${error.message}`));
       }
 
       // STEP 2: Choose AI access method (MAIN DECISION)
@@ -584,240 +516,55 @@ async function initializeProject(options = {}) {
         )
       );
 
-      const accessMethodInput = await promptQuestion(
-        rl,
-        chalk.cyan.bold("Your choice (1 or 2): ")
-      );
-
-      const selectedMode = accessMethodInput.trim() === "1" ? "byok" : "hosted";
-      let selectedPlan = null;
-
-      if (selectedMode === "hosted") {
-        // STEP 3: Hosted Mode - Show plan selection
-        console.log(
-          boxen(
-            chalk.green.bold("🎯 Hosted API Gateway Selected") +
-              "\n\n" +
-              chalk.white("Choose your monthly AI credit plan:"),
-            {
-              padding: 1,
-              margin: { top: 1, bottom: 0 },
-              borderStyle: "round",
-              borderColor: "green",
-            }
-          )
-        );
-
-        // Beautiful plan selection table
-        console.log(
-          boxen(
-            chalk.cyan.bold("(1) Starter") +
-              chalk.white("     - 50 credits   - ") +
-              chalk.green.bold("$5/mo") +
-              chalk.gray("   [$0.10 per credit]") +
-              "\n" +
-              chalk.cyan.bold("(2) Developer") +
-              chalk.yellow.bold(" ⭐") +
-              chalk.white(" - 120 credits  - ") +
-              chalk.green.bold("$10/mo") +
-              chalk.gray("  [$0.083 per credit – ") +
-              chalk.yellow("popular") +
-              chalk.gray("]") +
-              "\n" +
-              chalk.cyan.bold("(3) Pro") +
-              chalk.white("        - 250 credits  - ") +
-              chalk.green.bold("$20/mo") +
-              chalk.gray("  [$0.08 per credit – ") +
-              chalk.blue("great value") +
-              chalk.gray("]") +
-              "\n" +
-              chalk.cyan.bold("(4) Team") +
-              chalk.white("       - 550 credits  - ") +
-              chalk.green.bold("$40/mo") +
-              chalk.gray("  [$0.073 per credit – ") +
-              chalk.magenta("best value") +
-              chalk.gray("]") +
-              "\n\n" +
-              chalk.dim(
-                "💡 Higher tiers offer progressively better value per credit"
-              ),
-            {
-              padding: 1,
-              margin: { top: 0, bottom: 1 },
-              borderStyle: "single",
-              borderColor: "gray",
-            }
-          )
-        );
-
-        const planInput = await promptQuestion(
+      let choice;
+      while (true) {
+        choice = await promptQuestion(
           rl,
-          chalk.cyan.bold("Your choice (1-4): ")
+          chalk.cyan.bold("Your choice (1 or 2): ")
         );
 
-        const planMapping = {
-          1: { name: "starter", credits: 50, price: 5, perCredit: 0.1 },
-          2: { name: "viber", credits: 120, price: 10, perCredit: 0.083 },
-          3: { name: "pro", credits: 250, price: 20, perCredit: 0.08 },
-          4: { name: "master", credits: 550, price: 40, perCredit: 0.073 },
-        };
-
-        selectedPlan = planMapping[planInput.trim()] || planMapping["2"]; // Default to Developer
-
-        console.log(
-          boxen(
-            chalk.green.bold("✅ Plan Selected") +
-              "\n\n" +
-              chalk.white(`Plan: ${chalk.cyan.bold(selectedPlan.name)}`) +
-              "\n" +
-              chalk.white(
-                `Credits: ${chalk.yellow.bold(selectedPlan.credits + "/month")}`
-              ) +
-              "\n" +
-              chalk.white(
-                `Price: ${chalk.green.bold("$" + selectedPlan.price + "/month")}`
-              ) +
-              "\n\n" +
-              chalk.blue("🔄 Opening Stripe checkout...") +
-              "\n" +
-              chalk.gray("(This will open in your default browser)"),
-            {
-              padding: 1,
-              margin: { top: 1, bottom: 1 },
-              borderStyle: "round",
-              borderColor: "green",
-            }
-          )
-        );
-
-        // Register user with gateway (existing functionality)
-        console.log(chalk.blue("Registering with TaskMaster API gateway..."));
-
-        // Check if we already registered during userId creation
-        if (!gatewayRegistration) {
-          // For now, we'll use a placeholder email. In production, this would integrate with Stripe
-          const email = `${userId}@taskmaster.dev`; // Temporary placeholder
-          gatewayRegistration = await registerUserWithGateway(email);
-        } else {
+        if (choice === "1" || choice.toLowerCase() === "byok") {
           console.log(
-            chalk.green("✅ Already registered during user ID creation")
-          );
-        }
-
-        if (gatewayRegistration.success) {
-          console.log(chalk.green(`✅ Successfully registered with gateway!`));
-          console.log(chalk.dim(`User ID: ${gatewayRegistration.userId}`));
-
-          // Ensure we're using the gateway's userId (in case it differs)
-          userId = gatewayRegistration.userId;
-        } else {
-          console.log(
-            chalk.yellow(
-              `⚠️ Gateway registration failed: ${gatewayRegistration.error}`
+            boxen(
+              chalk.blue.bold("🔑 BYOK Mode Selected") +
+                "\n\n" +
+                chalk.white("You'll manage your own API keys and billing.") +
+                "\n" +
+                chalk.white("After setup, add your API keys to ") +
+                chalk.cyan(".env") +
+                chalk.white(" file."),
+              {
+                padding: 1,
+                margin: { top: 1, bottom: 1 },
+                borderStyle: "round",
+                borderColor: "blue",
+              }
             )
           );
-          console.log(chalk.dim("Continuing with BYOK mode..."));
-          selectedMode = "byok"; // Fallback to BYOK
-        }
-      } else {
-        // BYOK Mode selected
-        console.log(
-          boxen(
-            chalk.blue.bold("🔑 BYOK Mode Selected") +
-              "\n\n" +
-              chalk.white("You'll manage your own API keys and billing.") +
-              "\n" +
-              chalk.white("After setup, add your API keys to ") +
-              chalk.cyan(".env") +
-              chalk.white(" file."),
-            {
-              padding: 1,
-              margin: { top: 1, bottom: 1 },
-              borderStyle: "round",
-              borderColor: "blue",
-            }
-          )
-        );
-      }
-
-      // STEP 4: Continue with rest of setup (aliases, etc.)
-      const addAliasesInput = await promptQuestion(
-        rl,
-        chalk.cyan(
-          'Add shell aliases for task-master? This lets you type "tm" instead of "task-master" (Y/n): '
-        )
-      );
-      const addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== "n";
-
-      // Confirm settings
-      console.log(
-        boxen(
-          chalk.white.bold("📋 Project Configuration Summary") +
-            "\n\n" +
-            chalk.blue("User ID: ") +
-            chalk.white(userId) +
-            "\n" +
-            chalk.blue("Access Mode: ") +
-            chalk.white(
-              selectedMode === "byok"
-                ? "BYOK (Bring Your Own Keys)"
-                : "Hosted API Gateway"
-            ) +
-            "\n" +
-            (selectedPlan
-              ? chalk.blue("Plan: ") +
+          return "byok";
+        } else if (choice === "2" || choice.toLowerCase() === "hosted") {
+          console.log(
+            boxen(
+              chalk.green.bold("🎯 Hosted API Gateway Selected") +
+                "\n\n" +
                 chalk.white(
-                  `${selectedPlan.name} (${selectedPlan.credits} credits/month for $${selectedPlan.price})`
+                  "All AI models available instantly - no API keys needed!"
                 ) +
-                "\n"
-              : "") +
-            chalk.blue("Shell Aliases: ") +
-            chalk.white(addAliasesPrompted ? "Yes" : "No"),
-          {
-            padding: 1,
-            margin: { top: 1, bottom: 1 },
-            borderStyle: "round",
-            borderColor: "yellow",
-          }
-        )
-      );
-
-      const confirmInput = await promptQuestion(
-        rl,
-        chalk.yellow.bold("Continue with these settings? (Y/n): ")
-      );
-      const shouldContinue = confirmInput.trim().toLowerCase() !== "n";
-      rl.close();
-
-      if (!shouldContinue) {
-        log("info", "Project initialization cancelled by user");
-        process.exit(0);
-        return;
-      }
-
-      const dryRun = options.dryRun || false;
-
-      if (dryRun) {
-        log("info", "DRY RUN MODE: No files will be modified");
-        log("info", "Would initialize Task Master project");
-        log("info", "Would create/update necessary project files");
-        if (addAliasesPrompted) {
-          log("info", "Would add shell aliases for task-master");
+                "\n" +
+                chalk.dim("Let's set up your subscription plan..."),
+              {
+                padding: 0.5,
+                margin: { top: 0.5, bottom: 0.5 },
+                borderStyle: "round",
+                borderColor: "green",
+              }
+            )
+          );
+          return "hosted";
+        } else {
+          console.log(chalk.red("Please enter 1 or 2"));
         }
-        return {
-          dryRun: true,
-        };
       }
-
-      // Create structure with all the new settings
-      createProjectStructure(
-        addAliasesPrompted,
-        dryRun,
-        gatewayRegistration,
-        selectedMode,
-        selectedPlan,
-        userId
-      );
     } catch (error) {
       rl.close();
       log("error", `Error during initialization process: ${error.message}`);
@@ -1088,50 +835,41 @@ function configureTaskmasterConfig(
       config = JSON.parse(configContent);
     }
 
-    // Set core configuration
-    config.mode = selectedMode;
-    if (userId) {
-      // Ensure global object exists
-      if (!config.global) {
-        config.global = {};
-      }
-      config.global.userId = userId;
+    // Ensure global section exists
+    if (!config.global) {
+      config.global = {};
     }
 
-    // Configure based on mode
-    if (selectedMode === "hosted" && selectedPlan) {
-      config.subscription = {
-        plan: selectedPlan.name,
-        credits: selectedPlan.credits,
-        price: selectedPlan.price,
-        pricePerCredit: selectedPlan.perCredit,
-      };
-
-      // Set telemetry configuration if gateway registration was successful
-      if (gatewayRegistration?.success) {
-        config.telemetry = {
-          enabled: true,
-          apiKey: gatewayRegistration.apiKey,
-          userId: gatewayRegistration.userId,
-          email: gatewayRegistration.email,
-        };
-        config.telemetryEnabled = true;
-      }
-    } else if (selectedMode === "byok") {
-      // Ensure telemetry is disabled for BYOK mode by default
-      config.telemetryEnabled = false;
+    // Ensure account section exists
+    if (!config.account) {
+      config.account = {};
     }
+
+    // Store account-specific configuration
+    config.account.mode = selectedMode;
+    config.account.userId = userId || null;
+    config.account.userEmail = gatewayRegistration?.email || "";
+    config.account.telemetryEnabled = selectedMode === "hosted";
+
+    // Store remaining global config items
+    config.global.logLevel = config.global.logLevel || "info";
+    config.global.debug = config.global.debug || false;
+    config.global.defaultSubtasks = config.global.defaultSubtasks || 5;
+    config.global.defaultPriority = config.global.defaultPriority || "medium";
+    config.global.projectName = config.global.projectName || "Taskmaster";
+    config.global.ollamaBaseURL =
+      config.global.ollamaBaseURL || "http://localhost:11434/api";
+    config.global.azureBaseURL =
+      config.global.azureBaseURL || "https://your-endpoint.azure.com/";
 
     // Write updated config
-    fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
-    log("success", `Configured .taskmasterconfig with mode: ${selectedMode}`);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    log("info", `Updated .taskmasterconfig with mode: ${selectedMode}`);
 
-    // Also update MCP configuration if needed
-    if (selectedMode === "hosted" && gatewayRegistration?.success) {
-      updateMCPTelemetryConfig(targetDir, gatewayRegistration);
-    }
+    return config;
   } catch (error) {
-    log("error", `Failed to configure .taskmasterconfig: ${error.message}`);
+    log("error", `Error configuring .taskmasterconfig: ${error.message}`);
+    throw error;
   }
 }
 
@@ -1290,64 +1028,6 @@ function displayNextSteps(selectedMode, selectedPlan) {
   }
 }
 
-// Function to configure telemetry settings in .taskmasterconfig and MCP config
-function configureTelemetrySettings(targetDir, gatewayRegistration) {
-  const configPath = path.join(targetDir, ".taskmasterconfig");
-
-  try {
-    // Read existing config
-    const configContent = fs.readFileSync(configPath, "utf8");
-    const config = JSON.parse(configContent);
-
-    // Add telemetry configuration
-    config.telemetry = {
-      enabled: true,
-      apiKey: gatewayRegistration.apiKey,
-      userId: gatewayRegistration.userId,
-      email: gatewayRegistration.email,
-    };
-
-    // Also ensure telemetryEnabled is explicitly set to true at root level
-    config.telemetryEnabled = true;
-
-    // Write updated config
-    fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
-    log("success", "Configured telemetry settings in .taskmasterconfig");
-
-    // Also update MCP configuration to include telemetry credentials
-    updateMCPTelemetryConfig(targetDir, gatewayRegistration);
-  } catch (error) {
-    log("error", `Failed to configure telemetry settings: ${error.message}`);
-  }
-}
-
-// Function to update MCP configuration with telemetry settings
-function updateMCPTelemetryConfig(targetDir, gatewayRegistration) {
-  const mcpConfigPath = path.join(targetDir, ".cursor", "mcp.json");
-
-  try {
-    let mcpConfig = {};
-    if (fs.existsSync(mcpConfigPath)) {
-      const mcpContent = fs.readFileSync(mcpConfigPath, "utf8");
-      mcpConfig = JSON.parse(mcpContent);
-    }
-
-    // Add telemetry environment variables to MCP config
-    if (!mcpConfig.env) {
-      mcpConfig.env = {};
-    }
-
-    mcpConfig.env.TASKMASTER_TELEMETRY_API_KEY = gatewayRegistration.apiKey;
-    mcpConfig.env.TASKMASTER_TELEMETRY_USER_EMAIL = gatewayRegistration.email;
-
-    // Write updated MCP config
-    fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
-    log("success", "Updated MCP configuration with telemetry settings");
-  } catch (error) {
-    log("error", `Failed to update MCP telemetry config: ${error.message}`);
-  }
-}
-
 // Function to setup MCP configuration for Cursor integration
 function setupMCPConfiguration(targetDir) {
   const mcpDirPath = path.join(targetDir, ".cursor");
@@ -1500,7 +1180,8 @@ async function selectAccessMode() {
 
   let choice;
   while (true) {
-    choice = await askQuestion(
+    choice = await promptQuestion(
+      rl,
       chalk.cyan("Your choice") +
         chalk.gray(" (1 for BYOK, 2 for Hosted)") +
         ": "
@@ -1637,7 +1318,8 @@ async function selectSubscriptionPlan() {
 
   let choice;
   while (true) {
-    choice = await askQuestion(
+    choice = await promptQuestion(
+      rl,
       chalk.cyan("Your choice") + chalk.gray(" (1-4)") + ": "
     );
 

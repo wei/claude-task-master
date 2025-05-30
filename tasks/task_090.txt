@@ -113,6 +113,40 @@ TDD COMPLETE - Subtask 90.1 Implementation Finished:
 
 **Ready for subtask 90.2**: Send telemetry data to remote database endpoint
 </info added on 2025-05-28T18:25:47.900Z>
+<info added on 2025-05-30T22:16:38.344Z>
+Configuration Structure Refactoring Complete:
+- Moved telemetryEnabled from separate telemetry object to account section for better organization
+- Consolidated userId, mode, and userEmail into account section (previously scattered across config)
+- Removed subscription object to simplify configuration structure
+- Updated config-manager.js to handle new configuration structure properly
+- Verified new structure works correctly with test commands
+- Configuration now has cleaner, more logical organization with account-related settings grouped together
+</info added on 2025-05-30T22:16:38.344Z>
+<info added on 2025-05-30T22:30:56.872Z>
+Configuration Structure Migration Complete - All Code and Tests Updated:
+
+**Code Updates:**
+- Fixed user-management.js to use config.account.userId/mode instead of deprecated config.global paths
+- Updated telemetry-submission.js to read userId from config.account.userId for proper telemetry data association
+- Enhanced telemetry opt-out validation to use getTelemetryEnabled() function for consistent config access
+- Improved registerUserWithGateway() function to accept both email and userId parameters for comprehensive user validation
+
+**Test Suite Updates:**
+- Updated tests/integration/init-config.test.js to validate new config.account structure
+- Migrated all test assertions from config.global.userId to config.account.userId
+- Updated config.mode references to config.account.mode throughout test files
+- Changed telemetry validation from config.telemetryEnabled to config.account.telemetryEnabled
+- Removed obsolete config.subscription object references from all test cases
+- Fixed tests/unit/scripts/modules/telemetry-submission.test.js to match new configuration schema
+
+**Gateway Integration Enhancements:**
+- registerUserWithGateway() now sends both email and userId to /auth/init endpoint for proper user identification
+- Gateway can validate existing users and provide appropriate authentication responses
+- API key updates are automatically persisted to .env file upon successful registration
+- Complete user validation and authentication flow implemented and tested
+
+All configuration structure changes are now consistent across codebase. Ready for end-to-end testing with gateway integration.
+</info added on 2025-05-30T22:30:56.872Z>
 
 ## 2. Send telemetry data to remote database endpoint [done]
 ### Dependencies: None

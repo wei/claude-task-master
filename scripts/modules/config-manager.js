@@ -32,8 +32,17 @@ const CONFIG_FILE_NAME = ".taskmasterconfig";
 // Define valid providers dynamically from the loaded MODEL_MAP
 const VALID_PROVIDERS = Object.keys(MODEL_MAP || {});
 
-// Default configuration values (used if .taskmasterconfig is missing or incomplete)
-const DEFAULTS = {
+// Default configuration structure (updated)
+const defaultConfig = {
+  global: {
+    logLevel: "info",
+    debug: false,
+    defaultSubtasks: 5,
+    defaultPriority: "medium",
+    projectName: "Taskmaster",
+    ollamaBaseURL: "http://localhost:11434/api",
+    azureBaseURL: "https://your-endpoint.azure.com/",
+  },
   models: {
     main: {
       provider: "anthropic",
@@ -55,13 +64,11 @@ const DEFAULTS = {
       temperature: 0.2,
     },
   },
-  global: {
-    logLevel: "info",
-    debug: false,
-    defaultSubtasks: 5,
-    defaultPriority: "medium",
-    projectName: "Task Master",
-    ollamaBaseURL: "http://localhost:11434/api",
+  account: {
+    userId: null,
+    userEmail: "",
+    mode: "byok",
+    telemetryEnabled: false,
   },
 };
 
@@ -78,7 +85,7 @@ class ConfigurationError extends Error {
 }
 
 function _loadAndValidateConfig(explicitRoot = null) {
-  const defaults = DEFAULTS; // Use the defined defaults
+  const defaults = defaultConfig; // Use the defined defaults
   let rootToUse = explicitRoot;
   let configSource = explicitRoot
     ? `explicit root (${explicitRoot})`
@@ -122,6 +129,8 @@ function _loadAndValidateConfig(explicitRoot = null) {
               : { ...defaults.models.fallback },
         },
         global: { ...defaults.global, ...parsedConfig?.global },
+        ai: { ...defaults.ai, ...parsedConfig?.ai },
+        account: { ...defaults.account, ...parsedConfig?.account },
       };
       configSource = `file (${configPath})`; // Update source info
 
@@ -259,7 +268,7 @@ function getModelConfigForRole(role, explicitRoot = null) {
       "warn",
       `No model configuration found for role: ${role}. Returning default.`
     );
-    return DEFAULTS.models[role] || {};
+    return defaultConfig.models[role] || {};
   }
   return roleConfig;
 }
@@ -325,7 +334,7 @@ function getFallbackTemperature(explicitRoot = null) {
 function getGlobalConfig(explicitRoot = null) {
   const config = getConfig(explicitRoot);
   // Ensure global defaults are applied if global section is missing
-  return { ...DEFAULTS.global, ...(config?.global || {}) };
+  return { ...defaultConfig.global, ...(config?.global || {}) };
 }
 
 function getLogLevel(explicitRoot = null) {
@@ -342,13 +351,13 @@ function getDefaultSubtasks(explicitRoot = null) {
   // Directly return value from config, ensure integer
   const val = getGlobalConfig(explicitRoot).defaultSubtasks;
   const parsedVal = parseInt(val, 10);
-  return isNaN(parsedVal) ? DEFAULTS.global.defaultSubtasks : parsedVal;
+  return isNaN(parsedVal) ? defaultConfig.global.defaultSubtasks : parsedVal;
 }
 
 function getDefaultNumTasks(explicitRoot = null) {
   const val = getGlobalConfig(explicitRoot).defaultNumTasks;
   const parsedVal = parseInt(val, 10);
-  return isNaN(parsedVal) ? DEFAULTS.global.defaultNumTasks : parsedVal;
+  return isNaN(parsedVal) ? defaultConfig.global.defaultNumTasks : parsedVal;
 }
 
 function getDefaultPriority(explicitRoot = null) {
@@ -701,30 +710,37 @@ function isConfigFilePresent(explicitRoot = null) {
 
 /**
  * Gets the user ID from the configuration.
+ * Sets a default value if none exists and saves the config.
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
- * @returns {string|null} The user ID or null if not found.
+ * @returns {string} The user ID (never null).
  */
 function getUserId(explicitRoot = null) {
   const config = getConfig(explicitRoot);
-  if (!config.global) {
-    config.global = {}; // Ensure global object exists
+
+  // Ensure account section exists
+  if (!config.account) {
+    config.account = { ...defaultConfig.account };
   }
-  if (!config.global.userId) {
-    config.global.userId = "1234567890";
-    // Attempt to write the updated config.
-    // It's important that writeConfig correctly resolves the path
-    // using explicitRoot, similar to how getConfig does.
-    const success = writeConfig(config, explicitRoot);
-    if (!success) {
-      // Log an error or handle the failure to write,
-      // though for now, we'll proceed with the in-memory default.
-      log(
-        "warning",
-        "Failed to write updated configuration with new userId. Please let the developers know."
-      );
-    }
+
+  // If userId exists, return it
+  if (config.account.userId) {
+    return config.account.userId;
   }
-  return config.global.userId;
+
+  // Set default userId if none exists
+  const defaultUserId = "1234567890";
+  config.account.userId = defaultUserId;
+
+  // Save the updated config
+  const success = writeConfig(config, explicitRoot);
+  if (!success) {
+    log(
+      "warn",
+      "Failed to write updated configuration with new userId. Please let the developers know."
+    );
+  }
+
+  return defaultUserId;
 }
 
 /**
@@ -740,6 +756,24 @@ function getBaseUrlForRole(role, explicitRoot = null) {
   return roleConfig && typeof roleConfig.baseURL === "string"
     ? roleConfig.baseURL
     : undefined;
+}
+
+// Get telemetryEnabled from account section
+function getTelemetryEnabled(explicitRoot = null) {
+  const config = getConfig(explicitRoot);
+  return config.account?.telemetryEnabled ?? false;
+}
+
+// Update getUserEmail to use account
+function getUserEmail(explicitRoot = null) {
+  const config = getConfig(explicitRoot);
+  return config.account?.userEmail || "";
+}
+
+// Update getMode function to use account
+function getMode(explicitRoot = null) {
+  const config = getConfig(explicitRoot);
+  return config.account?.mode || "byok";
 }
 
 export {
@@ -786,4 +820,8 @@ export {
   getAllProviders,
   getVertexProjectId,
   getVertexLocation,
+  // New getters
+  getTelemetryEnabled,
+  getUserEmail,
+  getMode,
 };

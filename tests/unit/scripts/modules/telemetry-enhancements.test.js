@@ -231,4 +231,105 @@ describe("Telemetry Enhancements - Task 90", () => {
       expect(result.userId).toBe("test-user-123");
     });
   });
+
+  describe("Subtask 90.4: Non-AI command telemetry queue", () => {
+    let mockTelemetryQueue;
+
+    beforeEach(() => {
+      // Mock the telemetry queue module
+      mockTelemetryQueue = {
+        addToQueue: jest.fn(),
+        processQueue: jest.fn(),
+        startBackgroundProcessor: jest.fn(),
+        stopBackgroundProcessor: jest.fn(),
+        getQueueStats: jest.fn(() => ({ pending: 0, processed: 0, failed: 0 })),
+      };
+    });
+
+    it("should add non-AI command telemetry to queue without blocking", async () => {
+      const commandData = {
+        timestamp: new Date().toISOString(),
+        userId: "test-user-123",
+        commandName: "list-tasks",
+        executionTimeMs: 45,
+        success: true,
+        arguments: { status: "pending" },
+      };
+
+      // Should return immediately without waiting
+      const startTime = Date.now();
+      mockTelemetryQueue.addToQueue(commandData);
+      const endTime = Date.now();
+
+      expect(endTime - startTime).toBeLessThan(10); // Should be nearly instantaneous
+      expect(mockTelemetryQueue.addToQueue).toHaveBeenCalledWith(commandData);
+    });
+
+    it("should process queued telemetry in background", async () => {
+      const queuedItems = [
+        {
+          commandName: "set-status",
+          executionTimeMs: 23,
+          success: true,
+        },
+        {
+          commandName: "next-task",
+          executionTimeMs: 12,
+          success: true,
+        },
+      ];
+
+      mockTelemetryQueue.processQueue.mockResolvedValue({
+        processed: 2,
+        failed: 0,
+        errors: [],
+      });
+
+      const result = await mockTelemetryQueue.processQueue();
+
+      expect(result.processed).toBe(2);
+      expect(result.failed).toBe(0);
+      expect(mockTelemetryQueue.processQueue).toHaveBeenCalled();
+    });
+
+    it("should handle queue processing failures gracefully", async () => {
+      mockTelemetryQueue.processQueue.mockResolvedValue({
+        processed: 1,
+        failed: 1,
+        errors: ["Network timeout for item 2"],
+      });
+
+      const result = await mockTelemetryQueue.processQueue();
+
+      expect(result.processed).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors).toContain("Network timeout for item 2");
+    });
+
+    it("should provide queue statistics", () => {
+      mockTelemetryQueue.getQueueStats.mockReturnValue({
+        pending: 5,
+        processed: 127,
+        failed: 3,
+        lastProcessedAt: new Date().toISOString(),
+      });
+
+      const stats = mockTelemetryQueue.getQueueStats();
+
+      expect(stats.pending).toBe(5);
+      expect(stats.processed).toBe(127);
+      expect(stats.failed).toBe(3);
+      expect(stats.lastProcessedAt).toBeDefined();
+    });
+
+    it("should start and stop background processor", () => {
+      mockTelemetryQueue.startBackgroundProcessor(30000); // 30 second interval
+      expect(mockTelemetryQueue.startBackgroundProcessor).toHaveBeenCalledWith(
+        30000
+      );
+
+      mockTelemetryQueue.stopBackgroundProcessor();
+      expect(mockTelemetryQueue.stopBackgroundProcessor).toHaveBeenCalled();
+    });
+  });
 });

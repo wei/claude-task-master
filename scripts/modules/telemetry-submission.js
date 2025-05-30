@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { getConfig } from "./config-manager.js";
+import { getTelemetryEnabled } from "./config-manager.js";
 import { resolveEnvVariable } from "./utils.js";
 
 // Telemetry data validation schema
@@ -54,7 +55,7 @@ function getTelemetryConfig() {
 
   return {
     apiKey: envApiKey || null, // API key should only come from environment
-    userId: envUserId || config?.global?.userId || null,
+    userId: envUserId || config?.account?.userId || null,
     email: envEmail || null,
   };
 }
@@ -62,16 +63,21 @@ function getTelemetryConfig() {
 /**
  * Register or lookup user with the TaskMaster telemetry gateway using /auth/init
  * @param {string} email - User's email address
+ * @param {string} userId - User's ID
  * @returns {Promise<{success: boolean, apiKey?: string, userId?: string, email?: string, isNewUser?: boolean, error?: string}>}
  */
-export async function registerUserWithGateway(email) {
+export async function registerUserWithGateway(email = null, userId = null) {
   try {
+    const requestBody = {};
+    if (email) requestBody.email = email;
+    if (userId) requestBody.userId = userId;
+
     const response = await fetch(TASKMASTER_USER_REGISTRATION_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -114,8 +120,7 @@ export async function registerUserWithGateway(email) {
 export async function submitTelemetryData(telemetryData) {
   try {
     // Check user opt-out preferences first
-    const config = getConfig();
-    if (config && config.telemetryEnabled === false) {
+    if (!getTelemetryEnabled()) {
       return {
         success: true,
         skipped: true,

@@ -34,6 +34,7 @@ jest.unstable_mockModule(
     getProjectName: jest.fn(() => "Test Project"),
     getDefaultPriority: jest.fn(() => "medium"),
     getDefaultNumTasks: jest.fn(() => 10),
+    getTelemetryEnabled: jest.fn(() => true),
   })
 );
 
@@ -48,17 +49,17 @@ const { getConfig } = await import(
   "../../../../scripts/modules/config-manager.js"
 );
 
-describe("Telemetry Submission Service - Task 90.2", () => {
+describe("Telemetry Submission Service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch.mockClear();
   });
 
-  describe("Subtask 90.2: Send telemetry data to remote database endpoint", () => {
+  describe("should send telemetry data to remote database endpoint", () => {
     it("should successfully submit telemetry data to hardcoded gateway endpoint", async () => {
       // Mock successful config with proper structure
       getConfig.mockReturnValue({
-        global: {
+        account: {
           userId: "test-user-id",
         },
       });
@@ -113,7 +114,7 @@ describe("Telemetry Submission Service - Task 90.2", () => {
 
     it("should implement retry logic for failed requests", async () => {
       getConfig.mockReturnValue({
-        global: {
+        account: {
           userId: "test-user-id",
         },
       });
@@ -149,7 +150,7 @@ describe("Telemetry Submission Service - Task 90.2", () => {
 
     it("should handle failures gracefully without blocking execution", async () => {
       getConfig.mockReturnValue({
-        global: {
+        account: {
           userId: "test-user-id",
         },
       });
@@ -180,8 +181,16 @@ describe("Telemetry Submission Service - Task 90.2", () => {
     }, 10000);
 
     it("should respect user opt-out preferences", async () => {
+      // Mock getTelemetryEnabled to return false for this test
+      const { getTelemetryEnabled } = await import(
+        "../../../../scripts/modules/config-manager.js"
+      );
+      getTelemetryEnabled.mockReturnValue(false);
+
       getConfig.mockReturnValue({
-        telemetryEnabled: false,
+        account: {
+          telemetryEnabled: false,
+        },
       });
 
       const telemetryData = {
@@ -198,11 +207,14 @@ describe("Telemetry Submission Service - Task 90.2", () => {
       expect(result.skipped).toBe(true);
       expect(result.reason).toBe("Telemetry disabled by user preference");
       expect(global.fetch).not.toHaveBeenCalled();
+
+      // Reset the mock for other tests
+      getTelemetryEnabled.mockReturnValue(true);
     });
 
     it("should validate telemetry data before submission", async () => {
       getConfig.mockReturnValue({
-        global: {
+        account: {
           userId: "test-user-id",
         },
       });
@@ -229,7 +241,7 @@ describe("Telemetry Submission Service - Task 90.2", () => {
 
     it("should handle HTTP error responses appropriately", async () => {
       getConfig.mockReturnValue({
-        global: {
+        account: {
           userId: "test-user-id",
         },
       });

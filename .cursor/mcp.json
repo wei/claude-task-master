@@ -1,19 +1,44 @@
 {
-	"mcpServers": {
-		"task-master-ai-tm": {
-			"command": "node",
-			"args": ["./mcp-server/server.js"],
-			"env": {
-				"ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
-				"PERPLEXITY_API_KEY": "PERPLEXITY_API_KEY_HERE",
-				"OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
-				"GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
-				"XAI_API_KEY": "XAI_API_KEY_HERE",
-				"OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
-				"MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
-				"OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
-			}
-		}
-	}
+  "mcpServers": {
+    "task-master-ai-tm": {
+      "command": "node",
+      "args": [
+        "./mcp-server/server.js"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
+        "GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
+        "XAI_API_KEY": "XAI_API_KEY_HERE",
+        "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
+        "MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
+        "OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
+      }
+    },
+    "task-master-ai": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=task-master-ai",
+        "task-master-ai"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
+        "GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
+        "XAI_API_KEY": "XAI_API_KEY_HERE",
+        "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
+        "MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
+        "OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
+      }
+    }
+  },
+  "env": {
+    "TASKMASTER_TELEMETRY_API_KEY": "339a81c9-5b9c-4d60-92d8-cba2ee2a8cc3",
+    "TASKMASTER_TELEMETRY_USER_EMAIL": "user_1748640077834@taskmaster.dev"
+  }
 }

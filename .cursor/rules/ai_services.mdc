@@ -1,6 +1,7 @@
 ---
 description: Guidelines for interacting with the unified AI service layer.
 globs: scripts/modules/ai-services-unified.js, scripts/modules/task-manager/*.js, scripts/modules/commands.js
+alwaysApply: false
 ---
 
 # AI Services Layer Guidelines
@@ -91,7 +92,7 @@ This document outlines the architecture and usage patterns for interacting with 
 *   ✅ **DO**: Centralize **all** LLM calls through `generateTextService` or `generateObjectService`.
 *   ✅ **DO**: Determine the appropriate `role` (`main`, `research`, `fallback`) in your core logic and pass it to the service.
 *   ✅ **DO**: Pass the `session` object (received in the `context` parameter, especially from direct function wrappers) to the service call when in MCP context.
-*   ✅ **DO**: Ensure API keys are correctly configured in `.env` (for CLI) or `.cursor/mcp.json` (for MCP).
+*   ✅ **DO**: Ensure API keys are correctly configured in `.env` (for CLI) or `.cursor/mcp.json` (for MCP). FYI: As the AI agent, you do not have access to read the .env -- so do not attempt to recreate it!
 *   ✅ **DO**: Ensure `.taskmasterconfig` exists and has valid provider/model IDs for the roles you intend to use (manage via `task-master models --setup`).
 *   ✅ **DO**: Use `generateTextService` and implement robust manual JSON parsing (with Zod validation *after* parsing) when structured output is needed, as `generateObjectService` has shown unreliability with some providers/schemas.
 *   ❌ **DON'T**: Import or call anything from the old `ai-services.js`, `ai-client-factory.js`, or `ai-client-utils.js` files.

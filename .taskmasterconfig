@@ -26,8 +26,12 @@
     "defaultPriority": "medium",
     "projectName": "Taskmaster",
     "ollamaBaseURL": "http://localhost:11434/api",
-    "userId": "005930b0-73ff-4682-832d-e1952c20fd9e",
-    "azureBaseURL": "https://your-endpoint.azure.com/",
-    "mode": "hosted"
+    "azureBaseURL": "https://your-endpoint.azure.com/"
+  },
+  "account": {
+    "userId": "277779c9-1ee2-4ef8-aa3a-2176745b71a9",
+    "userEmail": "user_1748640077834@taskmaster.dev",
+    "mode": "hosted",
+    "telemetryEnabled": true
   }
 }
