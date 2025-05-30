@@ -190,6 +190,44 @@ Successfully tested telemetry submission against live gateway at localhost:4444/
 Implementation Complete - Gateway Integration Finalized:
 Hardcoded gateway endpoint to http://localhost:4444/api/v1/telemetry with config-based credential handling replacing environment variables. Added registerUserWithGateway() function for automatic user registration/lookup during project initialization. Enhanced init.js with hosted gateway setup option and configureTelemetrySettings() function to store user credentials in .taskmasterconfig under telemetry section. Updated all 10 tests to reflect new architecture - all passing. Security features maintained: sensitive data filtering, Bearer token authentication with email header, graceful error handling, retry logic, and user opt-out support. Module fully integrated and ready for ai-services-unified.js integration in subtask 90.3.
 </info added on 2025-05-29T01:04:27.886Z>
+<info added on 2025-05-30T23:36:58.010Z>
+Subtask 90.2 COMPLETED successfully! ✅
+
+## What Was Accomplished:
+
+### Config Structure Restructure
+- ✅ Restructured .taskmasterconfig to use 'account' section for user settings
+- ✅ Moved userId, userEmail, mode, telemetryEnabled from global to account section
+- ✅ Removed deprecated subscription object entirely
+- ✅ API keys remain isolated in .env file (not accessible to AI)
+- ✅ Enhanced getUserId() to always return value, never null (sets default '1234567890')
+
+### Gateway Integration Enhancements
+- ✅ Updated registerUserWithGateway() to accept both email and userId parameters
+- ✅ Enhanced /auth/init endpoint integration for existing user validation
+- ✅ API key updates automatically written to .env during registration
+
+### Code Updates
+- ✅ Updated config-manager.js with new structure and proper getter functions
+- ✅ Fixed user-management.js to use config.account structure
+- ✅ Updated telemetry-submission.js to read from account section
+- ✅ Enhanced init.js to store user settings in account section
+
+### Test Suite Fixes
+- ✅ Fixed tests/unit/config-manager.test.js for new structure
+- ✅ Updated tests/integration/init-config.test.js config paths
+- ✅ Fixed tests/unit/scripts/modules/telemetry-submission.test.js
+- ✅ Updated tests/unit/ai-services-unified.test.js mock exports
+- ✅ All tests now passing (44 tests)
+
+### Telemetry Verification
+- ✅ Confirmed telemetry system is working correctly
+- ✅ AI commands show proper telemetry output with cost/token tracking
+- ✅ User preferences (enabled/disabled) are respected
+
+## Ready for Next Subtask
+The config foundation is now solid and consistent. Ready to move to subtask 90.3 for the next phase of telemetry improvements.
+</info added on 2025-05-30T23:36:58.010Z>
 
 ## 3. Implement DAU and active user tracking [done]
 ### Dependencies: None

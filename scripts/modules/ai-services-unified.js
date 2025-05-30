@@ -27,6 +27,7 @@ import {
 } from "./config-manager.js";
 import { log, findProjectRoot, resolveEnvVariable } from "./utils.js";
 import { submitTelemetryData } from "./telemetry-submission.js";
+import { isHostedMode } from "./user-management.js";
 
 // Import provider classes
 import {
@@ -268,6 +269,80 @@ async function _attemptProviderCallWithRetries(
 }
 
 /**
+ * Makes an AI call through the TaskMaster gateway for hosted users
+ * @param {string} serviceType - Type of service (generateText, generateObject, streamText)
+ * @param {object} callParams - Parameters for the AI call
+ * @param {string} providerName - AI provider name
+ * @param {string} modelId - Model ID
+ * @param {string} userId - User ID
+ * @param {string} commandName - Command name for tracking
+ * @param {string} outputType - Output type (cli, mcp)
+ * @param {string} projectRoot - Project root path
+ * @returns {Promise<object>} AI response with usage data
+ */
+async function _callGatewayAI(
+  serviceType,
+  callParams,
+  providerName,
+  modelId,
+  userId,
+  commandName,
+  outputType,
+  projectRoot
+) {
+  const gatewayUrl =
+    process.env.TASKMASTER_GATEWAY_URL || "http://localhost:4444";
+  const endpoint = `${gatewayUrl}/api/v1/ai/${serviceType}`;
+
+  // Get API key from env
+  const apiKey = resolveEnvVariable("TASKMASTER_API_KEY", null, projectRoot);
+  if (!apiKey) {
+    throw new Error("TASKMASTER_API_KEY not found for hosted mode");
+  }
+
+  // need to make sure the user is authenticated and has a valid paid user token + enough credits for this call
+
+  const requestBody = {
+    provider: providerName,
+    model: modelId,
+    serviceType,
+    userId,
+    commandName,
+    outputType,
+    ...callParams,
+  };
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gateway AI call failed: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || "Gateway AI call failed");
+  }
+
+  // Return the AI response in the expected format
+  return {
+    text: result.data.text,
+    object: result.data.object,
+    usage: result.data.usage,
+    // Include any account info returned from gateway
+    accountInfo: result.accountInfo,
+  };
+}
+
+/**
  * Base logic for unified service functions.
  * @param {string} serviceType - Type of service ('generateText', 'streamText', 'generateObject').
  * @param {object} params - Original parameters passed to the service function.
@@ -295,6 +370,7 @@ async function _unifiedServiceRunner(serviceType, params) {
     outputType,
     ...restApiParams
   } = params;
+
   if (getDebugFlag()) {
     log("info", `${serviceType}Service called`, {
       role: initialRole,
@@ -307,6 +383,115 @@ async function _unifiedServiceRunner(serviceType, params) {
   const effectiveProjectRoot = projectRoot || findProjectRoot();
   const userId = getUserId(effectiveProjectRoot);
 
+  // Check if user is in hosted mode
+  const hostedMode = isHostedMode(effectiveProjectRoot);
+
+  if (hostedMode) {
+    // For hosted mode, route through gateway
+    log("info", "Routing AI call through TaskMaster gateway (hosted mode)");
+
+    try {
+      // Get the role configuration for provider/model selection
+      let providerName, modelId;
+      if (initialRole === "main") {
+        providerName = getMainProvider(effectiveProjectRoot);
+        modelId = getMainModelId(effectiveProjectRoot);
+      } else if (initialRole === "research") {
+        providerName = getResearchProvider(effectiveProjectRoot);
+        modelId = getResearchModelId(effectiveProjectRoot);
+      } else if (initialRole === "fallback") {
+        providerName = getFallbackProvider(effectiveProjectRoot);
+        modelId = getFallbackModelId(effectiveProjectRoot);
+      } else {
+        throw new Error(`Unknown AI role: ${initialRole}`);
+      }
+
+      if (!providerName || !modelId) {
+        throw new Error(
+          `Configuration missing for role '${initialRole}'. Provider: ${providerName}, Model: ${modelId}`
+        );
+      }
+
+      // Get role parameters
+      const roleParams = getParametersForRole(
+        initialRole,
+        effectiveProjectRoot
+      );
+
+      // Prepare messages
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      if (prompt) {
+        messages.push({ role: "user", content: prompt });
+      } else {
+        throw new Error("User prompt content is missing.");
+      }
+
+      const callParams = {
+        maxTokens: roleParams.maxTokens,
+        temperature: roleParams.temperature,
+        messages,
+        ...(serviceType === "generateObject" && { schema, objectName }),
+        ...restApiParams,
+      };
+
+      const gatewayResponse = await _callGatewayAI(
+        serviceType,
+        callParams,
+        providerName,
+        modelId,
+        userId,
+        commandName,
+        outputType,
+        effectiveProjectRoot
+      );
+
+      // For hosted mode, we don't need to submit telemetry separately
+      // The gateway handles everything and returns account info
+      let telemetryData = null;
+      if (gatewayResponse.accountInfo) {
+        // Convert gateway account info to telemetry format for UI display
+        telemetryData = {
+          timestamp: new Date().toISOString(),
+          userId,
+          commandName,
+          modelUsed: modelId,
+          providerName,
+          inputTokens: gatewayResponse.usage?.inputTokens || 0,
+          outputTokens: gatewayResponse.usage?.outputTokens || 0,
+          totalTokens: gatewayResponse.usage?.totalTokens || 0,
+          totalCost: 0, // Not used in hosted mode
+          currency: "USD",
+          // Include account info for UI display
+          accountInfo: gatewayResponse.accountInfo,
+        };
+      }
+
+      let finalMainResult;
+      if (serviceType === "generateText") {
+        finalMainResult = gatewayResponse.text;
+      } else if (serviceType === "generateObject") {
+        finalMainResult = gatewayResponse.object;
+      } else if (serviceType === "streamText") {
+        finalMainResult = gatewayResponse; // Streaming through gateway would need special handling
+      } else {
+        finalMainResult = gatewayResponse;
+      }
+
+      return {
+        mainResult: finalMainResult,
+        telemetryData: telemetryData,
+      };
+    } catch (error) {
+      const cleanMessage = _extractErrorMessage(error);
+      log("error", `Gateway AI call failed: ${cleanMessage}`);
+      throw new Error(cleanMessage);
+    }
+  }
+
+  // For BYOK mode, continue with existing logic...
   let sequence;
   if (initialRole === "main") {
     sequence = ["main", "fallback", "research"];
