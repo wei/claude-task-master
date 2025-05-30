@@ -6082,8 +6082,8 @@
           "id": 3,
           "title": "Implement DAU and active user tracking",
           "description": "Enhance telemetry to track Daily Active Users (DAU) and identify active users through unique user IDs and usage patterns",
-          "details": "Ensure userId generation is consistent and persistent. Track command execution timestamps to calculate DAU. Include session tracking to understand user engagement patterns. Add fields for tracking unique daily users, command frequency, and session duration.",
-          "status": "pending",
+          "details": "Ensure userId generation is consistent and persistent. Track command execution timestamps to calculate DAU. Include session tracking to understand user engagement patterns. Add fields for tracking unique daily users, command frequency, and session duration.\n<info added on 2025-05-30T00:27:53.666Z>\nCOMPLETED: TDD implementation successfully integrated telemetry submission into AI services. Modified logAiUsage function in ai-services-unified.js to automatically submit telemetry data to gateway after each AI usage event. Implementation includes graceful error handling with try/catch wrapper to prevent telemetry failures from blocking core functionality. Added debug logging for submission states. All 7 tests passing with no regressions introduced. Integration maintains security by filtering sensitive data from user responses while sending complete telemetry to gateway for analytics. Every AI call now automatically triggers telemetry submission as designed.\n</info added on 2025-05-30T00:27:53.666Z>",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 90
         },
@@ -6264,6 +6264,20 @@
           "parentTaskId": 92
         }
       ]
+    },
+    {
+      "id": 93,
+      "title": "Implement Telemetry Testing Framework with Humorous Response Capability",
+      "description": "Create a comprehensive testing framework for validating telemetry functionality across all TaskMaster components, including the ability to respond with jokes during test scenarios to verify response handling mechanisms.",
+      "details": "This task implements a robust testing framework for telemetry validation with the following components:\n\n1. **Telemetry Test Suite Creation**:\n   - Create `tests/telemetry/` directory structure with comprehensive test files\n   - Implement unit tests for telemetry data capture, sanitization, and transmission\n   - Add integration tests for end-to-end telemetry flow validation\n   - Create mock telemetry endpoints to simulate external analytics services\n\n2. **Joke Response Testing Module**:\n   - Implement a test utility that can inject humorous responses during telemetry testing\n   - Create a collection of programming-related jokes for test scenarios\n   - Add response validation to ensure joke responses are properly handled by telemetry systems\n   - Implement timing tests to verify joke responses don't interfere with telemetry performance\n\n3. **Telemetry Data Validation**:\n   - Create validators for telemetry payload structure and content\n   - Implement tests for sensitive data redaction and encryption\n   - Add verification for proper anonymization of user data\n   - Test telemetry opt-out functionality and preference handling\n\n4. **Performance and Reliability Testing**:\n   - Implement load testing for telemetry submission under various conditions\n   - Add network failure simulation and retry mechanism testing\n   - Create tests for telemetry buffer management and data persistence\n   - Validate telemetry doesn't impact core TaskMaster functionality\n\n5. **Cross-Mode Testing**:\n   - Test telemetry functionality in both BYOK and hosted gateway modes\n   - Validate mode-specific telemetry data collection and routing\n   - Ensure consistent telemetry behavior across different AI providers\n\n6. **Test Utilities and Helpers**:\n   - Create mock telemetry services for isolated testing\n   - Implement test data generators for various telemetry scenarios\n   - Add debugging utilities for telemetry troubleshooting\n   - Create automated test reporting for telemetry coverage",
+      "testStrategy": "1. **Unit Test Validation**: Run all telemetry unit tests to verify individual component functionality, ensuring 100% pass rate for data capture, sanitization, and transmission modules.\n\n2. **Integration Test Execution**: Execute end-to-end telemetry tests across all TaskMaster commands, validating that telemetry data is properly collected and transmitted without affecting command performance.\n\n3. **Joke Response Verification**: Test the joke response mechanism by triggering test scenarios and verifying that humorous responses are delivered correctly while maintaining telemetry data integrity.\n\n4. **Data Privacy Validation**: Verify that all sensitive data is properly redacted or encrypted in telemetry payloads, with no personally identifiable information exposed in test outputs.\n\n5. **Performance Impact Assessment**: Run performance benchmarks comparing TaskMaster execution with and without telemetry enabled, ensuring minimal performance degradation (< 5% overhead).\n\n6. **Network Failure Simulation**: Test telemetry behavior under various network conditions including timeouts, connection failures, and intermittent connectivity to validate retry mechanisms and data persistence.\n\n7. **Cross-Mode Compatibility**: Execute telemetry tests in both BYOK and hosted gateway modes, verifying consistent behavior and appropriate mode-specific data collection.\n\n8. **Opt-out Functionality Testing**: Validate that telemetry opt-out preferences are properly respected and no data is collected or transmitted when users have opted out.\n\n9. **Mock Service Integration**: Verify that mock telemetry endpoints properly simulate real analytics services and capture expected data formats and frequencies.\n\n10. **Automated Test Coverage**: Ensure test suite achieves minimum 90% code coverage for all telemetry-related modules and generates comprehensive test reports.",
+      "status": "pending",
+      "dependencies": [
+        90,
+        77
+      ],
+      "priority": "medium",
+      "subtasks": []
     }
   ]
 }

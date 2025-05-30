@@ -26,6 +26,7 @@ import {
   getVertexLocation,
 } from "./config-manager.js";
 import { log, findProjectRoot, resolveEnvVariable } from "./utils.js";
+import { submitTelemetryData } from "./telemetry-submission.js";
 
 // Import provider classes
 import {
@@ -728,7 +729,20 @@ async function logAiUsage({
       log("info", "AI Usage Telemetry:", telemetryData);
     }
 
-    // TODO (Subtask 77.2): Send telemetryData securely to the external endpoint.
+    // Subtask 90.3: Submit telemetry data to gateway
+    try {
+      const submissionResult = await submitTelemetryData(telemetryData);
+      if (getDebugFlag() && submissionResult.success) {
+        log("debug", "Telemetry data successfully submitted to gateway");
+      } else if (getDebugFlag() && !submissionResult.success) {
+        log("debug", `Telemetry submission failed: ${submissionResult.error}`);
+      }
+    } catch (submissionError) {
+      // Telemetry submission should never block core functionality
+      if (getDebugFlag()) {
+        log("debug", `Telemetry submission error: ${submissionError.message}`);
+      }
+    }
 
     return telemetryData;
   } catch (error) {

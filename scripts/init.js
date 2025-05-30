@@ -351,19 +351,7 @@ async function initializeProject(options = {}) {
     displayBanner();
   }
 
-  // Debug logging only if not in silent mode
-  // if (!isSilentMode()) {
-  // 	console.log('===== DEBUG: INITIALIZE PROJECT OPTIONS RECEIVED =====');
-  // 	console.log('Full options object:', JSON.stringify(options));
-  // 	console.log('options.yes:', options.yes);
-  // 	console.log('==================================================');
-  // }
-
   const skipPrompts = options.yes || (options.name && options.description);
-
-  // if (!isSilentMode()) {
-  // 	console.log('Skip prompts determined:', skipPrompts);
-  // }
 
   if (skipPrompts) {
     if (!isSilentMode()) {
@@ -391,17 +379,368 @@ async function initializeProject(options = {}) {
       };
     }
 
-    createProjectStructure(addAliases, dryRun, null);
+    // STEP 1: Create/find userId first (MCP/non-interactive mode)
+    let userId = null;
+    let gatewayRegistration = null;
+
+    try {
+      // Try to get existing userId from config if it exists
+      const existingConfigPath = path.join(process.cwd(), ".taskmasterconfig");
+      if (fs.existsSync(existingConfigPath)) {
+        const existingConfig = JSON.parse(
+          fs.readFileSync(existingConfigPath, "utf8")
+        );
+        userId = existingConfig.userId;
+
+        if (userId) {
+          if (!isSilentMode()) {
+            console.log(
+              chalk.green(`✅ Found existing user ID: ${chalk.dim(userId)}`)
+            );
+          }
+        }
+      }
+
+      if (!userId) {
+        // No existing userId - register with gateway to get proper userId
+        if (!isSilentMode()) {
+          console.log(
+            chalk.blue("🔗 Connecting to TaskMaster Gateway to create user...")
+          );
+        }
+
+        // Generate temporary email for user registration
+        const tempEmail = `user_${Date.now()}@taskmaster.dev`;
+        gatewayRegistration = await registerUserWithGateway(tempEmail);
+
+        if (gatewayRegistration.success) {
+          userId = gatewayRegistration.userId;
+          if (!isSilentMode()) {
+            console.log(
+              chalk.green(
+                `✅ Created new user ID from gateway: ${chalk.dim(userId)}`
+              )
+            );
+          }
+        } else {
+          // Fallback to local generation if gateway is unavailable
+          userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+          if (!isSilentMode()) {
+            console.log(
+              chalk.yellow(
+                `⚠️ Gateway unavailable, using local user ID: ${chalk.dim(userId)}`
+              )
+            );
+            console.log(
+              chalk.dim(`Gateway error: ${gatewayRegistration.error}`)
+            );
+          }
+        }
+      }
+    } catch (error) {
+      // Fallback to local generation on any error
+      userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      if (!isSilentMode()) {
+        console.log(
+          chalk.yellow(
+            `⚠️ Error connecting to gateway, using local user ID: ${chalk.dim(userId)}`
+          )
+        );
+        console.log(chalk.dim(`Error: ${error.message}`));
+      }
+    }
+
+    // For non-interactive mode, default to BYOK mode with proper userId
+    createProjectStructure(
+      addAliases,
+      dryRun,
+      gatewayRegistration,
+      "byok",
+      null,
+      userId
+    );
   } else {
-    // Interactive logic
-    log("info", "Required options not provided, proceeding with prompts.");
+    // Interactive logic - NEW FLOW STARTS HERE
+    log("info", "Setting up your Task Master project...");
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
 
     try {
-      // Prompt for shell aliases
+      // STEP 1: Create/find userId first
+      console.log(
+        boxen(
+          chalk.blue.bold("🚀 Welcome to Taskmaster AI") +
+            "\n\n" +
+            chalk.white("Setting up your project workspace..."),
+          {
+            padding: 1,
+            margin: { top: 1, bottom: 1 },
+            borderStyle: "round",
+            borderColor: "blue",
+          }
+        )
+      );
+
+      // Generate or retrieve userId from gateway
+      let userId = null;
+      let gatewayRegistration = null;
+
+      try {
+        // Try to get existing userId from config if it exists
+        const existingConfigPath = path.join(
+          process.cwd(),
+          ".taskmasterconfig"
+        );
+        if (fs.existsSync(existingConfigPath)) {
+          const existingConfig = JSON.parse(
+            fs.readFileSync(existingConfigPath, "utf8")
+          );
+          userId = existingConfig.userId;
+
+          if (userId) {
+            console.log(
+              chalk.green(`✅ Found existing user ID: ${chalk.dim(userId)}`)
+            );
+          }
+        }
+
+        if (!userId) {
+          // No existing userId - register with gateway to get proper userId
+          console.log(
+            chalk.blue("🔗 Connecting to TaskMaster Gateway to create user...")
+          );
+
+          // Generate temporary email for user registration
+          const tempEmail = `user_${Date.now()}@taskmaster.dev`;
+          gatewayRegistration = await registerUserWithGateway(tempEmail);
+
+          if (gatewayRegistration.success) {
+            userId = gatewayRegistration.userId;
+            console.log(
+              chalk.green(
+                `✅ Created new user ID from gateway: ${chalk.dim(userId)}`
+              )
+            );
+          } else {
+            // Fallback to local generation if gateway is unavailable
+            userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+            console.log(
+              chalk.yellow(
+                `⚠️ Gateway unavailable, using local user ID: ${chalk.dim(userId)}`
+              )
+            );
+            console.log(
+              chalk.dim(`Gateway error: ${gatewayRegistration.error}`)
+            );
+          }
+        }
+      } catch (error) {
+        // Fallback to local generation on any error
+        userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        console.log(
+          chalk.yellow(
+            `⚠️ Error connecting to gateway, using local user ID: ${chalk.dim(userId)}`
+          )
+        );
+        console.log(chalk.dim(`Error: ${error.message}`));
+      }
+
+      // STEP 2: Choose AI access method (MAIN DECISION)
+      console.log(
+        boxen(
+          chalk.white.bold("Choose Your AI Access Method") +
+            "\n\n" +
+            chalk.cyan.bold("(1) BYOK - Bring Your Own API Keys") +
+            "\n" +
+            chalk.white(
+              "    → You manage API keys & billing with AI providers"
+            ) +
+            "\n" +
+            chalk.white("    → Pay provider directly based on token usage") +
+            "\n" +
+            chalk.white(
+              "    → Requires setup with each provider individually"
+            ) +
+            "\n\n" +
+            chalk.green.bold("(2) Hosted API Gateway") +
+            " " +
+            chalk.yellow.bold("(Recommended)") +
+            "\n" +
+            chalk.white("    → Use any model, zero API keys needed") +
+            "\n" +
+            chalk.white("    → Flat, credit-based pricing with no surprises") +
+            "\n" +
+            chalk.white("    → Support the development of Taskmaster"),
+          {
+            padding: 1,
+            margin: { top: 1, bottom: 1 },
+            borderStyle: "round",
+            borderColor: "cyan",
+            title: "🎯 AI Access Setup",
+            titleAlignment: "center",
+          }
+        )
+      );
+
+      const accessMethodInput = await promptQuestion(
+        rl,
+        chalk.cyan.bold("Your choice (1 or 2): ")
+      );
+
+      const selectedMode = accessMethodInput.trim() === "1" ? "byok" : "hosted";
+      let selectedPlan = null;
+
+      if (selectedMode === "hosted") {
+        // STEP 3: Hosted Mode - Show plan selection
+        console.log(
+          boxen(
+            chalk.green.bold("🎯 Hosted API Gateway Selected") +
+              "\n\n" +
+              chalk.white("Choose your monthly AI credit plan:"),
+            {
+              padding: 1,
+              margin: { top: 1, bottom: 0 },
+              borderStyle: "round",
+              borderColor: "green",
+            }
+          )
+        );
+
+        // Beautiful plan selection table
+        console.log(
+          boxen(
+            chalk.cyan.bold("(1) Starter") +
+              chalk.white("     - 50 credits   - ") +
+              chalk.green.bold("$5/mo") +
+              chalk.gray("   [$0.10 per credit]") +
+              "\n" +
+              chalk.cyan.bold("(2) Developer") +
+              chalk.yellow.bold(" ⭐") +
+              chalk.white(" - 120 credits  - ") +
+              chalk.green.bold("$10/mo") +
+              chalk.gray("  [$0.083 per credit – ") +
+              chalk.yellow("popular") +
+              chalk.gray("]") +
+              "\n" +
+              chalk.cyan.bold("(3) Pro") +
+              chalk.white("        - 250 credits  - ") +
+              chalk.green.bold("$20/mo") +
+              chalk.gray("  [$0.08 per credit – ") +
+              chalk.blue("great value") +
+              chalk.gray("]") +
+              "\n" +
+              chalk.cyan.bold("(4) Team") +
+              chalk.white("       - 550 credits  - ") +
+              chalk.green.bold("$40/mo") +
+              chalk.gray("  [$0.073 per credit – ") +
+              chalk.magenta("best value") +
+              chalk.gray("]") +
+              "\n\n" +
+              chalk.dim(
+                "💡 Higher tiers offer progressively better value per credit"
+              ),
+            {
+              padding: 1,
+              margin: { top: 0, bottom: 1 },
+              borderStyle: "single",
+              borderColor: "gray",
+            }
+          )
+        );
+
+        const planInput = await promptQuestion(
+          rl,
+          chalk.cyan.bold("Your choice (1-4): ")
+        );
+
+        const planMapping = {
+          1: { name: "starter", credits: 50, price: 5, perCredit: 0.1 },
+          2: { name: "viber", credits: 120, price: 10, perCredit: 0.083 },
+          3: { name: "pro", credits: 250, price: 20, perCredit: 0.08 },
+          4: { name: "master", credits: 550, price: 40, perCredit: 0.073 },
+        };
+
+        selectedPlan = planMapping[planInput.trim()] || planMapping["2"]; // Default to Developer
+
+        console.log(
+          boxen(
+            chalk.green.bold("✅ Plan Selected") +
+              "\n\n" +
+              chalk.white(`Plan: ${chalk.cyan.bold(selectedPlan.name)}`) +
+              "\n" +
+              chalk.white(
+                `Credits: ${chalk.yellow.bold(selectedPlan.credits + "/month")}`
+              ) +
+              "\n" +
+              chalk.white(
+                `Price: ${chalk.green.bold("$" + selectedPlan.price + "/month")}`
+              ) +
+              "\n\n" +
+              chalk.blue("🔄 Opening Stripe checkout...") +
+              "\n" +
+              chalk.gray("(This will open in your default browser)"),
+            {
+              padding: 1,
+              margin: { top: 1, bottom: 1 },
+              borderStyle: "round",
+              borderColor: "green",
+            }
+          )
+        );
+
+        // Register user with gateway (existing functionality)
+        console.log(chalk.blue("Registering with TaskMaster API gateway..."));
+
+        // Check if we already registered during userId creation
+        if (!gatewayRegistration) {
+          // For now, we'll use a placeholder email. In production, this would integrate with Stripe
+          const email = `${userId}@taskmaster.dev`; // Temporary placeholder
+          gatewayRegistration = await registerUserWithGateway(email);
+        } else {
+          console.log(
+            chalk.green("✅ Already registered during user ID creation")
+          );
+        }
+
+        if (gatewayRegistration.success) {
+          console.log(chalk.green(`✅ Successfully registered with gateway!`));
+          console.log(chalk.dim(`User ID: ${gatewayRegistration.userId}`));
+
+          // Ensure we're using the gateway's userId (in case it differs)
+          userId = gatewayRegistration.userId;
+        } else {
+          console.log(
+            chalk.yellow(
+              `⚠️ Gateway registration failed: ${gatewayRegistration.error}`
+            )
+          );
+          console.log(chalk.dim("Continuing with BYOK mode..."));
+          selectedMode = "byok"; // Fallback to BYOK
+        }
+      } else {
+        // BYOK Mode selected
+        console.log(
+          boxen(
+            chalk.blue.bold("🔑 BYOK Mode Selected") +
+              "\n\n" +
+              chalk.white("You'll manage your own API keys and billing.") +
+              "\n" +
+              chalk.white("After setup, add your API keys to ") +
+              chalk.cyan(".env") +
+              chalk.white(" file."),
+            {
+              padding: 1,
+              margin: { top: 1, bottom: 1 },
+              borderStyle: "round",
+              borderColor: "blue",
+            }
+          )
+        );
+      }
+
+      // STEP 4: Continue with rest of setup (aliases, etc.)
       const addAliasesInput = await promptQuestion(
         rl,
         chalk.cyan(
@@ -410,81 +749,42 @@ async function initializeProject(options = {}) {
       );
       const addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== "n";
 
-      // Prompt for hosted telemetry gateway
-      const useHostedGatewayInput = await promptQuestion(
-        rl,
-        chalk.cyan(
-          "Enable TaskMaster hosted telemetry gateway? This helps improve the product by sharing anonymous usage data (Y/n): "
+      // Confirm settings
+      console.log(
+        boxen(
+          chalk.white.bold("📋 Project Configuration Summary") +
+            "\n\n" +
+            chalk.blue("User ID: ") +
+            chalk.white(userId) +
+            "\n" +
+            chalk.blue("Access Mode: ") +
+            chalk.white(
+              selectedMode === "byok"
+                ? "BYOK (Bring Your Own Keys)"
+                : "Hosted API Gateway"
+            ) +
+            "\n" +
+            (selectedPlan
+              ? chalk.blue("Plan: ") +
+                chalk.white(
+                  `${selectedPlan.name} (${selectedPlan.credits} credits/month for $${selectedPlan.price})`
+                ) +
+                "\n"
+              : "") +
+            chalk.blue("Shell Aliases: ") +
+            chalk.white(addAliasesPrompted ? "Yes" : "No"),
+          {
+            padding: 1,
+            margin: { top: 1, bottom: 1 },
+            borderStyle: "round",
+            borderColor: "yellow",
+          }
         )
       );
-      const useHostedGateway =
-        useHostedGatewayInput.trim().toLowerCase() !== "n";
-
-      let gatewayRegistration = null;
-      if (useHostedGateway) {
-        // Prompt for email
-        const emailInput = await promptQuestion(
-          rl,
-          chalk.cyan("Enter your email address for telemetry registration: ")
-        );
-        const email = emailInput.trim();
-
-        if (email && email.includes("@")) {
-          console.log(
-            chalk.blue("Registering with TaskMaster telemetry gateway...")
-          );
-          gatewayRegistration = await registerUserWithGateway(email);
-
-          if (gatewayRegistration.success) {
-            console.log(
-              chalk.green(
-                `✅ Successfully ${gatewayRegistration.isNewUser ? "registered" : "found"} user!`
-              )
-            );
-            console.log(chalk.dim(`User ID: ${gatewayRegistration.userId}`));
-          } else {
-            console.log(
-              chalk.yellow(
-                `⚠️ Gateway registration failed: ${gatewayRegistration.error}`
-              )
-            );
-            console.log(
-              chalk.dim("You can configure telemetry manually later.")
-            );
-          }
-        } else {
-          console.log(
-            chalk.yellow(
-              "⚠️ Invalid email address. Skipping gateway registration."
-            )
-          );
-        }
-      }
-
-      // Confirm settings
-      console.log("\nTask Master Project settings:");
-      console.log(
-        chalk.blue(
-          'Add shell aliases (so you can use "tm" instead of "task-master"):'
-        ),
-        chalk.white(addAliasesPrompted ? "Yes" : "No")
-      );
-      console.log(
-        chalk.blue("Hosted telemetry gateway:"),
-        chalk.white(useHostedGateway ? "Enabled" : "Disabled")
-      );
-      if (gatewayRegistration?.success) {
-        console.log(
-          chalk.blue("Telemetry user:"),
-          chalk.white(
-            `${gatewayRegistration.email} (${gatewayRegistration.userId})`
-          )
-        );
-      }
 
       const confirmInput = await promptQuestion(
         rl,
-        chalk.yellow("\nDo you want to continue with these settings? (Y/n): ")
+        chalk.yellow.bold("Continue with these settings? (Y/n): ")
       );
       const shouldContinue = confirmInput.trim().toLowerCase() !== "n";
       rl.close();
@@ -504,16 +804,20 @@ async function initializeProject(options = {}) {
         if (addAliasesPrompted) {
           log("info", "Would add shell aliases for task-master");
         }
-        if (useHostedGateway && gatewayRegistration?.success) {
-          log("info", "Would configure hosted telemetry gateway");
-        }
         return {
           dryRun: true,
         };
       }
 
-      // Create structure with telemetry configuration
-      createProjectStructure(addAliasesPrompted, dryRun, gatewayRegistration);
+      // Create structure with all the new settings
+      createProjectStructure(
+        addAliasesPrompted,
+        dryRun,
+        gatewayRegistration,
+        selectedMode,
+        selectedPlan,
+        userId
+      );
     } catch (error) {
       rl.close();
       log("error", `Error during initialization process: ${error.message}`);
@@ -532,7 +836,14 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
+function createProjectStructure(
+  addAliases,
+  dryRun,
+  gatewayRegistration,
+  selectedMode = "byok",
+  selectedPlan = null,
+  userId = null
+) {
   const targetDir = process.cwd();
   log("info", `Initializing project in ${targetDir}`);
 
@@ -571,7 +882,7 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
     replacements
   );
 
-  // Copy .taskmasterconfig with project name
+  // Copy .taskmasterconfig with project name, mode, and userId
   copyTemplateFile(
     ".taskmasterconfig",
     path.join(targetDir, ".taskmasterconfig"),
@@ -580,10 +891,14 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
     }
   );
 
-  // Configure telemetry if gateway registration was successful
-  if (gatewayRegistration?.success) {
-    configureTelemetrySettings(targetDir, gatewayRegistration);
-  }
+  // Configure the .taskmasterconfig with the new settings
+  configureTaskmasterConfig(
+    targetDir,
+    selectedMode,
+    selectedPlan,
+    userId,
+    gatewayRegistration
+  );
 
   // Copy .gitignore
   copyTemplateFile("gitignore", path.join(targetDir, ".gitignore"));
@@ -637,13 +952,6 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
     path.join(targetDir, "scripts", "example_prd.txt")
   );
 
-  // // Create main README.md
-  // copyTemplateFile(
-  // 	'README-task-master.md',
-  // 	path.join(targetDir, 'README-task-master.md'),
-  // 	replacements
-  // );
-
   // Initialize git repository if git is available
   try {
     if (!fs.existsSync(path.join(targetDir, ".git"))) {
@@ -680,34 +988,60 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
 
   // === Add Model Configuration Step ===
   if (!isSilentMode() && !dryRun) {
-    console.log(
-      boxen(chalk.cyan("Configuring AI Models..."), {
-        padding: 0.5,
-        margin: { top: 1, bottom: 0.5 },
-        borderStyle: "round",
-        borderColor: "blue",
-      })
-    );
-    log(
-      "info",
-      "Running interactive model setup. Please select your preferred AI models."
-    );
-    try {
-      execSync("npx task-master models --setup", {
-        stdio: "inherit",
-        cwd: targetDir,
-      });
-      log("success", "AI Models configured.");
-    } catch (error) {
-      log("error", "Failed to configure AI models:", error.message);
-      log("warn", 'You may need to run "task-master models --setup" manually.');
+    // Only run model setup for BYOK mode
+    if (selectedMode === "byok") {
+      console.log(
+        boxen(chalk.cyan("Configuring AI Models..."), {
+          padding: 0.5,
+          margin: { top: 1, bottom: 0.5 },
+          borderStyle: "round",
+          borderColor: "blue",
+        })
+      );
+      log(
+        "info",
+        "Running interactive model setup. Please select your preferred AI models."
+      );
+      try {
+        execSync("npx task-master models --setup", {
+          stdio: "inherit",
+          cwd: targetDir,
+        });
+        log("success", "AI Models configured.");
+      } catch (error) {
+        log("error", "Failed to configure AI models:", error.message);
+        log(
+          "warn",
+          'You may need to run "task-master models --setup" manually.'
+        );
+      }
+    } else {
+      console.log(
+        boxen(
+          chalk.green("✅ Hosted API Gateway Configured") +
+            "\n\n" +
+            chalk.white(
+              "AI models are automatically available through the gateway."
+            ) +
+            "\n" +
+            chalk.gray("No additional model configuration needed."),
+          {
+            padding: 1,
+            margin: { top: 1, bottom: 0.5 },
+            borderStyle: "round",
+            borderColor: "green",
+          }
+        )
+      );
     }
   } else if (isSilentMode() && !dryRun) {
     log("info", "Skipping interactive model setup in silent (MCP) mode.");
-    log(
-      "warn",
-      'Please configure AI models using "task-master models --set-..." or the "models" MCP tool.'
-    );
+    if (selectedMode === "byok") {
+      log(
+        "warn",
+        'Please configure AI models using "task-master models --set-..." or the "models" MCP tool.'
+      );
+    }
   } else if (dryRun) {
     log("info", "DRY RUN: Skipping interactive model setup.");
   }
@@ -732,34 +1066,175 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
     );
   }
 
-  // Display next steps in a nice box
-  if (!isSilentMode()) {
+  // Display next steps based on mode
+  displayNextSteps(selectedMode, selectedPlan);
+}
+
+// Function to configure the .taskmasterconfig file with mode, userId, and plan settings
+function configureTaskmasterConfig(
+  targetDir,
+  selectedMode,
+  selectedPlan,
+  userId,
+  gatewayRegistration
+) {
+  const configPath = path.join(targetDir, ".taskmasterconfig");
+
+  try {
+    // Read existing config or create default structure
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      const configContent = fs.readFileSync(configPath, "utf8");
+      config = JSON.parse(configContent);
+    }
+
+    // Set core configuration
+    config.mode = selectedMode;
+    if (userId) {
+      // Ensure global object exists
+      if (!config.global) {
+        config.global = {};
+      }
+      config.global.userId = userId;
+    }
+
+    // Configure based on mode
+    if (selectedMode === "hosted" && selectedPlan) {
+      config.subscription = {
+        plan: selectedPlan.name,
+        credits: selectedPlan.credits,
+        price: selectedPlan.price,
+        pricePerCredit: selectedPlan.perCredit,
+      };
+
+      // Set telemetry configuration if gateway registration was successful
+      if (gatewayRegistration?.success) {
+        config.telemetry = {
+          enabled: true,
+          apiKey: gatewayRegistration.apiKey,
+          userId: gatewayRegistration.userId,
+          email: gatewayRegistration.email,
+        };
+        config.telemetryEnabled = true;
+      }
+    } else if (selectedMode === "byok") {
+      // Ensure telemetry is disabled for BYOK mode by default
+      config.telemetryEnabled = false;
+    }
+
+    // Write updated config
+    fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
+    log("success", `Configured .taskmasterconfig with mode: ${selectedMode}`);
+
+    // Also update MCP configuration if needed
+    if (selectedMode === "hosted" && gatewayRegistration?.success) {
+      updateMCPTelemetryConfig(targetDir, gatewayRegistration);
+    }
+  } catch (error) {
+    log("error", `Failed to configure .taskmasterconfig: ${error.message}`);
+  }
+}
+
+// Function to display next steps based on the selected mode
+function displayNextSteps(selectedMode, selectedPlan) {
+  if (isSilentMode()) return;
+
+  if (selectedMode === "hosted") {
+    // Hosted mode next steps
     console.log(
       boxen(
-        chalk.cyan.bold("Things you should do next:") +
+        chalk.cyan.bold("🚀 Your Hosted Gateway is Ready!") +
           "\n\n" +
           chalk.white("1. ") +
-          chalk.yellow(
-            "Configure AI models (if needed) and add API keys to `.env`"
-          ) +
-          "\n" +
-          chalk.white("   ├─ ") +
-          chalk.dim("Models: Use `task-master models` commands") +
+          chalk.yellow("Create your PRD using the example template:") +
           "\n" +
           chalk.white("   └─ ") +
-          chalk.dim(
-            "Keys: Add provider API keys to .env (or inside the MCP config file i.e. .cursor/mcp.json)"
-          ) +
+          chalk.dim("Edit ") +
+          chalk.cyan("scripts/example_prd.txt") +
+          chalk.dim(" and save as ") +
+          chalk.cyan("scripts/prd.txt") +
           "\n" +
           chalk.white("2. ") +
-          chalk.yellow(
-            "Discuss your idea with AI and ask for a PRD using example_prd.txt, and save it to scripts/PRD.txt"
-          ) +
+          chalk.yellow("Generate tasks from your PRD:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("parse_prd") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master parse-prd scripts/prd.txt") +
           "\n" +
           chalk.white("3. ") +
-          chalk.yellow(
-            "Ask Cursor Agent (or run CLI) to parse your PRD and generate initial tasks:"
-          ) +
+          chalk.yellow("Analyze task complexity:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("analyze_project_complexity") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master analyze-complexity --research") +
+          "\n" +
+          chalk.white("4. ") +
+          chalk.yellow("Expand tasks into subtasks:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("expand_all") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master expand --all --research") +
+          "\n" +
+          chalk.white("5. ") +
+          chalk.yellow("Start building:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("next_task") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master next") +
+          "\n\n" +
+          chalk.green.bold("💡 Pro Tip: ") +
+          chalk.white("All AI models are ready to use - no API keys needed!") +
+          "\n" +
+          (selectedPlan
+            ? chalk.blue(
+                `📊 Your Plan: ${selectedPlan.name} (${selectedPlan.credits} credits/month)`
+              )
+            : ""),
+        {
+          padding: 1,
+          margin: 1,
+          borderStyle: "round",
+          borderColor: "green",
+          title: "🎯 Getting Started - Hosted Mode",
+          titleAlignment: "center",
+        }
+      )
+    );
+  } else {
+    // BYOK mode next steps
+    console.log(
+      boxen(
+        chalk.cyan.bold("🔑 BYOK Mode Setup Complete!") +
+          "\n\n" +
+          chalk.white("1. ") +
+          chalk.yellow("Add your API keys to the ") +
+          chalk.cyan(".env") +
+          chalk.yellow(" file:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("Copy from ") +
+          chalk.cyan(".env.example") +
+          chalk.dim(" and add your keys") +
+          "\n" +
+          chalk.white("2. ") +
+          chalk.yellow("Create your PRD using the example template:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("Edit ") +
+          chalk.cyan("scripts/example_prd.txt") +
+          chalk.dim(" and save as ") +
+          chalk.cyan("scripts/prd.txt") +
+          "\n" +
+          chalk.white("3. ") +
+          chalk.yellow("Generate tasks from your PRD:") +
           "\n" +
           chalk.white("   └─ ") +
           chalk.dim("MCP Tool: ") +
@@ -768,50 +1243,46 @@ function createProjectStructure(addAliases, dryRun, gatewayRegistration) {
           chalk.cyan("task-master parse-prd scripts/prd.txt") +
           "\n" +
           chalk.white("4. ") +
-          chalk.yellow(
-            "Ask Cursor to analyze the complexity of the tasks in your PRD using research"
-          ) +
+          chalk.yellow("Analyze task complexity:") +
           "\n" +
           chalk.white("   └─ ") +
           chalk.dim("MCP Tool: ") +
           chalk.cyan("analyze_project_complexity") +
           chalk.dim(" | CLI: ") +
-          chalk.cyan("task-master analyze-complexity") +
+          chalk.cyan("task-master analyze-complexity --research") +
           "\n" +
           chalk.white("5. ") +
-          chalk.yellow(
-            "Ask Cursor to expand all of your tasks using the complexity analysis"
-          ) +
+          chalk.yellow("Expand tasks into subtasks:") +
+          "\n" +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("expand_all") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master expand --all --research") +
           "\n" +
           chalk.white("6. ") +
-          chalk.yellow("Ask Cursor to begin working on the next task") +
+          chalk.yellow("Start building:") +
           "\n" +
-          chalk.white("7. ") +
-          chalk.yellow(
-            "Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists."
-          ) +
-          "\n" +
-          chalk.white("8. ") +
-          chalk.yellow(
-            "Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project."
-          ) +
-          "\n" +
-          chalk.white("9. ") +
-          chalk.green.bold("Ship it!") +
+          chalk.white("   └─ ") +
+          chalk.dim("MCP Tool: ") +
+          chalk.cyan("next_task") +
+          chalk.dim(" | CLI: ") +
+          chalk.cyan("task-master next") +
           "\n\n" +
-          chalk.dim(
-            "* Review the README.md file to learn how to use other commands via Cursor Agent."
-          ) +
+          chalk.blue.bold("💡 Pro Tip: ") +
+          chalk.white("Use ") +
+          chalk.cyan("task-master models") +
+          chalk.white(" to view/change AI models anytime") +
           "\n" +
-          chalk.dim(
-            "* Use the task-master command without arguments to see all available commands."
-          ),
+          chalk.dim("* For MCP/Cursor: Add API keys to ") +
+          chalk.cyan(".cursor/mcp.json") +
+          chalk.dim(" instead"),
         {
           padding: 1,
           margin: 1,
           borderStyle: "round",
-          borderColor: "yellow",
-          title: "Getting Started",
+          borderColor: "blue",
+          title: "🎯 Getting Started - BYOK Mode",
           titleAlignment: "center",
         }
       )
@@ -850,29 +1321,30 @@ function configureTelemetrySettings(targetDir, gatewayRegistration) {
   }
 }
 
-// Function to update MCP configuration with telemetry credentials
+// Function to update MCP configuration with telemetry settings
 function updateMCPTelemetryConfig(targetDir, gatewayRegistration) {
-  const mcpJsonPath = path.join(targetDir, ".cursor", "mcp.json");
+  const mcpConfigPath = path.join(targetDir, ".cursor", "mcp.json");
 
   try {
-    if (fs.existsSync(mcpJsonPath)) {
-      const mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, "utf8"));
-
-      // Update the task-master-ai server environment variables
-      if (mcpConfig.mcpServers && mcpConfig.mcpServers["task-master-ai"]) {
-        mcpConfig.mcpServers["task-master-ai"].env = {
-          ...mcpConfig.mcpServers["task-master-ai"].env,
-          TASKMASTER_API_KEY: gatewayRegistration.apiKey,
-          TASKMASTER_USER_ID: gatewayRegistration.userId,
-          TASKMASTER_USER_EMAIL: gatewayRegistration.email,
-        };
-
-        fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 4));
-        log("success", "Updated MCP configuration with telemetry credentials");
-      }
+    let mcpConfig = {};
+    if (fs.existsSync(mcpConfigPath)) {
+      const mcpContent = fs.readFileSync(mcpConfigPath, "utf8");
+      mcpConfig = JSON.parse(mcpContent);
     }
+
+    // Add telemetry environment variables to MCP config
+    if (!mcpConfig.env) {
+      mcpConfig.env = {};
+    }
+
+    mcpConfig.env.TASKMASTER_TELEMETRY_API_KEY = gatewayRegistration.apiKey;
+    mcpConfig.env.TASKMASTER_TELEMETRY_USER_EMAIL = gatewayRegistration.email;
+
+    // Write updated MCP config
+    fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    log("success", "Updated MCP configuration with telemetry settings");
   } catch (error) {
-    log("warn", `Failed to update MCP telemetry config: ${error.message}`);
+    log("error", `Failed to update MCP telemetry config: ${error.message}`);
   }
 }
 
@@ -983,6 +1455,251 @@ function setupMCPConfiguration(targetDir) {
 
   // Add note to console about MCP integration
   log("info", "MCP server will use the installed task-master-ai package");
+}
+
+// Function to let user choose between BYOK and Hosted API Gateway
+async function selectAccessMode() {
+  console.log(
+    boxen(
+      chalk.cyan.bold("🚀 Choose Your AI Access Method") +
+        "\n\n" +
+        chalk.white("TaskMaster supports two ways to access AI models:") +
+        "\n\n" +
+        chalk.yellow.bold("(1) BYOK - Bring Your Own API Keys") +
+        "\n" +
+        chalk.white("    ✓ Use your existing provider accounts") +
+        "\n" +
+        chalk.white("    ✓ Pay providers directly") +
+        "\n" +
+        chalk.white("    ✓ Full control over billing & usage") +
+        "\n" +
+        chalk.dim("    → Best for: Teams with existing AI accounts") +
+        "\n\n" +
+        chalk.green.bold("(2) Hosted API Gateway") +
+        chalk.yellow(" (Recommended)") +
+        "\n" +
+        chalk.white("    ✓ No API keys required") +
+        "\n" +
+        chalk.white("    ✓ Access all supported models instantly") +
+        "\n" +
+        chalk.white("    ✓ Simple credit-based billing") +
+        "\n" +
+        chalk.white("    ✓ Better rates through volume pricing") +
+        "\n" +
+        chalk.dim("    → Best for: Getting started quickly"),
+      {
+        padding: 1,
+        margin: { top: 1, bottom: 1 },
+        borderStyle: "round",
+        borderColor: "cyan",
+        title: "🎯 AI Access Configuration",
+        titleAlignment: "center",
+      }
+    )
+  );
+
+  let choice;
+  while (true) {
+    choice = await askQuestion(
+      chalk.cyan("Your choice") +
+        chalk.gray(" (1 for BYOK, 2 for Hosted)") +
+        ": "
+    );
+
+    if (choice === "1" || choice.toLowerCase() === "byok") {
+      console.log(
+        boxen(
+          chalk.blue.bold("🔑 BYOK Mode Selected") +
+            "\n\n" +
+            chalk.white("You'll configure your own AI provider API keys.") +
+            "\n" +
+            chalk.dim("The setup will guide you through model configuration."),
+          {
+            padding: 0.5,
+            margin: { top: 0.5, bottom: 0.5 },
+            borderStyle: "round",
+            borderColor: "blue",
+          }
+        )
+      );
+      return "byok";
+    } else if (choice === "2" || choice.toLowerCase() === "hosted") {
+      console.log(
+        boxen(
+          chalk.green.bold("🎯 Hosted API Gateway Selected") +
+            "\n\n" +
+            chalk.white(
+              "All AI models available instantly - no API keys needed!"
+            ) +
+            "\n" +
+            chalk.dim("Let's set up your subscription plan..."),
+          {
+            padding: 0.5,
+            margin: { top: 0.5, bottom: 0.5 },
+            borderStyle: "round",
+            borderColor: "green",
+          }
+        )
+      );
+      return "hosted";
+    } else {
+      console.log(chalk.red("Please enter 1 or 2"));
+    }
+  }
+}
+
+// Function to let user select a subscription plan
+async function selectSubscriptionPlan() {
+  console.log(
+    boxen(
+      chalk.cyan.bold("💳 Select Your Monthly AI Credit Pack") +
+        "\n\n" +
+        chalk.white("Choose the plan that fits your usage:") +
+        "\n\n" +
+        chalk.white("(1) ") +
+        chalk.yellow.bold("50 credits") +
+        chalk.white("   - ") +
+        chalk.green("$5/mo") +
+        chalk.gray("   [$0.10 per credit]") +
+        "\n" +
+        chalk.dim("    → Perfect for: Personal projects, light usage") +
+        "\n\n" +
+        chalk.white("(2) ") +
+        chalk.yellow.bold("120 credits") +
+        chalk.white("  - ") +
+        chalk.green("$10/mo") +
+        chalk.gray("  [$0.083 per credit]") +
+        chalk.cyan.bold(" ← Popular") +
+        "\n" +
+        chalk.dim("    → Perfect for: Active development, small teams") +
+        "\n\n" +
+        chalk.white("(3) ") +
+        chalk.yellow.bold("250 credits") +
+        chalk.white("  - ") +
+        chalk.green("$20/mo") +
+        chalk.gray("  [$0.08 per credit]") +
+        chalk.blue.bold(" ← Great Value") +
+        "\n" +
+        chalk.dim("    → Perfect for: Professional development, medium teams") +
+        "\n\n" +
+        chalk.white("(4) ") +
+        chalk.yellow.bold("550 credits") +
+        chalk.white("  - ") +
+        chalk.green("$40/mo") +
+        chalk.gray("  [$0.073 per credit]") +
+        chalk.magenta.bold(" ← Best Value") +
+        "\n" +
+        chalk.dim("    → Perfect for: Heavy usage, large teams, enterprises") +
+        "\n\n" +
+        chalk.blue("💡 ") +
+        chalk.white("Credits roll over month-to-month. Cancel anytime."),
+      {
+        padding: 1,
+        margin: { top: 1, bottom: 1 },
+        borderStyle: "round",
+        borderColor: "green",
+        title: "💳 Subscription Plans",
+        titleAlignment: "center",
+      }
+    )
+  );
+
+  const plans = [
+    {
+      name: "Starter",
+      credits: 50,
+      price: "$5/mo",
+      perCredit: "$0.10",
+      value: 1,
+    },
+    {
+      name: "Popular",
+      credits: 120,
+      price: "$10/mo",
+      perCredit: "$0.083",
+      value: 2,
+    },
+    {
+      name: "Pro",
+      credits: 250,
+      price: "$20/mo",
+      perCredit: "$0.08",
+      value: 3,
+    },
+    {
+      name: "Enterprise",
+      credits: 550,
+      price: "$40/mo",
+      perCredit: "$0.073",
+      value: 4,
+    },
+  ];
+
+  let choice;
+  while (true) {
+    choice = await askQuestion(
+      chalk.cyan("Your choice") + chalk.gray(" (1-4)") + ": "
+    );
+
+    const planIndex = parseInt(choice) - 1;
+    if (planIndex >= 0 && planIndex < plans.length) {
+      const selectedPlan = plans[planIndex];
+
+      console.log(
+        boxen(
+          chalk.green.bold(`✅ Selected: ${selectedPlan.name} Plan`) +
+            "\n\n" +
+            chalk.white(
+              `${selectedPlan.credits} credits/month for ${selectedPlan.price}`
+            ) +
+            "\n" +
+            chalk.gray(`(${selectedPlan.perCredit} per credit)`) +
+            "\n\n" +
+            chalk.yellow("🔄 Opening Stripe checkout...") +
+            "\n" +
+            chalk.dim("Complete your subscription setup in the browser."),
+          {
+            padding: 1,
+            margin: { top: 0.5, bottom: 0.5 },
+            borderStyle: "round",
+            borderColor: "green",
+          }
+        )
+      );
+
+      // TODO: Integrate with actual Stripe checkout
+      // For now, simulate the process
+      console.log(chalk.yellow("\n⏳ Simulating Stripe checkout process..."));
+      console.log(chalk.green("✅ Subscription setup complete! (Simulated)"));
+
+      return selectedPlan;
+    } else {
+      console.log(chalk.red("Please enter a number from 1 to 4"));
+    }
+  }
+}
+
+// Function to create or retrieve user ID
+async function getOrCreateUserId() {
+  // Try to find existing userId first
+  const existingConfig = path.join(process.cwd(), ".taskmasterconfig");
+  if (fs.existsSync(existingConfig)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(existingConfig, "utf8"));
+      if (config.userId) {
+        log("info", `Using existing user ID: ${config.userId}`);
+        return config.userId;
+      }
+    } catch (error) {
+      log("warn", "Could not read existing config, creating new user ID");
+    }
+  }
+
+  // Generate new user ID
+  const { v4: uuidv4 } = require("uuid");
+  const newUserId = uuidv4();
+  log("info", `Generated new user ID: ${newUserId}`);
+  return newUserId;
 }
 
 // Ensure necessary functions are exported

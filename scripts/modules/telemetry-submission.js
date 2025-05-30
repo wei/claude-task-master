@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { getConfig } from "./config-manager.js";
+import { resolveEnvVariable } from "./utils.js";
 
 // Telemetry data validation schema
 const TelemetryDataSchema = z.object({
@@ -30,37 +31,31 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 /**
- * Get telemetry configuration from environment or config
+ * Get telemetry configuration from environment variables only
  * @returns {Object} Configuration object with apiKey, userId, and email
  */
 function getTelemetryConfig() {
-  // Try environment variables first (for testing and manual setup)
+  // Try environment variables first (includes .env file via resolveEnvVariable)
   const envApiKey =
-    process.env.TASKMASTER_API_KEY ||
-    process.env.GATEWAY_API_KEY ||
-    process.env.TELEMETRY_API_KEY;
+    resolveEnvVariable("TASKMASTER_API_KEY") ||
+    resolveEnvVariable("GATEWAY_API_KEY") ||
+    resolveEnvVariable("TELEMETRY_API_KEY");
   const envUserId =
-    process.env.TASKMASTER_USER_ID ||
-    process.env.GATEWAY_USER_ID ||
-    process.env.TELEMETRY_USER_ID;
+    resolveEnvVariable("TASKMASTER_USER_ID") ||
+    resolveEnvVariable("GATEWAY_USER_ID") ||
+    resolveEnvVariable("TELEMETRY_USER_ID");
   const envEmail =
-    process.env.TASKMASTER_USER_EMAIL ||
-    process.env.GATEWAY_USER_EMAIL ||
-    process.env.TELEMETRY_USER_EMAIL;
+    resolveEnvVariable("TASKMASTER_USER_EMAIL") ||
+    resolveEnvVariable("GATEWAY_USER_EMAIL") ||
+    resolveEnvVariable("TELEMETRY_USER_EMAIL");
 
-  if (envApiKey && envUserId && envEmail) {
-    return { apiKey: envApiKey, userId: envUserId, email: envEmail };
-  }
-
-  // Fall back to config file (preferred for hosted gateway setup)
+  // Get the config (which might contain userId)
   const config = getConfig();
+
   return {
-    apiKey: config?.telemetry?.apiKey || config?.telemetryApiKey,
-    userId:
-      config?.telemetry?.userId ||
-      config?.telemetryUserId ||
-      config?.global?.userId,
-    email: config?.telemetry?.email || config?.telemetryUserEmail,
+    apiKey: envApiKey || null, // API key should only come from environment
+    userId: envUserId || config?.global?.userId || null,
+    email: envEmail || null,
   };
 }
 
@@ -152,9 +147,12 @@ export async function submitTelemetryData(telemetryData) {
       };
     }
 
-    // Filter out sensitive fields before submission and ensure userId is set
-    const { commandArgs, fullOutput, ...safeTelemetryData } = telemetryData;
-    safeTelemetryData.userId = telemetryConfig.userId; // Ensure correct userId
+    // Send FULL telemetry data to gateway (including commandArgs and fullOutput)
+    // Note: Sensitive data filtering is handled separately for user-facing responses
+    const completeTelemetryData = {
+      ...telemetryData,
+      userId: telemetryConfig.userId, // Ensure correct userId
+    };
 
     // Attempt submission with retry logic
     let lastError;
@@ -167,7 +165,7 @@ export async function submitTelemetryData(telemetryData) {
             Authorization: `Bearer ${telemetryConfig.apiKey}`, // Use Bearer token format
             "X-User-Email": telemetryConfig.email, // Add required email header
           },
-          body: JSON.stringify(safeTelemetryData),
+          body: JSON.stringify(completeTelemetryData),
         });
 
         if (response.ok) {

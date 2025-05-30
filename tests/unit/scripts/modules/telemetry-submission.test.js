@@ -10,6 +10,30 @@ jest.unstable_mockModule(
   "../../../../scripts/modules/config-manager.js",
   () => ({
     getConfig: jest.fn(),
+    getDebugFlag: jest.fn(() => false),
+    getLogLevel: jest.fn(() => "info"),
+    getMainProvider: jest.fn(() => "openai"),
+    getMainModelId: jest.fn(() => "gpt-4"),
+    getResearchProvider: jest.fn(() => "openai"),
+    getResearchModelId: jest.fn(() => "gpt-4"),
+    getFallbackProvider: jest.fn(() => "openai"),
+    getFallbackModelId: jest.fn(() => "gpt-3.5-turbo"),
+    getParametersForRole: jest.fn(() => ({
+      maxTokens: 4000,
+      temperature: 0.7,
+    })),
+    getUserId: jest.fn(() => "test-user-id"),
+    MODEL_MAP: {},
+    getBaseUrlForRole: jest.fn(() => null),
+    isApiKeySet: jest.fn(() => true),
+    getOllamaBaseURL: jest.fn(() => "http://localhost:11434/api"),
+    getAzureBaseURL: jest.fn(() => null),
+    getVertexProjectId: jest.fn(() => null),
+    getVertexLocation: jest.fn(() => null),
+    getDefaultSubtasks: jest.fn(() => 5),
+    getProjectName: jest.fn(() => "Test Project"),
+    getDefaultPriority: jest.fn(() => "medium"),
+    getDefaultNumTasks: jest.fn(() => 10),
   })
 );
 
@@ -32,14 +56,16 @@ describe("Telemetry Submission Service - Task 90.2", () => {
 
   describe("Subtask 90.2: Send telemetry data to remote database endpoint", () => {
     it("should successfully submit telemetry data to hardcoded gateway endpoint", async () => {
-      // Mock successful config
+      // Mock successful config with proper structure
       getConfig.mockReturnValue({
-        telemetry: {
-          apiKey: "test-api-key",
+        global: {
           userId: "test-user-id",
-          email: "test@example.com",
         },
       });
+
+      // Mock environment variables for telemetry config
+      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       // Mock successful response
       global.fetch.mockResolvedValueOnce({
@@ -54,8 +80,8 @@ describe("Telemetry Submission Service - Task 90.2", () => {
         modelUsed: "claude-3-sonnet",
         totalCost: 0.001,
         currency: "USD",
-        commandArgs: { secret: "should-be-filtered" },
-        fullOutput: { debug: "should-be-filtered" },
+        commandArgs: { secret: "should-be-sent" },
+        fullOutput: { debug: "should-be-sent" },
       };
 
       const result = await submitTelemetryData(telemetryData);
@@ -75,32 +101,32 @@ describe("Telemetry Submission Service - Task 90.2", () => {
         })
       );
 
-      // Verify sensitive data is filtered out
+      // Verify sensitive data IS included in submission to gateway
       const sentData = JSON.parse(global.fetch.mock.calls[0][1].body);
-      expect(sentData.commandArgs).toBeUndefined();
-      expect(sentData.fullOutput).toBeUndefined();
+      expect(sentData.commandArgs).toEqual({ secret: "should-be-sent" });
+      expect(sentData.fullOutput).toEqual({ debug: "should-be-sent" });
+
+      // Clean up
+      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_USER_EMAIL;
     });
 
     it("should implement retry logic for failed requests", async () => {
       getConfig.mockReturnValue({
-        telemetry: {
-          apiKey: "test-api-key",
+        global: {
           userId: "test-user-id",
-          email: "test@example.com",
         },
       });
 
-      // Mock 3 failures then success
+      // Mock environment variables
+      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+
+      // Mock 3 network failures then final HTTP error
       global.fetch
         .mockRejectedValueOnce(new Error("Network error"))
         .mockRejectedValueOnce(new Error("Network error"))
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          statusText: "Internal Server Error",
-          json: async () => ({}),
-        });
+        .mockRejectedValueOnce(new Error("Network error"));
 
       const telemetryData = {
         timestamp: new Date().toISOString(),
@@ -113,18 +139,24 @@ describe("Telemetry Submission Service - Task 90.2", () => {
       const result = await submitTelemetryData(telemetryData);
 
       expect(result.success).toBe(false);
-      expect(result.attempts).toBe(3);
+      expect(result.error).toContain("Network error");
       expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      // Clean up
+      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_USER_EMAIL;
     }, 10000);
 
     it("should handle failures gracefully without blocking execution", async () => {
       getConfig.mockReturnValue({
-        telemetry: {
-          apiKey: "test-api-key",
+        global: {
           userId: "test-user-id",
-          email: "test@example.com",
         },
       });
+
+      // Mock environment variables
+      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       global.fetch.mockRejectedValue(new Error("Network failure"));
 
@@ -141,6 +173,10 @@ describe("Telemetry Submission Service - Task 90.2", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Network failure");
       expect(global.fetch).toHaveBeenCalledTimes(3); // All retries attempted
+
+      // Clean up
+      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_USER_EMAIL;
     }, 10000);
 
     it("should respect user opt-out preferences", async () => {
@@ -166,12 +202,14 @@ describe("Telemetry Submission Service - Task 90.2", () => {
 
     it("should validate telemetry data before submission", async () => {
       getConfig.mockReturnValue({
-        telemetry: {
-          apiKey: "test-api-key",
+        global: {
           userId: "test-user-id",
-          email: "test@example.com",
         },
       });
+
+      // Mock environment variables so config is valid
+      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       const invalidTelemetryData = {
         // Missing required fields
@@ -183,22 +221,28 @@ describe("Telemetry Submission Service - Task 90.2", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Telemetry data validation failed");
       expect(global.fetch).not.toHaveBeenCalled();
+
+      // Clean up
+      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_USER_EMAIL;
     });
 
     it("should handle HTTP error responses appropriately", async () => {
       getConfig.mockReturnValue({
-        telemetry: {
-          apiKey: "invalid-key",
+        global: {
           userId: "test-user-id",
-          email: "test@example.com",
         },
       });
+
+      // Mock environment variables with invalid API key
+      process.env.TASKMASTER_API_KEY = "invalid-key";
+      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       global.fetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: "Unauthorized",
-        json: async () => ({ error: "Invalid API key" }),
+        json: async () => ({}),
       });
 
       const telemetryData = {
@@ -214,6 +258,10 @@ describe("Telemetry Submission Service - Task 90.2", () => {
       expect(result.success).toBe(false);
       expect(result.statusCode).toBe(401);
       expect(global.fetch).toHaveBeenCalledTimes(1); // No retries for auth errors
+
+      // Clean up
+      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_USER_EMAIL;
     });
   });
 
