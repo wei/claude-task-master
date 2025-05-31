@@ -34,7 +34,7 @@ import { moveTaskDirect } from './direct-functions/move-task.js';
 import { researchDirect } from './direct-functions/research.js';
 
 // Re-export utility functions
-export { findTasksJsonPath } from './utils/path-utils.js';
+export { findTasksPath } from './utils/path-utils.js';
 
 // Use Map for potential future enhancements like introspection or dynamic dispatch
 export const directFunctions = new Map([

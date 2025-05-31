@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { moveTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the moveTask tool with the MCP server
@@ -41,18 +41,50 @@ export function registerMoveTaskTool(server) {
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				// Let the core logic handle comma-separated IDs and validation
-				const result = await moveTaskDirect(
-					{
-						sourceId: args.from,
-						destinationId: args.to,
-						file: args.file,
-						projectRoot: args.projectRoot,
-						generateFiles: true // Always generate files for MCP operations
-					},
-					log,
-					{ session }
-				);
+				// Find tasks.json path if not provided
+				let tasksJsonPath = args.file;
+
+				if (!tasksJsonPath) {
+					tasksJsonPath = findTasksPath(args, log);
+				}
+
+				// Parse comma-separated IDs
+				const fromIds = args.from.split(',').map((id) => id.trim());
+				const toIds = args.to.split(',').map((id) => id.trim());
+
+				// Validate matching IDs count
+				if (fromIds.length !== toIds.length) {
+					return createErrorResponse(
+						'The number of source and destination IDs must match',
+						'MISMATCHED_ID_COUNT'
+					);
+				}
+
+				// If moving multiple tasks
+				if (fromIds.length > 1) {
+					const results = [];
+					// Move tasks one by one, only generate files on the last move
+					for (let i = 0; i < fromIds.length; i++) {
+						const fromId = fromIds[i];
+						const toId = toIds[i];
+
+						// Skip if source and destination are the same
+						if (fromId === toId) {
+							log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
+							continue;
+						}
+
+						const shouldGenerateFiles = i === fromIds.length - 1;
+						const result = await moveTaskDirect(
+							{
+								sourceId: fromId,
+								destinationId: toId,
+								tasksJsonPath,
+								projectRoot: args.projectRoot
+							},
+							log,
+							{ session }
+						);
 
 				return handleApiResult(result, log);
 			} catch (error) {
