@@ -65,7 +65,7 @@ const defaultConfig = {
     },
   },
   account: {
-    userId: null,
+    userId: "1234567890", // Placeholder that triggers auth/init
     userEmail: "",
     mode: "byok",
     telemetryEnabled: false,
@@ -710,9 +710,9 @@ function isConfigFilePresent(explicitRoot = null) {
 
 /**
  * Gets the user ID from the configuration.
- * Sets a default value if none exists and saves the config.
+ * Returns a placeholder that triggers auth/init if no real userId exists.
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
- * @returns {string} The user ID (never null).
+ * @returns {string|null} The user ID or placeholder, or null if auth unavailable.
  */
 function getUserId(explicitRoot = null) {
   const config = getConfig(explicitRoot);
@@ -722,25 +722,14 @@ function getUserId(explicitRoot = null) {
     config.account = { ...defaultConfig.account };
   }
 
-  // If userId exists, return it
-  if (config.account.userId) {
+  // If userId exists and is not the placeholder, return it
+  if (config.account.userId && config.account.userId !== "1234567890") {
     return config.account.userId;
   }
 
-  // Set default userId if none exists
-  const defaultUserId = "1234567890";
-  config.account.userId = defaultUserId;
-
-  // Save the updated config
-  const success = writeConfig(config, explicitRoot);
-  if (!success) {
-    log(
-      "warn",
-      "Failed to write updated configuration with new userId. Please let the developers know."
-    );
-  }
-
-  return defaultUserId;
+  // If userId is null or the placeholder, return the placeholder
+  // This signals to other code that auth/init needs to be attempted
+  return "1234567890";
 }
 
 /**

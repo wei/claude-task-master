@@ -278,6 +278,7 @@ async function _attemptProviderCallWithRetries(
  * @param {string} commandName - Command name for tracking
  * @param {string} outputType - Output type (cli, mcp)
  * @param {string} projectRoot - Project root path
+ * @param {string} initialRole - The initial client role
  * @returns {Promise<object>} AI response with usage data
  */
 async function _callGatewayAI(
@@ -288,36 +289,62 @@ async function _callGatewayAI(
   userId,
   commandName,
   outputType,
-  projectRoot
+  projectRoot,
+  initialRole
 ) {
-  const gatewayUrl =
-    process.env.TASKMASTER_GATEWAY_URL || "http://localhost:4444";
-  const endpoint = `${gatewayUrl}/api/v1/ai/${serviceType}`;
+  // Hard-code service-level constants
+  const gatewayUrl = "http://localhost:4444"; // or your production URL
+  const serviceApiKey = "339a81c9-5b9c-4d60-92d8-cba2ee2a8cc3"; // Hardcoded service key -- if you change this, the Hosted Gateway will not work
 
-  // Get API key from env
-  const apiKey = resolveEnvVariable("TASKMASTER_API_KEY", null, projectRoot);
-  if (!apiKey) {
-    throw new Error("TASKMASTER_API_KEY not found for hosted mode");
+  // Get user auth info for headers
+  const userMgmt = require("./user-management.js");
+  const userToken = await userMgmt.getUserToken(projectRoot);
+  const userEmail = await userMgmt.getUserEmail(projectRoot);
+
+  if (!userToken) {
+    throw new Error(
+      "User token not found. Run 'task-master init' to register with gateway."
+    );
   }
 
-  // need to make sure the user is authenticated and has a valid paid user token + enough credits for this call
+  const endpoint = `${gatewayUrl}/api/v1/ai/${serviceType}`;
+
+  // Extract messages from callParams and convert to gateway format
+  const systemPrompt =
+    callParams.messages?.find((m) => m.role === "system")?.content || "";
+  const prompt =
+    callParams.messages?.find((m) => m.role === "user")?.content || "";
 
   const requestBody = {
-    provider: providerName,
-    model: modelId,
-    serviceType,
-    userId,
+    role: initialRole,
+    messages: callParams.messages,
+    modelId,
     commandName,
     outputType,
-    ...callParams,
+    roleParams: {
+      maxTokens: callParams.maxTokens,
+      temperature: callParams.temperature,
+    },
+    ...(serviceType === "generateObject" && {
+      schema: callParams.schema,
+      objectName: callParams.objectName,
+    }),
   };
+
+  const headers = {
+    "Content-Type": "application/json",
+    "X-TaskMaster-API-Key": serviceApiKey, // Service-level auth (hardcoded)
+    Authorization: `Bearer ${userToken}`, // User-level auth
+  };
+
+  // Add user email header if available
+  if (userEmail) {
+    headers["X-User-Email"] = userEmail;
+  }
 
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify(requestBody),
   });
 
@@ -383,14 +410,45 @@ async function _unifiedServiceRunner(serviceType, params) {
   const effectiveProjectRoot = projectRoot || findProjectRoot();
   const userId = getUserId(effectiveProjectRoot);
 
-  // Check if user is in hosted mode
+  // If userId is the placeholder, try to initialize user silently
+  if (userId === "1234567890") {
+    try {
+      // Dynamic import to avoid circular dependency
+      const userMgmt = await import("./user-management.js");
+      const initResult = await userMgmt.initializeUser(effectiveProjectRoot);
+
+      if (initResult.success) {
+        // Update the config with the new userId
+        const { writeConfig, getConfig } = await import("./config-manager.js");
+        const config = getConfig(effectiveProjectRoot);
+        config.account.userId = initResult.userId;
+        writeConfig(config, effectiveProjectRoot);
+
+        log("info", "User successfully authenticated with gateway");
+      } else {
+        log("warn", `Silent auth/init failed: ${initResult.error}`);
+      }
+    } catch (error) {
+      log("warn", `Silent auth/init attempt failed: ${error.message}`);
+    }
+  }
+
+  // Add hosted mode check here
   const hostedMode = isHostedMode(effectiveProjectRoot);
 
   if (hostedMode) {
-    // For hosted mode, route through gateway
+    // Route through gateway - use your existing implementation
     log("info", "Routing AI call through TaskMaster gateway (hosted mode)");
 
     try {
+      // Check if we have a valid userId (not placeholder)
+      const finalUserId = getUserId(effectiveProjectRoot); // Re-check after potential auth
+      if (finalUserId === "1234567890" || !finalUserId) {
+        throw new Error(
+          "Hosted mode requires user authentication. Please run 'task-master init' to register with the gateway, or switch to BYOK mode if the gateway service is unavailable."
+        );
+      }
+
       // Get the role configuration for provider/model selection
       let providerName, modelId;
       if (initialRole === "main") {
@@ -442,10 +500,11 @@ async function _unifiedServiceRunner(serviceType, params) {
         callParams,
         providerName,
         modelId,
-        userId,
+        finalUserId,
         commandName,
         outputType,
-        effectiveProjectRoot
+        effectiveProjectRoot,
+        initialRole
       );
 
       // For hosted mode, we don't need to submit telemetry separately
@@ -455,7 +514,7 @@ async function _unifiedServiceRunner(serviceType, params) {
         // Convert gateway account info to telemetry format for UI display
         telemetryData = {
           timestamp: new Date().toISOString(),
-          userId,
+          userId: finalUserId,
           commandName,
           modelUsed: modelId,
           providerName,

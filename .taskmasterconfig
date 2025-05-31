@@ -29,9 +29,9 @@
     "azureBaseURL": "https://your-endpoint.azure.com/"
   },
   "account": {
-    "userId": "277779c9-1ee2-4ef8-aa3a-2176745b71a9",
-    "userEmail": "user_1748640077834@taskmaster.dev",
-    "mode": "hosted",
+    "userId": "1234567890",
+    "userEmail": "",
+    "mode": "byok",
     "telemetryEnabled": true
   }
 }

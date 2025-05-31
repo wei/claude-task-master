@@ -68,7 +68,7 @@ async function registerUserWithGateway(email = null, explicitRoot = null) {
 /**
  * Updates the user configuration with gateway registration results
  * @param {string} userId - User ID from gateway
- * @param {string} token - API token from gateway
+ * @param {string} token - User authentication token from gateway (stored in .env)
  * @param {string} mode - User mode ('byok' or 'hosted')
  * @param {string|null} explicitRoot - Optional explicit project root path
  * @returns {boolean} Success status
@@ -86,7 +86,7 @@ function updateUserConfig(userId, token, mode, explicitRoot = null) {
     config.account.userId = userId;
     config.account.mode = mode; // 'byok' or 'hosted'
 
-    // Write API token to .env file (not config)
+    // Write user authentication token to .env file (not config)
     if (token) {
       writeApiKeyToEnv(token, explicitRoot);
     }
@@ -107,8 +107,9 @@ function updateUserConfig(userId, token, mode, explicitRoot = null) {
 }
 
 /**
- * Writes the API token to the .env file
- * @param {string} token - API token to write
+ * Writes the user authentication token to the .env file
+ * This token is used as Bearer auth for gateway API calls
+ * @param {string} token - Authentication token to write
  * @param {string|null} explicitRoot - Optional explicit project root path
  */
 function writeApiKeyToEnv(token, explicitRoot = null) {
@@ -155,9 +156,9 @@ function writeApiKeyToEnv(token, explicitRoot = null) {
 
     // Write updated content
     fs.writeFileSync(envPath, envContent);
-    log("info", "API key written to .env file");
+    log("info", "User authentication token written to .env file");
   } catch (error) {
-    log("error", `Failed to write API key to .env: ${error.message}`);
+    log("error", `Failed to write user token to .env: ${error.message}`);
   }
 }
 
@@ -303,6 +304,60 @@ async function initializeUser(explicitRoot = null) {
   }
 }
 
+/**
+ * Gets the current user authentication token from .env file
+ * This is the Bearer token used for gateway API calls
+ * @param {string|null} explicitRoot - Optional explicit project root path
+ * @returns {string|null} User authentication token or null if not found
+ */
+function getUserToken(explicitRoot = null) {
+  try {
+    // Determine project root
+    let rootPath = explicitRoot;
+    if (!rootPath) {
+      rootPath = findProjectRoot();
+      if (!rootPath) {
+        log("error", "Could not determine project root for .env file");
+        return null;
+      }
+    }
+
+    const envPath = path.join(rootPath, ".env");
+    if (!fs.existsSync(envPath)) {
+      return null;
+    }
+
+    const envContent = fs.readFileSync(envPath, "utf8");
+    const lines = envContent.split("\n");
+
+    for (const line of lines) {
+      if (line.startsWith("TASKMASTER_API_KEY=")) {
+        return line.substring("TASKMASTER_API_KEY=".length).trim();
+      }
+    }
+
+    return null;
+  } catch (error) {
+    log("error", `Error getting user token from .env: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets the current user email from configuration
+ * @param {string|null} explicitRoot - Optional explicit project root path
+ * @returns {string|null} User email or null if not found
+ */
+function getUserEmail(explicitRoot = null) {
+  try {
+    const config = getConfig(explicitRoot);
+    return config?.global?.email || null;
+  } catch (error) {
+    log("error", `Error getting user email: ${error.message}`);
+    return null;
+  }
+}
+
 export {
   registerUserWithGateway,
   updateUserConfig,
@@ -312,4 +367,6 @@ export {
   isByokMode,
   setupUser,
   initializeUser,
+  getUserToken,
+  getUserEmail,
 };

@@ -25,6 +25,7 @@ jest.unstable_mockModule(
     getAzureBaseURL: jest.fn(),
     getVertexProjectId: jest.fn(),
     getVertexLocation: jest.fn(),
+    writeConfig: jest.fn(() => true),
     MODEL_MAP: {
       openai: [
         {

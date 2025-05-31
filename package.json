@@ -70,6 +70,7 @@
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
+		"open": "^10.1.2",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
 		"task-master-ai": "^0.15.0",

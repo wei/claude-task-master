@@ -22,10 +22,16 @@ import chalk from "chalk";
 import figlet from "figlet";
 import boxen from "boxen";
 import gradient from "gradient-string";
+import inquirer from "inquirer";
+import open from "open";
+import express from "express";
 import { isSilentMode } from "./modules/utils.js";
 import { convertAllCursorRulesToRooRules } from "./modules/rule-transformer.js";
 import { execSync } from "child_process";
-import { registerUserWithGateway } from "./modules/telemetry-submission.js";
+import {
+  initializeUser,
+  registerUserWithGateway,
+} from "./modules/user-management.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -379,46 +385,51 @@ async function initializeProject(options = {}) {
       };
     }
 
-    // STEP 1: Create/find userId first (MCP/non-interactive mode)
-    let userId = null;
-    let gatewayRegistration = null;
+    // NON-INTERACTIVE MODE - Use proper auth/init flow
+    let userSetupResult;
 
     try {
-      // Try to get existing userId from config if it exists
+      // Check if existing config has userId
       const existingConfigPath = path.join(process.cwd(), ".taskmasterconfig");
+      let existingUserId = null;
+
       if (fs.existsSync(existingConfigPath)) {
         const existingConfig = JSON.parse(
           fs.readFileSync(existingConfigPath, "utf8")
         );
-        userId = existingConfig.account?.userId;
-        const existingUserEmail = existingConfig.account?.userEmail;
+        existingUserId = existingConfig.account?.userId;
+      }
 
-        // Pass existing data to gateway for validation/lookup
-        gatewayRegistration = await registerUserWithGateway(
-          existingUserEmail || tempEmail,
-          userId
-        );
-
-        if (gatewayRegistration.success) {
-          userId = gatewayRegistration.userId;
-        } else {
-          // Generate fallback userId if gateway unavailable
-          userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      if (existingUserId) {
+        // Validate existing userId through auth/init
+        userSetupResult = await registerUserWithGateway(null, process.cwd());
+        if (!userSetupResult.success) {
+          throw new Error(
+            `Failed to validate existing user: ${userSetupResult.error}`
+          );
+        }
+      } else {
+        // Create new user through auth/init
+        userSetupResult = await initializeUser(process.cwd());
+        if (!userSetupResult.success) {
+          throw new Error(
+            `Failed to initialize user: ${userSetupResult.error}`
+          );
         }
       }
     } catch (error) {
-      // Generate fallback userId on any error
-      userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      log("error", `User initialization failed: ${error.message}`);
+      throw error; // Don't fall back to random userId!
     }
 
-    // For non-interactive mode, default to BYOK mode with proper userId
+    // Create project structure with properly authenticated userId
     createProjectStructure(
       addAliases,
       dryRun,
-      gatewayRegistration,
-      "byok",
+      userSetupResult, // Pass the full auth result
+      "byok", // or determine from result
       null,
-      userId
+      userSetupResult.userId || null
     );
   } else {
     // Interactive logic - NEW FLOW STARTS HERE
@@ -444,127 +455,124 @@ async function initializeProject(options = {}) {
         )
       );
 
-      // Generate or retrieve userId from gateway
-      let userId = null;
-      let gatewayRegistration = null;
+      // INTERACTIVE MODE - Also use proper auth/init flow
+      // STEP 1: Proper user setup
+      let userSetupResult;
 
       try {
-        // Try to get existing userId from config if it exists
+        // Same logic as non-interactive mode
         const existingConfigPath = path.join(
           process.cwd(),
           ".taskmasterconfig"
         );
+        let existingUserId = null;
+
         if (fs.existsSync(existingConfigPath)) {
           const existingConfig = JSON.parse(
             fs.readFileSync(existingConfigPath, "utf8")
           );
-          userId = existingConfig.account?.userId;
-          const existingUserEmail = existingConfig.account?.userEmail;
+          existingUserId = existingConfig.account?.userId;
+        }
 
-          // Pass existing data to gateway for validation/lookup
-          gatewayRegistration = await registerUserWithGateway(
-            existingUserEmail || tempEmail,
-            userId
-          );
-
-          if (gatewayRegistration.success) {
-            userId = gatewayRegistration.userId;
-          } else {
-            // Generate fallback userId if gateway unavailable
-            userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        if (existingUserId) {
+          userSetupResult = await registerUserWithGateway(null, process.cwd());
+          if (!userSetupResult.success) {
+            throw new Error(
+              `Failed to validate existing user: ${userSetupResult.error}`
+            );
+          }
+        } else {
+          userSetupResult = await initializeUser(process.cwd());
+          if (!userSetupResult.success) {
+            throw new Error(
+              `Failed to initialize user: ${userSetupResult.error}`
+            );
           }
         }
       } catch (error) {
-        // Generate fallback userId on any error
-        userId = `tm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        log("error", `User initialization failed: ${error.message}`);
+        // Don't fall back to random userId - exit or prompt user
+        throw error;
       }
 
-      // STEP 2: Choose AI access method (MAIN DECISION)
+      // STEP 2: Choose AI access method using inquirer
+      const modeResponse = await inquirer.prompt([
+        {
+          type: "list",
+          name: "accessMode",
+          message: "Choose Your AI Access Method:",
+          choices: [
+            {
+              name: "🔑 BYOK - Bring Your Own API Keys (You manage API keys & billing)",
+              value: "byok",
+            },
+            {
+              name: "🎯 Hosted API Gateway - All models, no keys needed (Recommended)",
+              value: "hosted",
+            },
+          ],
+          default: "hosted",
+        },
+      ]);
+
+      const selectedMode = modeResponse.accessMode;
+
       console.log(
         boxen(
-          chalk.white.bold("Choose Your AI Access Method") +
-            "\n\n" +
-            chalk.cyan.bold("(1) BYOK - Bring Your Own API Keys") +
-            "\n" +
-            chalk.white(
-              "    → You manage API keys & billing with AI providers"
-            ) +
-            "\n" +
-            chalk.white("    → Pay provider directly based on token usage") +
-            "\n" +
-            chalk.white(
-              "    → Requires setup with each provider individually"
-            ) +
-            "\n\n" +
-            chalk.green.bold("(2) Hosted API Gateway") +
-            " " +
-            chalk.yellow.bold("(Recommended)") +
-            "\n" +
-            chalk.white("    → Use any model, zero API keys needed") +
-            "\n" +
-            chalk.white("    → Flat, credit-based pricing with no surprises") +
-            "\n" +
-            chalk.white("    → Support the development of Taskmaster"),
-          {
-            padding: 1,
-            margin: { top: 1, bottom: 1 },
-            borderStyle: "round",
-            borderColor: "cyan",
-            title: "🎯 AI Access Setup",
-            titleAlignment: "center",
-          }
-        )
-      );
-
-      let choice;
-      while (true) {
-        choice = await promptQuestion(
-          rl,
-          chalk.cyan.bold("Your choice (1 or 2): ")
-        );
-
-        if (choice === "1" || choice.toLowerCase() === "byok") {
-          console.log(
-            boxen(
-              chalk.blue.bold("🔑 BYOK Mode Selected") +
+          selectedMode === "byok"
+            ? chalk.blue.bold("🔑 BYOK Mode Selected") +
                 "\n\n" +
                 chalk.white("You'll manage your own API keys and billing.") +
                 "\n" +
                 chalk.white("After setup, add your API keys to ") +
                 chalk.cyan(".env") +
-                chalk.white(" file."),
-              {
-                padding: 1,
-                margin: { top: 1, bottom: 1 },
-                borderStyle: "round",
-                borderColor: "blue",
-              }
-            )
-          );
-          return "byok";
-        } else if (choice === "2" || choice.toLowerCase() === "hosted") {
-          console.log(
-            boxen(
-              chalk.green.bold("🎯 Hosted API Gateway Selected") +
+                chalk.white(" file.")
+            : chalk.green.bold("🎯 Hosted API Gateway Selected") +
                 "\n\n" +
                 chalk.white(
                   "All AI models available instantly - no API keys needed!"
                 ) +
                 "\n" +
                 chalk.dim("Let's set up your subscription plan..."),
-              {
-                padding: 0.5,
-                margin: { top: 0.5, bottom: 0.5 },
-                borderStyle: "round",
-                borderColor: "green",
-              }
-            )
-          );
-          return "hosted";
-        } else {
-          console.log(chalk.red("Please enter 1 or 2"));
-        }
+          {
+            padding: 1,
+            margin: { top: 1, bottom: 1 },
+            borderStyle: "round",
+            borderColor: selectedMode === "byok" ? "blue" : "green",
+          }
+        )
+      );
+
+      // STEP 3: If hosted mode, handle subscription plan with Stripe simulation
+      let selectedPlan = null;
+      if (selectedMode === "hosted") {
+        selectedPlan = await handleHostedSubscription();
       }
+
+      // STEP 4: Continue with aliases (this fixes the hanging issue)
+      const aliasResponse = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "addAliases",
+          message: "Add shell aliases (tm, taskmaster) for easier access?",
+          default: true,
+        },
+      ]);
+
+      const addAliases = aliasResponse.addAliases;
+
+      const dryRun = options.dryRun || false;
+
+      // STEP 5: Show overview and continue with project creation
+      rl.close();
+      createProjectStructure(
+        addAliases,
+        dryRun,
+        userSetupResult,
+        selectedMode,
+        selectedPlan,
+        userSetupResult.userId
+      );
     } catch (error) {
       rl.close();
       log("error", `Error during initialization process: ${error.message}`);
@@ -1137,251 +1145,132 @@ function setupMCPConfiguration(targetDir) {
   log("info", "MCP server will use the installed task-master-ai package");
 }
 
-// Function to let user choose between BYOK and Hosted API Gateway
-async function selectAccessMode() {
+// Function to handle hosted subscription with browser pattern
+async function handleHostedSubscription() {
+  const planResponse = await inquirer.prompt([
+    {
+      type: "list",
+      name: "plan",
+      message: "Select Your Monthly AI Credit Pack:",
+      choices: [
+        {
+          name: "50 credits - $5/mo [$0.10 per credit] - Perfect for personal projects",
+          value: { name: "Starter", credits: 50, price: "$5/mo", value: 1 },
+        },
+        {
+          name: "120 credits - $10/mo [$0.083 per credit] - Popular choice",
+          value: { name: "Popular", credits: 120, price: "$10/mo", value: 2 },
+        },
+        {
+          name: "250 credits - $20/mo [$0.08 per credit] - Great value",
+          value: { name: "Pro", credits: 250, price: "$20/mo", value: 3 },
+        },
+        {
+          name: "550 credits - $40/mo [$0.073 per credit] - Best value",
+          value: {
+            name: "Enterprise",
+            credits: 550,
+            price: "$40/mo",
+            value: 4,
+          },
+        },
+      ],
+      default: 1, // Popular plan
+    },
+  ]);
+
+  const selectedPlan = planResponse.plan;
+
   console.log(
     boxen(
-      chalk.cyan.bold("🚀 Choose Your AI Access Method") +
+      chalk.green.bold(`✅ Selected: ${selectedPlan.name} Plan`) +
         "\n\n" +
-        chalk.white("TaskMaster supports two ways to access AI models:") +
+        chalk.white(
+          `${selectedPlan.credits} credits/month for ${selectedPlan.price}`
+        ) +
         "\n\n" +
-        chalk.yellow.bold("(1) BYOK - Bring Your Own API Keys") +
+        chalk.yellow("🔄 Opening browser for Stripe checkout...") +
         "\n" +
-        chalk.white("    ✓ Use your existing provider accounts") +
-        "\n" +
-        chalk.white("    ✓ Pay providers directly") +
-        "\n" +
-        chalk.white("    ✓ Full control over billing & usage") +
-        "\n" +
-        chalk.dim("    → Best for: Teams with existing AI accounts") +
-        "\n\n" +
-        chalk.green.bold("(2) Hosted API Gateway") +
-        chalk.yellow(" (Recommended)") +
-        "\n" +
-        chalk.white("    ✓ No API keys required") +
-        "\n" +
-        chalk.white("    ✓ Access all supported models instantly") +
-        "\n" +
-        chalk.white("    ✓ Simple credit-based billing") +
-        "\n" +
-        chalk.white("    ✓ Better rates through volume pricing") +
-        "\n" +
-        chalk.dim("    → Best for: Getting started quickly"),
+        chalk.dim("Complete your subscription setup in the browser."),
       {
         padding: 1,
-        margin: { top: 1, bottom: 1 },
-        borderStyle: "round",
-        borderColor: "cyan",
-        title: "🎯 AI Access Configuration",
-        titleAlignment: "center",
-      }
-    )
-  );
-
-  let choice;
-  while (true) {
-    choice = await promptQuestion(
-      rl,
-      chalk.cyan("Your choice") +
-        chalk.gray(" (1 for BYOK, 2 for Hosted)") +
-        ": "
-    );
-
-    if (choice === "1" || choice.toLowerCase() === "byok") {
-      console.log(
-        boxen(
-          chalk.blue.bold("🔑 BYOK Mode Selected") +
-            "\n\n" +
-            chalk.white("You'll configure your own AI provider API keys.") +
-            "\n" +
-            chalk.dim("The setup will guide you through model configuration."),
-          {
-            padding: 0.5,
-            margin: { top: 0.5, bottom: 0.5 },
-            borderStyle: "round",
-            borderColor: "blue",
-          }
-        )
-      );
-      return "byok";
-    } else if (choice === "2" || choice.toLowerCase() === "hosted") {
-      console.log(
-        boxen(
-          chalk.green.bold("🎯 Hosted API Gateway Selected") +
-            "\n\n" +
-            chalk.white(
-              "All AI models available instantly - no API keys needed!"
-            ) +
-            "\n" +
-            chalk.dim("Let's set up your subscription plan..."),
-          {
-            padding: 0.5,
-            margin: { top: 0.5, bottom: 0.5 },
-            borderStyle: "round",
-            borderColor: "green",
-          }
-        )
-      );
-      return "hosted";
-    } else {
-      console.log(chalk.red("Please enter 1 or 2"));
-    }
-  }
-}
-
-// Function to let user select a subscription plan
-async function selectSubscriptionPlan() {
-  console.log(
-    boxen(
-      chalk.cyan.bold("💳 Select Your Monthly AI Credit Pack") +
-        "\n\n" +
-        chalk.white("Choose the plan that fits your usage:") +
-        "\n\n" +
-        chalk.white("(1) ") +
-        chalk.yellow.bold("50 credits") +
-        chalk.white("   - ") +
-        chalk.green("$5/mo") +
-        chalk.gray("   [$0.10 per credit]") +
-        "\n" +
-        chalk.dim("    → Perfect for: Personal projects, light usage") +
-        "\n\n" +
-        chalk.white("(2) ") +
-        chalk.yellow.bold("120 credits") +
-        chalk.white("  - ") +
-        chalk.green("$10/mo") +
-        chalk.gray("  [$0.083 per credit]") +
-        chalk.cyan.bold(" ← Popular") +
-        "\n" +
-        chalk.dim("    → Perfect for: Active development, small teams") +
-        "\n\n" +
-        chalk.white("(3) ") +
-        chalk.yellow.bold("250 credits") +
-        chalk.white("  - ") +
-        chalk.green("$20/mo") +
-        chalk.gray("  [$0.08 per credit]") +
-        chalk.blue.bold(" ← Great Value") +
-        "\n" +
-        chalk.dim("    → Perfect for: Professional development, medium teams") +
-        "\n\n" +
-        chalk.white("(4) ") +
-        chalk.yellow.bold("550 credits") +
-        chalk.white("  - ") +
-        chalk.green("$40/mo") +
-        chalk.gray("  [$0.073 per credit]") +
-        chalk.magenta.bold(" ← Best Value") +
-        "\n" +
-        chalk.dim("    → Perfect for: Heavy usage, large teams, enterprises") +
-        "\n\n" +
-        chalk.blue("💡 ") +
-        chalk.white("Credits roll over month-to-month. Cancel anytime."),
-      {
-        padding: 1,
-        margin: { top: 1, bottom: 1 },
+        margin: { top: 0.5, bottom: 0.5 },
         borderStyle: "round",
         borderColor: "green",
-        title: "💳 Subscription Plans",
-        titleAlignment: "center",
       }
     )
   );
 
-  const plans = [
-    {
-      name: "Starter",
-      credits: 50,
-      price: "$5/mo",
-      perCredit: "$0.10",
-      value: 1,
-    },
-    {
-      name: "Popular",
-      credits: 120,
-      price: "$10/mo",
-      perCredit: "$0.083",
-      value: 2,
-    },
-    {
-      name: "Pro",
-      credits: 250,
-      price: "$20/mo",
-      perCredit: "$0.08",
-      value: 3,
-    },
-    {
-      name: "Enterprise",
-      credits: 550,
-      price: "$40/mo",
-      perCredit: "$0.073",
-      value: 4,
-    },
-  ];
+  // Stripe simulation with browser opening pattern (like Shopify CLI)
+  await simulateStripeCheckout(selectedPlan);
 
-  let choice;
-  while (true) {
-    choice = await promptQuestion(
-      rl,
-      chalk.cyan("Your choice") + chalk.gray(" (1-4)") + ": "
-    );
-
-    const planIndex = parseInt(choice) - 1;
-    if (planIndex >= 0 && planIndex < plans.length) {
-      const selectedPlan = plans[planIndex];
-
-      console.log(
-        boxen(
-          chalk.green.bold(`✅ Selected: ${selectedPlan.name} Plan`) +
-            "\n\n" +
-            chalk.white(
-              `${selectedPlan.credits} credits/month for ${selectedPlan.price}`
-            ) +
-            "\n" +
-            chalk.gray(`(${selectedPlan.perCredit} per credit)`) +
-            "\n\n" +
-            chalk.yellow("🔄 Opening Stripe checkout...") +
-            "\n" +
-            chalk.dim("Complete your subscription setup in the browser."),
-          {
-            padding: 1,
-            margin: { top: 0.5, bottom: 0.5 },
-            borderStyle: "round",
-            borderColor: "green",
-          }
-        )
-      );
-
-      // TODO: Integrate with actual Stripe checkout
-      // For now, simulate the process
-      console.log(chalk.yellow("\n⏳ Simulating Stripe checkout process..."));
-      console.log(chalk.green("✅ Subscription setup complete! (Simulated)"));
-
-      return selectedPlan;
-    } else {
-      console.log(chalk.red("Please enter a number from 1 to 4"));
-    }
-  }
+  return selectedPlan;
 }
 
-// Function to create or retrieve user ID
-async function getOrCreateUserId() {
-  // Try to find existing userId first
-  const existingConfig = path.join(process.cwd(), ".taskmasterconfig");
-  if (fs.existsSync(existingConfig)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(existingConfig, "utf8"));
-      if (config.userId) {
-        log("info", `Using existing user ID: ${config.userId}`);
-        return config.userId;
-      }
-    } catch (error) {
-      log("warn", "Could not read existing config, creating new user ID");
-    }
+// Stripe checkout simulation with browser pattern
+async function simulateStripeCheckout(plan) {
+  console.log(chalk.yellow("\n⏳ Starting Stripe checkout process..."));
+
+  // Start a simple HTTP server to handle the callback
+  const app = express();
+  let server;
+  let checkoutComplete = false;
+
+  // For demo/testing, we'll use a simple success simulation
+  const checkoutUrl = `https://example-stripe-simulation.com/checkout?plan=${plan.value}&return_url=http://localhost:3333/success`;
+
+  app.get("/success", (req, res) => {
+    checkoutComplete = true;
+    res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1 style="color: #28a745;">✅ Subscription Complete!</h1>
+          <p>Your ${plan.name} plan (${plan.credits} credits/month) is now active.</p>
+          <p style="color: #666; margin-top: 30px;">You can close this window and return to your terminal.</p>
+        </body>
+      </html>
+    `);
+    setTimeout(() => {
+      server.close();
+    }, 1000);
+  });
+
+  // Start the callback server
+  server = app.listen(3333, () => {
+    console.log(chalk.blue("📡 Started local callback server on port 3333"));
+  });
+
+  // Prompt user before opening browser
+  await inquirer.prompt([
+    {
+      type: "input",
+      name: "ready",
+      message: chalk.cyan(
+        "Press Enter to open your browser for Stripe checkout..."
+      ),
+    },
+  ]);
+
+  // Open the browser (for demo, we'll simulate immediate success)
+  console.log(chalk.blue("🌐 Opening browser..."));
+
+  // For demo purposes, simulate immediate success instead of opening real browser
+  // In real implementation: await open(checkoutUrl);
+  console.log(chalk.gray(`Demo URL: ${checkoutUrl}`));
+
+  // Simulate the checkout completion after 2 seconds
+  setTimeout(() => {
+    console.log(chalk.green("✅ Subscription setup complete! (Simulated)"));
+    checkoutComplete = true;
+    server.close();
+  }, 2000);
+
+  // Wait for checkout completion
+  while (!checkoutComplete) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  // Generate new user ID
-  const { v4: uuidv4 } = require("uuid");
-  const newUserId = uuidv4();
-  log("info", `Generated new user ID: ${newUserId}`);
-  return newUserId;
+  console.log(chalk.green("🎉 Payment successful! Continuing setup..."));
 }
 
 // Ensure necessary functions are exported
