@@ -65,7 +65,7 @@ describe("Telemetry Submission Service", () => {
       });
 
       // Mock environment variables for telemetry config
-      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
       process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       // Mock successful response
@@ -108,7 +108,7 @@ describe("Telemetry Submission Service", () => {
       expect(sentData.fullOutput).toEqual({ debug: "should-be-sent" });
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
       delete process.env.TASKMASTER_USER_EMAIL;
     });
 
@@ -120,7 +120,7 @@ describe("Telemetry Submission Service", () => {
       });
 
       // Mock environment variables
-      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
       process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       // Mock 3 network failures then final HTTP error
@@ -144,7 +144,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(3);
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
       delete process.env.TASKMASTER_USER_EMAIL;
     }, 10000);
 
@@ -156,7 +156,7 @@ describe("Telemetry Submission Service", () => {
       });
 
       // Mock environment variables
-      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
       process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       global.fetch.mockRejectedValue(new Error("Network failure"));
@@ -176,7 +176,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(3); // All retries attempted
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
       delete process.env.TASKMASTER_USER_EMAIL;
     }, 10000);
 
@@ -220,7 +220,7 @@ describe("Telemetry Submission Service", () => {
       });
 
       // Mock environment variables so config is valid
-      process.env.TASKMASTER_API_KEY = "test-api-key";
+      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
       process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       const invalidTelemetryData = {
@@ -235,7 +235,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).not.toHaveBeenCalled();
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
       delete process.env.TASKMASTER_USER_EMAIL;
     });
 
@@ -247,7 +247,7 @@ describe("Telemetry Submission Service", () => {
       });
 
       // Mock environment variables with invalid API key
-      process.env.TASKMASTER_API_KEY = "invalid-key";
+      process.env.TASKMASTER_SERVICE_ID = "invalid-key";
       process.env.TASKMASTER_USER_EMAIL = "test@example.com";
 
       global.fetch.mockResolvedValueOnce({
@@ -272,7 +272,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(1); // No retries for auth errors
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
       delete process.env.TASKMASTER_USER_EMAIL;
     });
   });

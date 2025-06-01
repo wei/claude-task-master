@@ -66,9 +66,9 @@ const defaultConfig = {
   },
   account: {
     userId: "1234567890", // Placeholder that triggers auth/init
-    userEmail: "",
+    email: "",
     mode: "byok",
-    telemetryEnabled: false,
+    telemetryEnabled: true,
   },
 };
 
@@ -129,7 +129,6 @@ function _loadAndValidateConfig(explicitRoot = null) {
               : { ...defaults.models.fallback },
         },
         global: { ...defaults.global, ...parsedConfig?.global },
-        ai: { ...defaults.ai, ...parsedConfig?.ai },
         account: { ...defaults.account, ...parsedConfig?.account },
       };
       configSource = `file (${configPath})`; // Update source info
@@ -756,7 +755,7 @@ function getTelemetryEnabled(explicitRoot = null) {
 // Update getUserEmail to use account
 function getUserEmail(explicitRoot = null) {
   const config = getConfig(explicitRoot);
-  return config.account?.userEmail || "";
+  return config.account?.email || "";
 }
 
 // Update getMode function to use account

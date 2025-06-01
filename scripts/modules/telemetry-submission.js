@@ -32,31 +32,24 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 /**
- * Get telemetry configuration from environment variables only
- * @returns {Object} Configuration object with apiKey, userId, and email
+ * Get telemetry configuration from hardcoded service ID, user token, and config
+ * @returns {Object} Configuration object with serviceId, apiKey, userId, and email
  */
 function getTelemetryConfig() {
-  // Try environment variables first (includes .env file via resolveEnvVariable)
-  const envApiKey =
-    resolveEnvVariable("TASKMASTER_API_KEY") ||
-    resolveEnvVariable("GATEWAY_API_KEY") ||
-    resolveEnvVariable("TELEMETRY_API_KEY");
-  const envUserId =
-    resolveEnvVariable("TASKMASTER_USER_ID") ||
-    resolveEnvVariable("GATEWAY_USER_ID") ||
-    resolveEnvVariable("TELEMETRY_USER_ID");
-  const envEmail =
-    resolveEnvVariable("TASKMASTER_USER_EMAIL") ||
-    resolveEnvVariable("GATEWAY_USER_EMAIL") ||
-    resolveEnvVariable("TELEMETRY_USER_EMAIL");
-
-  // Get the config (which might contain userId)
+  // Get the config which contains userId and email
   const config = getConfig();
 
+  // Hardcoded service ID for TaskMaster telemetry service
+  const hardcodedServiceId = "98fb3198-2dfc-42d1-af53-07b99e4f3bde";
+
+  // Get user's API token from .env (managed by user-management.js)
+  const userApiKey = resolveEnvVariable("TASKMASTER_API_KEY");
+
   return {
-    apiKey: envApiKey || null, // API key should only come from environment
-    userId: envUserId || config?.account?.userId || null,
-    email: envEmail || null,
+    serviceId: hardcodedServiceId, // Hardcoded service identifier
+    apiKey: userApiKey || null, // User's Bearer token from .env
+    userId: config?.account?.userId || null, // From config
+    email: config?.account?.email || null, // From config
   };
 }
 
@@ -119,8 +112,11 @@ export async function registerUserWithGateway(email = null, userId = null) {
  */
 export async function submitTelemetryData(telemetryData) {
   try {
-    // Check user opt-out preferences first
-    if (!getTelemetryEnabled()) {
+    // Check user opt-out preferences first, but hosted mode always sends telemetry
+    const config = getConfig();
+    const isHostedMode = config?.account?.mode === "hosted";
+
+    if (!isHostedMode && !getTelemetryEnabled()) {
       return {
         success: true,
         skipped: true,
@@ -138,7 +134,7 @@ export async function submitTelemetryData(telemetryData) {
       return {
         success: false,
         error:
-          "Telemetry configuration incomplete. Run 'task-master init' and select hosted gateway option, or manually set TASKMASTER_API_KEY, TASKMASTER_USER_ID, and TASKMASTER_USER_EMAIL environment variables",
+          "Telemetry configuration incomplete. Please ensure you have completed 'task-master init' to set up your user account.",
       };
     }
 
@@ -167,8 +163,9 @@ export async function submitTelemetryData(telemetryData) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${telemetryConfig.apiKey}`, // Use Bearer token format
-            "X-User-Email": telemetryConfig.email, // Add required email header
+            "X-Service-ID": telemetryConfig.serviceId, // Hardcoded service ID
+            Authorization: `Bearer ${telemetryConfig.apiKey}`, // User's Bearer token
+            "X-User-Email": telemetryConfig.email, // User's email from config
           },
           body: JSON.stringify(completeTelemetryData),
         });

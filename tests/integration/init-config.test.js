@@ -120,12 +120,14 @@ describe("TaskMaster Init Configuration Tests", () => {
     it("should store API key in .env file (NOT config)", () => {
       // Create .env with API key
       const envContent =
-        "TASKMASTER_API_KEY=test-api-key-123\nOTHER_VAR=value\n";
+        "TASKMASTER_SERVICE_ID=test-api-key-123\nOTHER_VAR=value\n";
       fs.writeFileSync(envPath, envContent);
 
       // Test that API key is in .env
       const envFileContent = fs.readFileSync(envPath, "utf8");
-      expect(envFileContent).toContain("TASKMASTER_API_KEY=test-api-key-123");
+      expect(envFileContent).toContain(
+        "TASKMASTER_SERVICE_ID=test-api-key-123"
+      );
 
       // Test that API key is NOT in config
       const config = {
@@ -145,7 +147,7 @@ describe("TaskMaster Init Configuration Tests", () => {
   describe("Telemetry configuration", () => {
     it("should get API key from .env file", async () => {
       // Create .env with API key
-      const envContent = "TASKMASTER_API_KEY=env-api-key-456\n";
+      const envContent = "TASKMASTER_SERVICE_ID=env-api-key-456\n";
       fs.writeFileSync(envPath, envContent);
 
       // Test reading API key from .env
@@ -153,7 +155,7 @@ describe("TaskMaster Init Configuration Tests", () => {
         "../../scripts/modules/utils.js"
       );
       const apiKey = resolveEnvVariable(
-        "TASKMASTER_API_KEY",
+        "TASKMASTER_SERVICE_ID",
         null,
         testProjectDir
       );
@@ -163,13 +165,13 @@ describe("TaskMaster Init Configuration Tests", () => {
 
     it("should prioritize environment variables", async () => {
       // Clean up any existing env var first
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
 
       // Set environment variable
-      process.env.TASKMASTER_API_KEY = "process-env-key";
+      process.env.TASKMASTER_SERVICE_ID = "process-env-key";
 
       // Also create .env file
-      const envContent = "TASKMASTER_API_KEY=file-env-key\n";
+      const envContent = "TASKMASTER_SERVICE_ID=file-env-key\n";
       fs.writeFileSync(envPath, envContent);
 
       const { resolveEnvVariable } = await import(
@@ -177,13 +179,13 @@ describe("TaskMaster Init Configuration Tests", () => {
       );
 
       // Test with explicit projectRoot to avoid caching issues
-      const apiKey = resolveEnvVariable("TASKMASTER_API_KEY");
+      const apiKey = resolveEnvVariable("TASKMASTER_SERVICE_ID");
 
       // Should prioritize process.env over .env file
       expect(apiKey).toBe("process-env-key");
 
       // Clean up
-      delete process.env.TASKMASTER_API_KEY;
+      delete process.env.TASKMASTER_SERVICE_ID;
     });
   });
 

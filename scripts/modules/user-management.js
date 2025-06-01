@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { log, findProjectRoot } from "./utils.js";
-import { getConfig, writeConfig } from "./config-manager.js";
+import { getConfig, writeConfig, getUserId } from "./config-manager.js";
 
 /**
  * Registers or finds a user via the gateway's /auth/init endpoint
@@ -14,8 +14,18 @@ async function registerUserWithGateway(email = null, explicitRoot = null) {
     const gatewayUrl =
       process.env.TASKMASTER_GATEWAY_URL || "http://localhost:4444";
 
-    // Email is optional - only send if provided
-    const requestBody = email ? { email } : {};
+    // Check for existing userId and email to pass to gateway
+    const existingUserId = getUserId(explicitRoot);
+    const existingEmail = email || getUserEmail(explicitRoot);
+
+    // Build request body with existing values (gateway can handle userId for existing users)
+    const requestBody = {};
+    if (existingUserId && existingUserId !== "1234567890") {
+      requestBody.userId = existingUserId;
+    }
+    if (existingEmail) {
+      requestBody.email = existingEmail;
+    }
 
     const response = await fetch(`${gatewayUrl}/auth/init`, {
       method: "POST",
@@ -70,10 +80,17 @@ async function registerUserWithGateway(email = null, explicitRoot = null) {
  * @param {string} userId - User ID from gateway
  * @param {string} token - User authentication token from gateway (stored in .env)
  * @param {string} mode - User mode ('byok' or 'hosted')
+ * @param {string|null} email - Optional user email to save
  * @param {string|null} explicitRoot - Optional explicit project root path
  * @returns {boolean} Success status
  */
-function updateUserConfig(userId, token, mode, explicitRoot = null) {
+function updateUserConfig(
+  userId,
+  token,
+  mode,
+  email = null,
+  explicitRoot = null
+) {
   try {
     const config = getConfig(explicitRoot);
 
@@ -82,9 +99,19 @@ function updateUserConfig(userId, token, mode, explicitRoot = null) {
       config.account = {};
     }
 
+    // Ensure global section exists for email
+    if (!config.global) {
+      config.global = {};
+    }
+
     // Update user configuration in account section
     config.account.userId = userId;
     config.account.mode = mode; // 'byok' or 'hosted'
+
+    // Save email if provided
+    if (email) {
+      config.account.email = email;
+    }
 
     // Write user authentication token to .env file (not config)
     if (token) {
@@ -94,7 +121,11 @@ function updateUserConfig(userId, token, mode, explicitRoot = null) {
     // Save updated config
     const success = writeConfig(config, explicitRoot);
     if (success) {
-      log("info", `User configuration updated: userId=${userId}, mode=${mode}`);
+      const emailInfo = email ? `, email=${email}` : "";
+      log(
+        "info",
+        `User configuration updated: userId=${userId}, mode=${mode}${emailInfo}`
+      );
     } else {
       log("error", "Failed to write updated user configuration");
     }
@@ -219,10 +250,12 @@ async function setupUser(email = null, mode = "hosted", explicitRoot = null) {
       };
     }
 
-    // Step 2: Update config with userId and mode
-    const configResult = await updateUserConfig(
+    // Step 2: Update config with userId, mode, and email
+    const configResult = updateUserConfig(
       registrationResult.userId,
+      registrationResult.token,
       mode,
+      email,
       explicitRoot
     );
 
@@ -261,39 +294,58 @@ async function setupUser(email = null, mode = "hosted", explicitRoot = null) {
  */
 async function initializeUser(explicitRoot = null) {
   try {
-    // Register with gateway without email
+    // Try to register with gateway without email
     const result = await registerUserWithGateway(null, explicitRoot);
 
-    if (!result.success) {
-      return {
-        success: false,
-        userId: "",
-        error: result.error,
-      };
-    }
+    // If gateway call succeeded, use the returned values
+    if (result.success) {
+      // Update config with userId, token, and preserve existing mode (or default)
+      const existingMode = getUserMode(explicitRoot);
+      const modeToUse = existingMode !== "unknown" ? existingMode : "byok";
 
-    // Update config with userId, token, and default hosted mode
-    const configResult = updateUserConfig(
-      result.userId,
-      result.token, // Include the token parameter
-      "hosted", // Default to hosted mode until user chooses plan
-      explicitRoot
-    );
+      const configResult = updateUserConfig(
+        result.userId,
+        result.token,
+        modeToUse,
+        null,
+        explicitRoot
+      );
 
-    if (!configResult) {
+      if (!configResult) {
+        return {
+          success: false,
+          userId: result.userId,
+          error: "Failed to update user configuration",
+        };
+      }
+
       return {
-        success: false,
+        success: true,
         userId: result.userId,
-        error: "Failed to update user configuration",
+        message: result.isNewUser
+          ? "New user registered with gateway"
+          : "Existing user found in gateway",
       };
     }
 
+    // Gateway call failed - check if we have existing credentials to use
+    const existingUserId = getUserId(explicitRoot);
+    const existingToken = getUserToken(explicitRoot);
+
+    if (existingUserId && existingUserId !== "1234567890" && existingToken) {
+      // We have existing credentials, use them (gateway unavailable scenario)
+      return {
+        success: true,
+        userId: existingUserId,
+        message: "Gateway unavailable, using existing user credentials",
+      };
+    }
+
+    // No existing credentials and gateway failed
     return {
-      success: true,
-      userId: result.userId,
-      message: result.isNewUser
-        ? "New user registered with gateway"
-        : "Existing user found in gateway",
+      success: false,
+      userId: "",
+      error: result.error,
     };
   } catch (error) {
     return {
@@ -351,7 +403,7 @@ function getUserToken(explicitRoot = null) {
 function getUserEmail(explicitRoot = null) {
   try {
     const config = getConfig(explicitRoot);
-    return config?.global?.email || null;
+    return config?.account?.email || null;
   } catch (error) {
     log("error", `Error getting user email: ${error.message}`);
     return null;

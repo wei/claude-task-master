@@ -43,6 +43,8 @@ import {
   VertexAIProvider,
 } from "../../src/ai-providers/index.js";
 
+import { zodToJsonSchema } from "zod-to-json-schema";
+
 // Create provider instances
 const PROVIDERS = {
   anthropic: new AnthropicAIProvider(),
@@ -293,11 +295,11 @@ async function _callGatewayAI(
   initialRole
 ) {
   // Hard-code service-level constants
-  const gatewayUrl = "http://localhost:4444"; // or your production URL
-  const serviceApiKey = "339a81c9-5b9c-4d60-92d8-cba2ee2a8cc3"; // Hardcoded service key -- if you change this, the Hosted Gateway will not work
+  const gatewayUrl = "http://localhost:4444";
+  const serviceId = "98fb3198-2dfc-42d1-af53-07b99e4f3bde"; // Hardcoded service ID -- if you change this, the Hosted Gateway will not work
 
   // Get user auth info for headers
-  const userMgmt = require("./user-management.js");
+  const userMgmt = await import("./user-management.js");
   const userToken = await userMgmt.getUserToken(projectRoot);
   const userEmail = await userMgmt.getUserEmail(projectRoot);
 
@@ -316,6 +318,8 @@ async function _callGatewayAI(
     callParams.messages?.find((m) => m.role === "user")?.content || "";
 
   const requestBody = {
+    provider: providerName,
+    serviceType,
     role: initialRole,
     messages: callParams.messages,
     modelId,
@@ -326,14 +330,14 @@ async function _callGatewayAI(
       temperature: callParams.temperature,
     },
     ...(serviceType === "generateObject" && {
-      schema: callParams.schema,
+      schema: zodToJsonSchema(callParams.schema),
       objectName: callParams.objectName,
     }),
   };
 
   const headers = {
     "Content-Type": "application/json",
-    "X-TaskMaster-API-Key": serviceApiKey, // Service-level auth (hardcoded)
+    "X-TaskMaster-Service-ID": serviceId, // TaskMaster service ID for instance auth
     Authorization: `Bearer ${userToken}`, // User-level auth
   };
 
@@ -405,6 +409,10 @@ async function _unifiedServiceRunner(serviceType, params) {
       outputType,
       projectRoot,
     });
+
+    if (isHostedMode(projectRoot)) {
+      log("info", "Communicating with Taskmaster Gateway");
+    }
   }
 
   const effectiveProjectRoot = projectRoot || findProjectRoot();
@@ -426,10 +434,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 
         log("info", "User successfully authenticated with gateway");
       } else {
-        log("warn", `Silent auth/init failed: ${initResult.error}`);
+        // Silent failure - only log at debug level during init sequence
+        log("debug", `Silent auth/init failed: ${initResult.error}`);
       }
     } catch (error) {
-      log("warn", `Silent auth/init attempt failed: ${error.message}`);
+      // Silent failure - only log at debug level during init sequence
+      log("debug", `Silent auth/init attempt failed: ${error.message}`);
     }
   }
 

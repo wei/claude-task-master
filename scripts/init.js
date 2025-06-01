@@ -385,51 +385,42 @@ async function initializeProject(options = {}) {
       };
     }
 
-    // NON-INTERACTIVE MODE - Use proper auth/init flow
-    let userSetupResult;
+    // NON-INTERACTIVE MODE - Try auth/init gracefully
+    let userSetupResult = null;
+    let isGatewayAvailable = false;
 
+    // Try to initialize user, but don't throw errors if it fails
     try {
-      // Check if existing config has userId
-      const existingConfigPath = path.join(process.cwd(), ".taskmasterconfig");
-      let existingUserId = null;
-
-      if (fs.existsSync(existingConfigPath)) {
-        const existingConfig = JSON.parse(
-          fs.readFileSync(existingConfigPath, "utf8")
-        );
-        existingUserId = existingConfig.account?.userId;
-      }
-
-      if (existingUserId) {
-        // Validate existing userId through auth/init
-        userSetupResult = await registerUserWithGateway(null, process.cwd());
-        if (!userSetupResult.success) {
-          throw new Error(
-            `Failed to validate existing user: ${userSetupResult.error}`
-          );
+      userSetupResult = await initializeUser(process.cwd());
+      if (userSetupResult.success) {
+        isGatewayAvailable = true;
+        if (!isSilentMode()) {
+          log("info", "Gateway connection successful");
         }
       } else {
-        // Create new user through auth/init
-        userSetupResult = await initializeUser(process.cwd());
-        if (!userSetupResult.success) {
-          throw new Error(
-            `Failed to initialize user: ${userSetupResult.error}`
-          );
+        if (!isSilentMode()) {
+          log("info", "Gateway not available, using BYOK mode");
         }
+        isGatewayAvailable = false;
       }
     } catch (error) {
-      log("error", `User initialization failed: ${error.message}`);
-      throw error; // Don't fall back to random userId!
+      // Silent failure - gateway not available
+      if (!isSilentMode()) {
+        log("info", "Gateway not available, using BYOK mode");
+      }
+      isGatewayAvailable = false;
+      userSetupResult = null;
     }
 
-    // Create project structure with properly authenticated userId
+    // Create project structure - always use BYOK for non-interactive mode
+    // since we don't want to prompt for mode selection
     createProjectStructure(
       addAliases,
       dryRun,
-      userSetupResult, // Pass the full auth result
-      "byok", // or determine from result
+      userSetupResult, // Pass the auth result (may be null)
+      "byok", // Always use BYOK for non-interactive
       null,
-      userSetupResult.userId || null
+      userSetupResult?.userId || null
     );
   } else {
     // Interactive logic - NEW FLOW STARTS HERE
@@ -440,7 +431,7 @@ async function initializeProject(options = {}) {
     });
 
     try {
-      // STEP 1: Create/find userId first
+      // STEP 1: Welcome message
       console.log(
         boxen(
           chalk.blue.bold("🚀 Welcome to Taskmaster AI") +
@@ -455,101 +446,119 @@ async function initializeProject(options = {}) {
         )
       );
 
-      // INTERACTIVE MODE - Also use proper auth/init flow
-      // STEP 1: Proper user setup
-      let userSetupResult;
+      // STEP 2: Try auth/init gracefully to detect gateway availability
+      let userSetupResult = null;
+      let isGatewayAvailable = false;
 
       try {
-        // Same logic as non-interactive mode
-        const existingConfigPath = path.join(
-          process.cwd(),
-          ".taskmasterconfig"
-        );
-        let existingUserId = null;
-
-        if (fs.existsSync(existingConfigPath)) {
-          const existingConfig = JSON.parse(
-            fs.readFileSync(existingConfigPath, "utf8")
+        userSetupResult = await initializeUser(process.cwd());
+        if (userSetupResult.success) {
+          isGatewayAvailable = true;
+          console.log(
+            boxen(
+              chalk.green("✅ Gateway Connection Successful") +
+                "\n\n" +
+                chalk.white("TaskMaster AI Gateway is available.") +
+                "\n" +
+                chalk.white("You can choose between BYOK or Hosted mode."),
+              {
+                padding: 1,
+                margin: { top: 1, bottom: 1 },
+                borderStyle: "round",
+                borderColor: "green",
+              }
+            )
           );
-          existingUserId = existingConfig.account?.userId;
-        }
-
-        if (existingUserId) {
-          userSetupResult = await registerUserWithGateway(null, process.cwd());
-          if (!userSetupResult.success) {
-            throw new Error(
-              `Failed to validate existing user: ${userSetupResult.error}`
-            );
-          }
         } else {
-          userSetupResult = await initializeUser(process.cwd());
-          if (!userSetupResult.success) {
-            throw new Error(
-              `Failed to initialize user: ${userSetupResult.error}`
-            );
-          }
+          // Silent failure - gateway not available
+          isGatewayAvailable = false;
         }
       } catch (error) {
-        log("error", `User initialization failed: ${error.message}`);
-        // Don't fall back to random userId - exit or prompt user
-        throw error;
+        // Silent failure - gateway not available
+        isGatewayAvailable = false;
+        userSetupResult = null;
       }
 
-      // STEP 2: Choose AI access method using inquirer
-      const modeResponse = await inquirer.prompt([
-        {
-          type: "list",
-          name: "accessMode",
-          message: "Choose Your AI Access Method:",
-          choices: [
-            {
-              name: "🔑 BYOK - Bring Your Own API Keys (You manage API keys & billing)",
-              value: "byok",
-            },
-            {
-              name: "🎯 Hosted API Gateway - All models, no keys needed (Recommended)",
-              value: "hosted",
-            },
-          ],
-          default: "hosted",
-        },
-      ]);
-
-      const selectedMode = modeResponse.accessMode;
-
-      console.log(
-        boxen(
-          selectedMode === "byok"
-            ? chalk.blue.bold("🔑 BYOK Mode Selected") +
-                "\n\n" +
-                chalk.white("You'll manage your own API keys and billing.") +
-                "\n" +
-                chalk.white("After setup, add your API keys to ") +
-                chalk.cyan(".env") +
-                chalk.white(" file.")
-            : chalk.green.bold("🎯 Hosted API Gateway Selected") +
-                "\n\n" +
-                chalk.white(
-                  "All AI models available instantly - no API keys needed!"
-                ) +
-                "\n" +
-                chalk.dim("Let's set up your subscription plan..."),
-          {
-            padding: 1,
-            margin: { top: 1, bottom: 1 },
-            borderStyle: "round",
-            borderColor: selectedMode === "byok" ? "blue" : "green",
-          }
-        )
-      );
-
-      // STEP 3: If hosted mode, handle subscription plan with Stripe simulation
+      // STEP 3: Choose AI access method (conditional based on gateway availability)
+      let selectedMode = "byok"; // Default to BYOK
       let selectedPlan = null;
-      if (selectedMode === "hosted") {
-        selectedPlan = await handleHostedSubscription();
+
+      if (isGatewayAvailable) {
+        // Gateway is available, show both options
+        const modeResponse = await inquirer.prompt([
+          {
+            type: "list",
+            name: "accessMode",
+            message: "Choose Your AI Access Method:",
+            choices: [
+              {
+                name: "🔑 BYOK - Bring Your Own API Keys (You manage API keys & billing)",
+                value: "byok",
+              },
+              {
+                name: "🎯 Hosted API Gateway - All models, no keys needed (Recommended)",
+                value: "hosted",
+              },
+            ],
+            default: "hosted",
+          },
+        ]);
+        selectedMode = modeResponse.accessMode;
+
+        console.log(
+          boxen(
+            selectedMode === "byok"
+              ? chalk.blue.bold("🔑 BYOK Mode Selected") +
+                  "\n\n" +
+                  chalk.white("You'll manage your own API keys and billing.") +
+                  "\n" +
+                  chalk.white("After setup, add your API keys to ") +
+                  chalk.cyan(".env") +
+                  chalk.white(" file.")
+              : chalk.green.bold("🎯 Hosted API Gateway Selected") +
+                  "\n\n" +
+                  chalk.white(
+                    "All AI models available instantly - no API keys needed!"
+                  ) +
+                  "\n" +
+                  chalk.dim("Let's set up your subscription plan..."),
+            {
+              padding: 1,
+              margin: { top: 1, bottom: 1 },
+              borderStyle: "round",
+              borderColor: selectedMode === "byok" ? "blue" : "green",
+            }
+          )
+        );
+
+        // If hosted mode selected, handle subscription plan
+        if (selectedMode === "hosted") {
+          selectedPlan = await handleHostedSubscription();
+        }
+      } else {
+        // Gateway not available, silently proceed with BYOK mode
+        // Show standard BYOK mode message without mentioning gateway failure
+        console.log(
+          boxen(
+            chalk.blue.bold("🔑 BYOK Mode") +
+              "\n\n" +
+              chalk.white("You'll manage your own API keys and billing.") +
+              "\n" +
+              chalk.white("After setup, add your API keys to ") +
+              chalk.cyan(".env") +
+              chalk.white(" file."),
+            {
+              padding: 1,
+              margin: { top: 1, bottom: 1 },
+              borderStyle: "round",
+              borderColor: "blue",
+            }
+          )
+        );
+        selectedMode = "byok";
       }
 
-      // STEP 4: Continue with aliases (this fixes the hanging issue)
+      // STEP 4: Continue with aliases
       const aliasResponse = await inquirer.prompt([
         {
           type: "confirm",
@@ -560,7 +569,6 @@ async function initializeProject(options = {}) {
       ]);
 
       const addAliases = aliasResponse.addAliases;
-
       const dryRun = options.dryRun || false;
 
       // STEP 5: Show overview and continue with project creation
@@ -571,7 +579,7 @@ async function initializeProject(options = {}) {
         userSetupResult,
         selectedMode,
         selectedPlan,
-        userSetupResult.userId
+        userSetupResult?.userId || null
       );
     } catch (error) {
       rl.close();
@@ -856,7 +864,7 @@ function configureTaskmasterConfig(
     // Store account-specific configuration
     config.account.mode = selectedMode;
     config.account.userId = userId || null;
-    config.account.userEmail = gatewayRegistration?.email || "";
+    config.account.email = gatewayRegistration?.email || "";
     config.account.telemetryEnabled = selectedMode === "hosted";
 
     // Store remaining global config items

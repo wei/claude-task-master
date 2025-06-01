@@ -1513,18 +1513,16 @@ async function displayComplexityReport(reportPath) {
       )
     );
 
-    const readline = require("readline").createInterface({
+    const readline = await import("readline");
+    const rl = readline.default.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
 
     const answer = await new Promise((resolve) => {
-      readline.question(
-        chalk.cyan("Generate complexity report? (y/n): "),
-        resolve
-      );
+      rl.question(chalk.cyan("Generate complexity report? (y/n): "), resolve);
     });
-    readline.close();
+    rl.close();
 
     if (answer.toLowerCase() === "y" || answer.toLowerCase() === "yes") {
       // Call the analyze-complexity command
@@ -2029,43 +2027,114 @@ function displayAvailableModels(availableModels) {
  * @param {string} outputType - 'cli' or 'mcp' (though typically only called for 'cli').
  */
 function displayAiUsageSummary(telemetryData, outputType = "cli") {
-  if (
-    (outputType !== "cli" && outputType !== "text") ||
-    !telemetryData ||
-    isSilentMode()
-  ) {
-    return; // Only display for CLI and if data exists and not in silent mode
-  }
+  if (!telemetryData || outputType !== "cli") return;
 
   const {
-    modelUsed,
-    providerName,
-    inputTokens,
-    outputTokens,
-    totalTokens,
-    totalCost,
     commandName,
+    providerName,
+    modelUsed,
+    inputTokens = 0,
+    outputTokens = 0,
+    totalTokens = 0,
+    totalCost = 0,
+    accountInfo,
   } = telemetryData;
 
-  let summary = chalk.bold.blue("AI Usage Summary:") + "\n";
-  summary += chalk.gray(`  Command: ${commandName}\n`);
-  summary += chalk.gray(`  Provider: ${providerName}\n`);
-  summary += chalk.gray(`  Model: ${modelUsed}\n`);
-  summary += chalk.gray(
-    `  Tokens: ${totalTokens} (Input: ${inputTokens}, Output: ${outputTokens})\n`
-  );
-  summary += chalk.gray(`  Est. Cost: $${totalCost.toFixed(6)}`);
+  const isHostedMode = !!accountInfo;
 
-  console.log(
-    boxen(summary, {
-      padding: 1,
-      margin: { top: 1 },
-      borderColor: "blue",
-      borderStyle: "round",
-      title: "💡 Telemetry",
-      titleAlignment: "center",
-    })
-  );
+  // Build the core telemetry content (same for both modes)
+  let content =
+    chalk.cyan.bold("AI Usage Summary:") +
+    "\n" +
+    chalk.gray("  Command: ") +
+    chalk.white(commandName) +
+    "\n" +
+    chalk.gray("  Provider: ") +
+    chalk.white(providerName) +
+    "\n" +
+    chalk.gray("  Model: ") +
+    chalk.white(modelUsed) +
+    "\n" +
+    chalk.gray("  Tokens: ") +
+    chalk.white(
+      `${totalTokens.toLocaleString()} (Input: ${inputTokens.toLocaleString()}, Output: ${outputTokens.toLocaleString()})`
+    );
+
+  if (isHostedMode) {
+    // Hosted mode - add premium credit information
+    const creditsUsed = accountInfo.creditsUsed || 0;
+    const remainingCredits = accountInfo.remainingCredits || 0;
+    const totalCredits = creditsUsed + remainingCredits;
+    const remainingPercentage =
+      totalCredits > 0 ? (remainingCredits / totalCredits) * 100 : 0;
+
+    // Create credit bar showing REMAINING credits (goes down as credits are consumed)
+    const barLength = 20;
+    const filledLength = Math.round((remainingPercentage / 100) * barLength);
+    const emptyLength = barLength - filledLength;
+    const creditBar =
+      chalk.green("█".repeat(filledLength)) +
+      chalk.gray("█".repeat(emptyLength));
+
+    // Determine footer message based on remaining credits
+    let footerMessage;
+    if (remainingPercentage <= 20) {
+      footerMessage = chalk.yellow(
+        "⚠️  Running low on credits - consider topping up soon"
+      );
+    } else {
+      footerMessage = chalk.dim("🚀 Powered by hosted AI infrastructure");
+    }
+
+    content +=
+      "\n" +
+      chalk.gray("  Credits Used: ") +
+      chalk.yellow.bold(creditsUsed.toLocaleString()) +
+      "\n" +
+      chalk.gray("  Remaining: ") +
+      chalk.green.bold(remainingCredits.toLocaleString()) +
+      "\n" +
+      chalk.gray("  Usage: ") +
+      `[${creditBar}] ${remainingPercentage.toFixed(1)}%` +
+      "\n\n" +
+      footerMessage;
+
+    // Premium double border
+    console.log(
+      boxen(content, {
+        padding: { top: 1, bottom: 1, left: 2, right: 2 },
+        margin: { top: 1, bottom: 1 },
+        borderStyle: "double",
+        borderColor: "cyan",
+        title: chalk.yellow.bold("💎 PREMIUM TELEMETRY"),
+        titleAlignment: "center",
+      })
+    );
+  } else {
+    // BYOK mode - add cost and upgrade CTA
+    content +=
+      "\n" +
+      chalk.gray("  Est. Cost: ") +
+      chalk.white(`$${totalCost.toFixed(6)}`) +
+      "\n\n" +
+      chalk.cyan(
+        "⚡ Upgrade to TaskMaster Premium for instant access to all AI models"
+      ) +
+      "\n" +
+      chalk.dim("Learn more: https://taskmaster.ai/premium");
+
+    // Regular single border
+    console.log(
+      boxen(content, {
+        padding: { top: 1, bottom: 1, left: 2, right: 2 },
+        margin: { top: 1, bottom: 1 },
+        borderStyle: "round",
+        borderColor: "blue",
+        title: chalk.blue.bold("💡 TELEMETRY"),
+        titleAlignment: "center",
+      })
+    );
+  }
 }
 
 /**

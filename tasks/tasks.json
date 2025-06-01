@@ -6291,6 +6291,77 @@
       ],
       "priority": "high",
       "subtasks": []
+    },
+    {
+      "id": 95,
+      "title": "Implement Stripe Integration and Account Mode Synchronization",
+      "description": "Implement client-side account status synchronization by calling a user profile endpoint during TaskMaster initialization to retrieve current account status from the server and update the local .taskmasterconfig file accordingly",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Add functionality to TaskMaster's initialization process that calls a user profile endpoint to fetch the current account status (including subscription status determined by server-side Stripe webhook integration). Update the local .taskmasterconfig file's account.mode field based on the server response. This ensures that the client always has the most current account status without needing to handle Stripe webhooks directly, as the server/gateway will manage the Stripe integration and webhook processing.",
+      "testStrategy": "Test the profile endpoint call during init, verify .taskmasterconfig updates correctly based on different account statuses, and ensure proper error handling when the endpoint is unavailable",
+      "subtasks": [
+        {
+          "id": "95-1",
+          "title": "Create user profile endpoint client function",
+          "description": "Implement a client function to call the user profile endpoint and retrieve account status",
+          "status": "pending"
+        },
+        {
+          "id": "95-2",
+          "title": "Integrate profile endpoint call into TaskMaster init process",
+          "description": "Add the profile endpoint call to the TaskMaster initialization sequence",
+          "status": "pending"
+        },
+        {
+          "id": "95-3",
+          "title": "Update .taskmasterconfig with server account status",
+          "description": "Implement logic to update the local .taskmasterconfig file's account.mode field based on the profile endpoint response",
+          "status": "pending"
+        },
+        {
+          "id": "95-4",
+          "title": "Add error handling for profile endpoint failures",
+          "description": "Implement proper error handling when the profile endpoint is unavailable or returns errors",
+          "status": "pending"
+        },
+        {
+          "id": "95-5",
+          "title": "Test account status synchronization",
+          "description": "Create tests to verify that account status is properly synchronized between server and client during initialization",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "title": "Create Test Task Generation and Validation System",
+      "description": "Implement a system for generating test tasks with proper validation, structure, and integration with the existing task management framework.",
+      "details": "Build a comprehensive test task generation system that includes:\n\n1. Test Task Template System:\n   - Create standardized templates for different types of test tasks (unit, integration, e2e)\n   - Implement template variables for dynamic content generation\n   - Support for test-specific metadata (test type, coverage areas, execution time)\n\n2. Test Task Validation:\n   - Validate test task structure against schema requirements\n   - Ensure test tasks have proper dependencies on implementation tasks\n   - Verify test strategy completeness and specificity\n   - Check for required test metadata fields\n\n3. Integration with Task Management:\n   - Extend existing task creation commands to support test task generation\n   - Add test task filtering and categorization in list commands\n   - Implement test task execution tracking and results storage\n   - Support for test task hierarchies and grouping\n\n4. Test Task Automation:\n   - Auto-generate test tasks when implementation tasks are created\n   - Implement test task dependency resolution based on implementation dependencies\n   - Add support for test task scheduling and execution workflows\n   - Create test task reporting and metrics collection\n\n5. CLI Integration:\n   - Add 'create-test-task' command with options for test type and target functionality\n   - Implement test task status tracking (pending, running, passed, failed)\n   - Add test task execution commands with result reporting\n   - Support for bulk test task operations",
+      "testStrategy": "Verify the test task generation system by:\n\n1. Template Validation:\n   - Create test tasks using each template type and verify proper structure\n   - Test template variable substitution with various input scenarios\n   - Validate generated test tasks against the task schema\n\n2. Integration Testing:\n   - Test creation of test tasks through CLI commands\n   - Verify test task filtering and listing functionality\n   - Test dependency resolution between test tasks and implementation tasks\n   - Validate test task execution workflow end-to-end\n\n3. Validation Testing:\n   - Test validation rules with valid and invalid test task structures\n   - Verify error handling for malformed test tasks\n   - Test schema compliance for all generated test tasks\n\n4. Automation Testing:\n   - Test auto-generation of test tasks when implementation tasks are created\n   - Verify dependency propagation from implementation to test tasks\n   - Test bulk operations on multiple test tasks\n\n5. CLI Testing:\n   - Test all new CLI commands with various parameter combinations\n   - Verify proper error messages and help documentation\n   - Test JSON output format for programmatic usage\n   - Validate test task status tracking and reporting functionality",
+      "status": "pending",
+      "dependencies": [
+        1,
+        3,
+        22
+      ],
+      "priority": "medium",
+      "subtasks": []
+    },
+    {
+      "id": 97,
+      "title": "Implement Test Task Execution and Reporting Framework",
+      "description": "Create a comprehensive framework for executing test tasks and generating detailed reports on test results, coverage, and performance metrics.",
+      "details": "Build a robust test execution and reporting system that integrates with the existing test task generation framework:\n\n1. Test Execution Engine:\n   - Implement a test runner that can execute different types of test tasks (unit, integration, e2e)\n   - Support parallel and sequential test execution modes\n   - Handle test timeouts and resource management\n   - Provide real-time progress updates during test execution\n   - Support test filtering by tags, priority, or test type\n\n2. Test Result Collection:\n   - Capture test outcomes (pass/fail/skip) with detailed error messages\n   - Record execution times and performance metrics\n   - Collect code coverage data when applicable\n   - Track test dependencies and execution order\n   - Store test artifacts (logs, screenshots, generated files)\n\n3. Reporting System:\n   - Generate comprehensive HTML reports with interactive charts\n   - Create JSON output for CI/CD integration\n   - Implement console reporting with color-coded results\n   - Support custom report templates and formats\n   - Include trend analysis for test performance over time\n\n4. Integration Features:\n   - Connect with existing task management system to update task statuses\n   - Support CI/CD pipeline integration with exit codes\n   - Implement webhook notifications for test completion\n   - Provide API endpoints for external tool integration\n\n5. Configuration Management:\n   - Allow customizable test execution settings\n   - Support environment-specific test configurations\n   - Implement test suite organization and grouping\n   - Enable selective test execution based on criteria",
+      "testStrategy": "Verify the test execution framework through comprehensive validation:\n\n1. Unit Testing:\n   - Test the test runner engine with mock test cases\n   - Validate result collection accuracy with known outcomes\n   - Test report generation with various data scenarios\n   - Verify configuration parsing and validation\n\n2. Integration Testing:\n   - Execute real test suites and verify accurate result capture\n   - Test parallel execution with multiple test types\n   - Validate report generation with actual test data\n   - Test integration with task management system updates\n\n3. Performance Testing:\n   - Measure execution overhead and resource usage\n   - Test with large test suites to verify scalability\n   - Validate timeout handling and resource cleanup\n   - Test concurrent execution limits and stability\n\n4. End-to-End Validation:\n   - Run complete test cycles from execution to reporting\n   - Verify CI/CD integration with sample pipelines\n   - Test webhook notifications and external integrations\n   - Validate report accuracy against manual test execution\n\n5. Error Handling:\n   - Test behavior with failing tests and system errors\n   - Verify graceful handling of resource constraints\n   - Test recovery from interrupted test executions\n   - Validate error reporting and logging accuracy",
+      "status": "pending",
+      "dependencies": [
+        96,
+        22
+      ],
+      "priority": "medium",
+      "subtasks": []
     }
   ]
 }
