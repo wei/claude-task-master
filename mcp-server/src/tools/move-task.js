@@ -34,7 +34,6 @@ export function registerMoveTaskTool(server) {
 			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
 					'Root directory of the project (typically derived from session)'
 				)
@@ -86,7 +85,41 @@ export function registerMoveTaskTool(server) {
 							{ session }
 						);
 
-				return handleApiResult(result, log);
+						if (!result.success) {
+							log.error(
+								`Failed to move ${fromId} to ${toId}: ${result.error.message}`
+							);
+						} else {
+							results.push(result.data);
+						}
+					}
+
+					return handleApiResult(
+						{
+							success: true,
+							data: {
+								moves: results,
+								message: `Successfully moved ${results.length} tasks`
+							}
+						},
+						log
+					);
+				} else {
+					// Moving a single task
+					return handleApiResult(
+						await moveTaskDirect(
+							{
+								sourceId: args.from,
+								destinationId: args.to,
+								tasksJsonPath,
+								projectRoot: args.projectRoot
+							},
+							log,
+							{ session }
+						),
+						log
+					);
+				}
 			} catch (error) {
 				return createErrorResponse(
 					`Failed to move task: ${error.message}`,
