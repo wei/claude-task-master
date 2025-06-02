@@ -61,12 +61,12 @@ describe("Telemetry Submission Service", () => {
       getConfig.mockReturnValue({
         account: {
           userId: "test-user-id",
+          email: "test@example.com",
         },
       });
 
       // Mock environment variables for telemetry config
-      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
-      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+      process.env.TASKMASTER_API_KEY = "test-api-key";
 
       // Mock successful response
       global.fetch.mockResolvedValueOnce({
@@ -95,6 +95,7 @@ describe("Telemetry Submission Service", () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-Service-ID": "98fb3198-2dfc-42d1-af53-07b99e4f3bde",
             Authorization: "Bearer test-api-key",
             "X-User-Email": "test@example.com",
           },
@@ -108,20 +109,19 @@ describe("Telemetry Submission Service", () => {
       expect(sentData.fullOutput).toEqual({ debug: "should-be-sent" });
 
       // Clean up
-      delete process.env.TASKMASTER_SERVICE_ID;
-      delete process.env.TASKMASTER_USER_EMAIL;
+      delete process.env.TASKMASTER_API_KEY;
     });
 
     it("should implement retry logic for failed requests", async () => {
       getConfig.mockReturnValue({
         account: {
           userId: "test-user-id",
+          email: "test@example.com",
         },
       });
 
       // Mock environment variables
-      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
-      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+      process.env.TASKMASTER_API_KEY = "test-api-key";
 
       // Mock 3 network failures then final HTTP error
       global.fetch
@@ -144,20 +144,19 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(3);
 
       // Clean up
-      delete process.env.TASKMASTER_SERVICE_ID;
-      delete process.env.TASKMASTER_USER_EMAIL;
+      delete process.env.TASKMASTER_API_KEY;
     }, 10000);
 
     it("should handle failures gracefully without blocking execution", async () => {
       getConfig.mockReturnValue({
         account: {
           userId: "test-user-id",
+          email: "test@example.com",
         },
       });
 
       // Mock environment variables
-      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
-      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+      process.env.TASKMASTER_API_KEY = "test-api-key";
 
       global.fetch.mockRejectedValue(new Error("Network failure"));
 
@@ -176,8 +175,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(3); // All retries attempted
 
       // Clean up
-      delete process.env.TASKMASTER_SERVICE_ID;
-      delete process.env.TASKMASTER_USER_EMAIL;
+      delete process.env.TASKMASTER_API_KEY;
     }, 10000);
 
     it("should respect user opt-out preferences", async () => {
@@ -216,12 +214,12 @@ describe("Telemetry Submission Service", () => {
       getConfig.mockReturnValue({
         account: {
           userId: "test-user-id",
+          email: "test@example.com",
         },
       });
 
       // Mock environment variables so config is valid
-      process.env.TASKMASTER_SERVICE_ID = "test-api-key";
-      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+      process.env.TASKMASTER_API_KEY = "test-api-key";
 
       const invalidTelemetryData = {
         // Missing required fields
@@ -235,20 +233,19 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).not.toHaveBeenCalled();
 
       // Clean up
-      delete process.env.TASKMASTER_SERVICE_ID;
-      delete process.env.TASKMASTER_USER_EMAIL;
+      delete process.env.TASKMASTER_API_KEY;
     });
 
     it("should handle HTTP error responses appropriately", async () => {
       getConfig.mockReturnValue({
         account: {
           userId: "test-user-id",
+          email: "test@example.com",
         },
       });
 
       // Mock environment variables with invalid API key
-      process.env.TASKMASTER_SERVICE_ID = "invalid-key";
-      process.env.TASKMASTER_USER_EMAIL = "test@example.com";
+      process.env.TASKMASTER_API_KEY = "invalid-key";
 
       global.fetch.mockResolvedValueOnce({
         ok: false,
@@ -272,8 +269,7 @@ describe("Telemetry Submission Service", () => {
       expect(global.fetch).toHaveBeenCalledTimes(1); // No retries for auth errors
 
       // Clean up
-      delete process.env.TASKMASTER_SERVICE_ID;
-      delete process.env.TASKMASTER_USER_EMAIL;
+      delete process.env.TASKMASTER_API_KEY;
     });
   });
 
@@ -389,15 +385,16 @@ describe("Telemetry Submission Service", () => {
       };
 
       global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
       });
 
       const result = await registerUserWithGateway("invalid-email");
 
       expect(result).toEqual({
         success: false,
-        error: "Invalid email format",
+        error: "Gateway registration failed: 401 Unauthorized",
       });
     });
   });

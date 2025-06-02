@@ -44,6 +44,7 @@ import {
 } from "../../src/ai-providers/index.js";
 
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { handleGatewayError } from "./utils/gatewayErrorHandler.js";
 
 // Create provider instances
 const PROVIDERS = {
@@ -346,31 +347,51 @@ async function _callGatewayAI(
     headers["X-User-Email"] = userEmail;
   }
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(requestBody),
-  });
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gateway AI call failed: ${response.status} ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Gateway AI call failed: ${response.status} ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Gateway AI call failed");
+    }
+
+    // Return the AI response in the expected format
+    return {
+      text: result.data.text,
+      object: result.data.object,
+      usage: result.data.usage,
+      // Include any account info returned from gateway
+      accountInfo: result.accountInfo,
+    };
+  } catch (error) {
+    // Use the enhanced error handler for user-friendly messages
+    handleGatewayError(error, commandName);
+
+    // Throw a much cleaner error message to prevent ugly double logging
+    const match = error.message.match(/Gateway AI call failed: (\d+)/);
+    if (match) {
+      const statusCode = match[1];
+      throw new Error(
+        `TaskMaster gateway error (${statusCode}). See details above.`
+      );
+    } else {
+      throw new Error(
+        "TaskMaster gateway communication failed. See details above."
+      );
+    }
   }
-
-  const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.error || "Gateway AI call failed");
-  }
-
-  // Return the AI response in the expected format
-  return {
-    text: result.data.text,
-    object: result.data.object,
-    usage: result.data.usage,
-    // Include any account info returned from gateway
-    accountInfo: result.accountInfo,
-  };
 }
 
 /**

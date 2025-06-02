@@ -721,12 +721,56 @@ function getUserId(explicitRoot = null) {
     config.account = { ...defaultConfig.account };
   }
 
+  // Check if the userId exists in the actual file (not merged config)
+  let needsToSaveUserId = false;
+
+  // Load the raw config to check if userId is actually in the file
+  try {
+    let rootPath = explicitRoot;
+    if (explicitRoot === null || explicitRoot === undefined) {
+      const foundRoot = findProjectRoot();
+      if (!foundRoot) {
+        // If no project root, can't check file, assume userId needs to be saved
+        needsToSaveUserId = true;
+      } else {
+        rootPath = foundRoot;
+      }
+    }
+
+    if (rootPath && !needsToSaveUserId) {
+      const configPath = path.join(rootPath, CONFIG_FILE_NAME);
+      if (fs.existsSync(configPath)) {
+        const rawConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+        // Check if userId is missing from the actual file
+        needsToSaveUserId = !rawConfig.account?.userId;
+      } else {
+        // Config file doesn't exist, need to save
+        needsToSaveUserId = true;
+      }
+    }
+  } catch (error) {
+    // If there's any error reading the file, assume we need to save
+    needsToSaveUserId = true;
+  }
+
   // If userId exists and is not the placeholder, return it
   if (config.account.userId && config.account.userId !== "1234567890") {
     return config.account.userId;
   }
 
-  // If userId is null or the placeholder, return the placeholder
+  // If userId is missing from the actual file, set the placeholder and save it
+  if (needsToSaveUserId) {
+    config.account.userId = "1234567890";
+    const success = writeConfig(config, explicitRoot);
+    if (!success) {
+      console.warn("Warning: Failed to save default userId to config file");
+    }
+    // Force reload the cached config to reflect the change
+    loadedConfig = null;
+    loadedConfigRoot = null;
+  }
+
+  // Return the placeholder
   // This signals to other code that auth/init needs to be attempted
   return "1234567890";
 }

@@ -89,10 +89,10 @@ const DEFAULT_CONFIG = {
     },
   },
   account: {
-    userId: null,
-    userEmail: "",
+    userId: "1234567890",
+    email: "",
     mode: "byok",
-    telemetryEnabled: false,
+    telemetryEnabled: true,
   },
 };
 
@@ -333,7 +333,6 @@ describe("getConfig Tests", () => {
       },
       global: { ...DEFAULT_CONFIG.global, ...VALID_CUSTOM_CONFIG.global },
       account: { ...DEFAULT_CONFIG.account },
-      ai: {},
     };
     expect(config).toEqual(expectedMergedConfig);
     expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -357,7 +356,6 @@ describe("getConfig Tests", () => {
       },
       global: { ...DEFAULT_CONFIG.global, ...PARTIAL_CONFIG.global },
       account: { ...DEFAULT_CONFIG.account },
-      ai: {},
     };
     expect(config).toEqual(expectedMergedConfig);
     expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, "utf-8");
@@ -463,7 +461,6 @@ describe("getConfig Tests", () => {
       },
       global: { ...DEFAULT_CONFIG.global, ...INVALID_PROVIDER_CONFIG.global },
       account: { ...DEFAULT_CONFIG.account },
-      ai: {},
     };
     expect(config).toEqual(expectedMergedConfig);
   });
