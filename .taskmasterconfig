@@ -29,8 +29,8 @@
     "azureBaseURL": "https://your-endpoint.azure.com/"
   },
   "account": {
-    "userId": "2e8d1938-b65d-4b3d-b480-efb488284fe3",
-    "email": "anon-2e8d1938-b65d-4b3d-b480-efb488284fe3@taskmaster.temp",
+    "userId": "1234567890",
+    "email": "",
     "mode": "byok",
     "telemetryEnabled": true
   }
