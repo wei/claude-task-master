@@ -31,6 +31,8 @@ import { execSync } from "child_process";
 import {
   initializeUser,
   registerUserWithGateway,
+  initializeBYOKUser,
+  initializeHostedUser,
 } from "./modules/user-management.js";
 
 const __filename = fileURLToPath(import.meta.url);

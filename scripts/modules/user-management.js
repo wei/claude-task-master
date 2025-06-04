@@ -293,65 +293,170 @@ async function setupUser(email = null, mode = "hosted", explicitRoot = null) {
  * @returns {Promise<{success: boolean, userId: string, error?: string}>}
  */
 async function initializeUser(explicitRoot = null) {
+  const config = getConfig(explicitRoot);
+  const mode = config.account?.mode || "byok";
+
+  if (mode === "byok") {
+    return await initializeBYOKUser(explicitRoot);
+  } else {
+    return await initializeHostedUser(explicitRoot);
+  }
+}
+
+async function initializeBYOKUser(projectRoot) {
   try {
-    // Try to register with gateway without email
-    const result = await registerUserWithGateway(null, explicitRoot);
+    const gatewayUrl =
+      process.env.TASKMASTER_GATEWAY_URL || "http://localhost:4444";
 
-    // If gateway call succeeded, use the returned values
-    if (result.success) {
-      // Update config with userId, token, and preserve existing mode (or default)
-      const existingMode = getUserMode(explicitRoot);
-      const modeToUse = existingMode !== "unknown" ? existingMode : "byok";
+    // Check if we already have an anonymous user ID stored
+    let config = getConfig(projectRoot);
+    const existingAnonymousUserId = config?.account?.userId;
 
-      const configResult = updateUserConfig(
-        result.userId,
-        result.token,
-        modeToUse,
-        null,
-        explicitRoot
+    // Prepare headers for the request
+    const headers = {
+      "Content-Type": "application/json",
+      "X-TaskMaster-Service-ID": "98fb3198-2dfc-42d1-af53-07b99e4f3bde",
+    };
+
+    // If we have an existing anonymous user ID, try to reuse it
+    if (existingAnonymousUserId && existingAnonymousUserId !== "1234567890") {
+      headers["X-Anonymous-User-ID"] = existingAnonymousUserId;
+      log(
+        "info",
+        `Attempting to reuse existing anonymous user: ${existingAnonymousUserId}`
       );
+    }
 
-      if (!configResult) {
-        return {
-          success: false,
-          userId: result.userId,
-          error: "Failed to update user configuration",
-        };
+    // Call gateway /auth/anonymous to create or reuse a user account
+    // BYOK users still get an account for potential future hosted mode switch
+    const response = await fetch(`${gatewayUrl}/auth/anonymous`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({}),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+
+      // Log whether user was reused or newly created
+      if (result.isReused) {
+        log(
+          "info",
+          `Successfully reused existing anonymous user: ${result.anonymousUserId}`
+        );
+      } else {
+        log("info", `Created new anonymous user: ${result.anonymousUserId}`);
       }
 
+      // Store the user token (same as hosted users)
+      // BYOK users won't use this for AI calls, but will have it for potential mode switch
+      if (result.session && result.session.access_token) {
+        writeApiKeyToEnv(result.session.access_token, projectRoot);
+      }
+
+      // Update config with BYOK user info, ensuring we store the anonymous user ID
+      if (!config.account) {
+        config.account = {};
+      }
+      config.account.userId = result.anonymousUserId || result.user.id;
+      config.account.mode = "byok";
+      config.account.userEmail =
+        result.user.email ||
+        `anon-${result.anonymousUserId || result.user.id}@taskmaster.temp`;
+      config.account.telemetryEnabled = false; // BYOK users don't send telemetry by default
+
+      writeConfig(config, projectRoot);
+
       return {
         success: true,
-        userId: result.userId,
-        message: result.isNewUser
-          ? "New user registered with gateway"
-          : "Existing user found in gateway",
+        userId: result.anonymousUserId || result.user.id,
+        token: result.session?.access_token || null,
+        mode: "byok",
+        isAnonymous: true,
+        isReused: result.isReused || false,
       };
-    }
-
-    // Gateway call failed - check if we have existing credentials to use
-    const existingUserId = getUserId(explicitRoot);
-    const existingToken = getUserToken(explicitRoot);
-
-    if (existingUserId && existingUserId !== "1234567890" && existingToken) {
-      // We have existing credentials, use them (gateway unavailable scenario)
+    } else {
+      const errorText = await response.text();
       return {
-        success: true,
-        userId: existingUserId,
-        message: "Gateway unavailable, using existing user credentials",
+        success: false,
+        error: `Gateway not available: ${response.status} ${errorText}`,
       };
     }
-
-    // No existing credentials and gateway failed
-    return {
-      success: false,
-      userId: "",
-      error: result.error,
-    };
   } catch (error) {
     return {
       success: false,
-      userId: "",
-      error: `Initialization failed: ${error.message}`,
+      error: `Network error: ${error.message}`,
+    };
+  }
+}
+
+async function initializeHostedUser(projectRoot) {
+  try {
+    // For hosted users, we need proper authentication
+    // This would typically involve OAuth flow or registration
+    const gatewayUrl =
+      process.env.TASKMASTER_GATEWAY_URL || "http://localhost:4444";
+
+    // Check if we already have stored credentials
+    const existingToken = getUserToken(projectRoot);
+    const existingUserId = getUserId(projectRoot);
+
+    if (existingToken && existingUserId && existingUserId !== "1234567890") {
+      // Try to validate existing credentials
+      try {
+        const response = await fetch(`${gatewayUrl}/auth/validate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${existingToken}`,
+            "X-TaskMaster-Service-ID": "98fb3198-2dfc-42d1-af53-07b99e4f3bde",
+          },
+        });
+
+        if (response.ok) {
+          return {
+            success: true,
+            userId: existingUserId,
+            token: existingToken,
+            mode: "hosted",
+            isExisting: true,
+          };
+        }
+      } catch (error) {
+        // Fall through to re-authentication
+      }
+    }
+
+    // If no valid credentials, use the existing registration flow
+    const registrationResult = await registerUserWithGateway(null, projectRoot);
+
+    if (registrationResult.success) {
+      // Update config for hosted mode
+      updateUserConfig(
+        registrationResult.userId,
+        registrationResult.token,
+        "hosted",
+        null,
+        projectRoot
+      );
+
+      return {
+        success: true,
+        userId: registrationResult.userId,
+        token: registrationResult.token,
+        mode: "hosted",
+        isNewUser: registrationResult.isNewUser,
+      };
+    } else {
+      return {
+        success: false,
+        error: `Hosted mode setup failed: ${registrationResult.error}`,
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: `Hosted user initialization failed: ${error.message}`,
     };
   }
 }
@@ -419,6 +524,8 @@ export {
   isByokMode,
   setupUser,
   initializeUser,
+  initializeBYOKUser,
+  initializeHostedUser,
   getUserToken,
   getUserEmail,
 };

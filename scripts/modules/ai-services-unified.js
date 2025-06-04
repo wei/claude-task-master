@@ -284,6 +284,10 @@ async function _attemptProviderCallWithRetries(
  * @param {string} initialRole - The initial client role
  * @returns {Promise<object>} AI response with usage data
  */
+/**
+ * Calls the TaskMaster gateway for AI processing (hosted mode only).
+ * BYOK users don't use this function - they make direct API calls.
+ */
 async function _callGatewayAI(
   serviceType,
   callParams,
@@ -301,8 +305,16 @@ async function _callGatewayAI(
 
   // Get user auth info for headers
   const userMgmt = await import("./user-management.js");
+  const config = getConfig(projectRoot);
+  const mode = config.account?.mode || "byok";
+
+  // Both BYOK and hosted users have the same user token
+  // BYOK users just don't use it for AI calls (they use their own API keys)
   const userToken = await userMgmt.getUserToken(projectRoot);
   const userEmail = await userMgmt.getUserEmail(projectRoot);
+
+  // Note: BYOK users will have both token and email, but won't use this function
+  // since they make direct API calls with their own keys
 
   if (!userToken) {
     throw new Error(

@@ -163,7 +163,7 @@ export async function submitTelemetryData(telemetryData) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Service-ID": telemetryConfig.serviceId, // Hardcoded service ID
+            "x-taskmaster-service-id": telemetryConfig.serviceId, // Hardcoded service ID
             Authorization: `Bearer ${telemetryConfig.apiKey}`, // User's Bearer token
             "X-User-Email": telemetryConfig.email, // User's email from config
           },

@@ -95,7 +95,7 @@ describe("Telemetry Submission Service", () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Service-ID": "98fb3198-2dfc-42d1-af53-07b99e4f3bde",
+            "x-taskmaster-service-id": "98fb3198-2dfc-42d1-af53-07b99e4f3bde",
             Authorization: "Bearer test-api-key",
             "X-User-Email": "test@example.com",
           },

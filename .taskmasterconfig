@@ -30,8 +30,8 @@
     "ollamaBaseUrl": "http://localhost:11434/api"
   },
   "account": {
-    "userId": "ee196145-8f01-41b9-a9ce-85faae397254",
-    "email": "eyal@testing.com",
+    "userId": "1234567890",
+    "email": "",
     "mode": "hosted",
     "telemetryEnabled": true
   }
