@@ -187,7 +187,6 @@ function writeApiKeyToEnv(token, explicitRoot = null) {
 
     // Write updated content
     fs.writeFileSync(envPath, envContent);
-    log("info", "User authentication token written to .env file");
   } catch (error) {
     log("error", `Failed to write user token to .env: ${error.message}`);
   }
@@ -321,10 +320,6 @@ async function initializeBYOKUser(projectRoot) {
     // If we have an existing anonymous user ID, try to reuse it
     if (existingAnonymousUserId && existingAnonymousUserId !== "1234567890") {
       headers["X-Anonymous-User-ID"] = existingAnonymousUserId;
-      log(
-        "info",
-        `Attempting to reuse existing anonymous user: ${existingAnonymousUserId}`
-      );
     }
 
     // Call gateway /auth/anonymous to create or reuse a user account
@@ -338,16 +333,6 @@ async function initializeBYOKUser(projectRoot) {
     if (response.ok) {
       const result = await response.json();
 
-      // Log whether user was reused or newly created
-      if (result.isReused) {
-        log(
-          "info",
-          `Successfully reused existing anonymous user: ${result.anonymousUserId}`
-        );
-      } else {
-        log("info", `Created new anonymous user: ${result.anonymousUserId}`);
-      }
-
       // Store the user token (same as hosted users)
       // BYOK users won't use this for AI calls, but will have it for potential mode switch
       if (result.session && result.session.access_token) {
@@ -360,10 +345,10 @@ async function initializeBYOKUser(projectRoot) {
       }
       config.account.userId = result.anonymousUserId || result.user.id;
       config.account.mode = "byok";
-      config.account.userEmail =
+      config.account.email =
         result.user.email ||
         `anon-${result.anonymousUserId || result.user.id}@taskmaster.temp`;
-      config.account.telemetryEnabled = false; // BYOK users don't send telemetry by default
+      config.account.telemetryEnabled = true;
 
       writeConfig(config, projectRoot);
 

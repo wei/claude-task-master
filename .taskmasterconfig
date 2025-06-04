@@ -2,8 +2,8 @@
   "models": {
     "main": {
       "provider": "anthropic",
-      "modelId": "claude-sonnet-4-20250514",
-      "maxTokens": 50000,
+      "modelId": "claude-3-7-sonnet-20250219",
+      "maxTokens": 64000,
       "temperature": 0.2
     },
     "research": {
@@ -14,8 +14,8 @@
     },
     "fallback": {
       "provider": "anthropic",
-      "modelId": "claude-3-7-sonnet-20250219",
-      "maxTokens": 128000,
+      "modelId": "claude-3-5-sonnet",
+      "maxTokens": 64000,
       "temperature": 0.2
     }
   },
@@ -26,13 +26,12 @@
     "defaultPriority": "medium",
     "projectName": "Taskmaster",
     "ollamaBaseURL": "http://localhost:11434/api",
-    "azureBaseURL": "https://your-endpoint.azure.com/",
-    "ollamaBaseUrl": "http://localhost:11434/api"
+    "azureBaseURL": "https://your-endpoint.azure.com/"
   },
   "account": {
-    "userId": "1234567890",
-    "email": "",
-    "mode": "hosted",
+    "userId": "2e8d1938-b65d-4b3d-b480-efb488284fe3",
+    "email": "anon-2e8d1938-b65d-4b3d-b480-efb488284fe3@taskmaster.temp",
+    "mode": "byok",
     "telemetryEnabled": true
   }
 }
