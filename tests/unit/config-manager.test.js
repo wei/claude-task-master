@@ -641,3 +641,52 @@ describe("getAllProviders", () => {
 
 // Note: Tests for setMainModel, setResearchModel were removed as the functions were removed in the implementation.
 // If similar setter functions exist, add tests for them following the writeConfig pattern.
+
+describe("ensureConfigFileExists", () => {
+  it("should create .taskmasterconfig file if it doesn't exist", () => {
+    // Override the default fs mocks for this test
+    fsExistsSyncSpy.mockReturnValue(false);
+    fsWriteFileSyncSpy.mockImplementation(() => {}); // Success, no throw
+
+    const result = configManager.ensureConfigFileExists(MOCK_PROJECT_ROOT);
+
+    expect(result).toBe(true);
+    expect(fsWriteFileSyncSpy).toHaveBeenCalledWith(
+      MOCK_CONFIG_PATH,
+      JSON.stringify(DEFAULT_CONFIG, null, 2)
+    );
+  });
+
+  it("should return true if .taskmasterconfig file already exists", () => {
+    // Mock file exists (this is the default, but let's be explicit)
+    fsExistsSyncSpy.mockReturnValue(true);
+
+    const result = configManager.ensureConfigFileExists(MOCK_PROJECT_ROOT);
+
+    expect(result).toBe(true);
+    expect(fsWriteFileSyncSpy).not.toHaveBeenCalled();
+  });
+
+  it("should return false if project root cannot be determined", () => {
+    // Override the default findProjectRoot mock to return null for this test
+    mockFindProjectRoot.mockReturnValue(null);
+
+    const result = configManager.ensureConfigFileExists(); // No explicitRoot provided
+
+    expect(result).toBe(false);
+    expect(fsWriteFileSyncSpy).not.toHaveBeenCalled();
+  });
+
+  it("should handle write errors gracefully", () => {
+    // Mock file doesn't exist
+    fsExistsSyncSpy.mockReturnValue(false);
+    // Mock write operation to throw error
+    fsWriteFileSyncSpy.mockImplementation(() => {
+      throw new Error("Permission denied");
+    });
+
+    const result = configManager.ensureConfigFileExists(MOCK_PROJECT_ROOT);
+
+    expect(result).toBe(false);
+  });
+});

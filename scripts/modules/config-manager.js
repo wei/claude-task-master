@@ -808,6 +808,57 @@ function getMode(explicitRoot = null) {
   return config.account?.mode || "byok";
 }
 
+/**
+ * Ensures that the .taskmasterconfig file exists, creating it with defaults if it doesn't.
+ * This is called early in initialization to prevent chicken-and-egg problems.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {boolean} True if file exists or was created successfully, false otherwise
+ */
+function ensureConfigFileExists(explicitRoot = null) {
+  // ---> Determine root path reliably (following existing pattern) <---
+  let rootPath = explicitRoot;
+  if (explicitRoot === null || explicitRoot === undefined) {
+    // Logic matching _loadAndValidateConfig and other functions
+    const foundRoot = findProjectRoot(); // *** Explicitly call findProjectRoot ***
+    if (!foundRoot) {
+      console.warn(
+        chalk.yellow(
+          "Warning: Could not determine project root for config file creation."
+        )
+      );
+      return false;
+    }
+    rootPath = foundRoot;
+  }
+  // ---> End determine root path logic <---
+
+  const configPath = path.join(rootPath, CONFIG_FILE_NAME);
+
+  // If file already exists, we're good
+  if (fs.existsSync(configPath)) {
+    return true;
+  }
+
+  try {
+    // Create the default config file (following writeConfig pattern)
+    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+    console.log(chalk.blue(`ℹ️ Created default .taskmasterconfig file`));
+
+    // Clear any cached config to ensure fresh load
+    loadedConfig = null;
+    loadedConfigRoot = null;
+
+    return true;
+  } catch (error) {
+    console.error(
+      chalk.red(
+        `Error creating default .taskmasterconfig file: ${error.message}`
+      )
+    );
+    return false;
+  }
+}
+
 export {
   // Core config access
   getConfig,
@@ -856,4 +907,6 @@ export {
   getTelemetryEnabled,
   getUserEmail,
   getMode,
+  // New function
+  ensureConfigFileExists,
 };

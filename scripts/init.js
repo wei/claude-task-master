@@ -34,6 +34,7 @@ import {
   initializeBYOKUser,
   initializeHostedUser,
 } from "./modules/user-management.js";
+import { ensureConfigFileExists } from "./modules/config-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -391,6 +392,9 @@ async function initializeProject(options = {}) {
     let userSetupResult = null;
     let isGatewayAvailable = false;
 
+    // Ensure .taskmasterconfig exists before checking gateway availability
+    ensureConfigFileExists(process.cwd());
+
     // Try to initialize user, but don't throw errors if it fails
     try {
       userSetupResult = await initializeUser(process.cwd());
@@ -451,6 +455,9 @@ async function initializeProject(options = {}) {
       // STEP 2: Try auth/init gracefully to detect gateway availability
       let userSetupResult = null;
       let isGatewayAvailable = false;
+
+      // Ensure .taskmasterconfig exists before checking gateway availability
+      ensureConfigFileExists(process.cwd());
 
       try {
         userSetupResult = await initializeUser(process.cwd());
@@ -866,7 +873,12 @@ function configureTaskmasterConfig(
     // Store account-specific configuration
     config.account.mode = selectedMode;
     config.account.userId = userId || null;
-    config.account.email = gatewayRegistration?.email || "";
+
+    // Only set email if not already present (initializeUser may have already set it)
+    if (!config.account.email) {
+      config.account.email = gatewayRegistration?.email || "";
+    }
+
     config.account.telemetryEnabled = selectedMode === "hosted";
 
     // Store remaining global config items
