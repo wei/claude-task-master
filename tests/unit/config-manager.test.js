@@ -31,6 +31,7 @@ try {
 // --- Define Mock Function Instances ---
 const mockFindProjectRoot = jest.fn();
 const mockLog = jest.fn();
+const mockIsSilentMode = jest.fn();
 
 // --- Mock Dependencies BEFORE importing the module under test ---
 
@@ -42,6 +43,7 @@ jest.mock("../../scripts/modules/utils.js", () => ({
   __esModule: true, // Indicate it's an ES module mock
   findProjectRoot: mockFindProjectRoot, // Use the mock function instance
   log: mockLog, // Use the mock function instance
+  isSilentMode: mockIsSilentMode, // Use the mock function instance
   // Include other necessary exports from utils if config-manager uses them directly
   resolveEnvVariable: jest.fn(), // Example if needed
 }));
@@ -150,6 +152,7 @@ const INVALID_PROVIDER_CONFIG = {
 // Define spies globally to be restored in afterAll
 let consoleErrorSpy;
 let consoleWarnSpy;
+let consoleLogSpy;
 let fsReadFileSyncSpy;
 let fsWriteFileSyncSpy;
 let fsExistsSyncSpy;
@@ -158,6 +161,7 @@ beforeAll(() => {
   // Set up console spies
   consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
   consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 });
 
 afterAll(() => {
@@ -172,6 +176,7 @@ beforeEach(() => {
   // Reset the external mock instances for utils
   mockFindProjectRoot.mockReset();
   mockLog.mockReset();
+  mockIsSilentMode.mockReset();
 
   // --- Set up spies ON the imported 'fs' mock ---
   fsExistsSyncSpy = jest.spyOn(fsMocked, "existsSync");
@@ -180,6 +185,7 @@ beforeEach(() => {
 
   // --- Default Mock Implementations ---
   mockFindProjectRoot.mockReturnValue(MOCK_PROJECT_ROOT); // Default for utils.findProjectRoot
+  mockIsSilentMode.mockReturnValue(false); // Default for utils.isSilentMode
   fsExistsSyncSpy.mockReturnValue(true); // Assume files exist by default
 
   // Default readFileSync: Return REAL models content, mocked config, or throw error
@@ -668,13 +674,24 @@ describe("ensureConfigFileExists", () => {
   });
 
   it("should return false if project root cannot be determined", () => {
-    // Override the default findProjectRoot mock to return null for this test
+    // Mock findProjectRoot to return null (no project root found)
     mockFindProjectRoot.mockReturnValue(null);
+
+    // Mock file doesn't exist so function tries to create it (and needs project root)
+    fsExistsSyncSpy.mockReturnValue(false);
+
+    // Clear any previous calls to consoleWarnSpy to get clean test results
+    consoleWarnSpy.mockClear();
 
     const result = configManager.ensureConfigFileExists(); // No explicitRoot provided
 
     expect(result).toBe(false);
     expect(fsWriteFileSyncSpy).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Warning: Could not determine project root for config file creation."
+      )
+    );
   });
 
   it("should handle write errors gracefully", () => {

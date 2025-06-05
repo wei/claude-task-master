@@ -2,7 +2,12 @@ import fs from "fs";
 import path from "path";
 import chalk from "chalk";
 import { fileURLToPath } from "url";
-import { log, findProjectRoot, resolveEnvVariable } from "./utils.js";
+import {
+  log,
+  findProjectRoot,
+  resolveEnvVariable,
+  isSilentMode,
+} from "./utils.js";
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -842,7 +847,11 @@ function ensureConfigFileExists(explicitRoot = null) {
   try {
     // Create the default config file (following writeConfig pattern)
     fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
-    console.log(chalk.blue(`ℹ️ Created default .taskmasterconfig file`));
+
+    // Only log if not in silent mode
+    if (!isSilentMode()) {
+      console.log(chalk.blue(`ℹ️ Created default .taskmasterconfig file`));
+    }
 
     // Clear any cached config to ensure fresh load
     loadedConfig = null;
