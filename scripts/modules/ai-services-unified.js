@@ -24,6 +24,7 @@ import {
   getAzureBaseURL,
   getVertexProjectId,
   getVertexLocation,
+  getConfig,
 } from "./config-manager.js";
 import { log, findProjectRoot, resolveEnvVariable } from "./utils.js";
 import { submitTelemetryData } from "./telemetry-submission.js";

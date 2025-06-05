@@ -6113,7 +6113,7 @@
       "description": "Implement support for a hosted AI gateway service in Task Master, allowing users to select between BYOK and hosted gateway modes during initialization. Ensure gateway integration intercepts and routes AI calls appropriately, handles gateway-specific telemetry, and maintains compatibility with existing command structures.",
       "details": "1. Update the initialization logic to allow users to select between BYOK (Bring Your Own Key) and hosted gateway service modes, storing the selection in the configuration system.\n2. In ai-services-unified.js, detect when the hosted gateway mode is active.\n3. Refactor the AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries. When in gateway mode, route calls to the gateway endpoint instead of directly to the provider.\n4. Construct gateway requests with the full messages array, modelId, roleParams, and commandName, ensuring all required data is passed.\n5. Parse gateway responses, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update internal telemetry handling to support both formats.\n6. Ensure the command structure and response handling remain compatible with existing provider integrations, so downstream consumers are unaffected.\n7. Add comprehensive logging for gateway interactions, including request/response payloads and credit telemetry, leveraging the existing logging system.\n8. Maintain robust error handling and fallback logic for gateway failures.\n9. Update documentation to describe the new gateway mode and configuration options.",
       "testStrategy": "- Unit test initialization logic to verify correct mode selection and configuration persistence.\n- Mock gateway endpoints to test interception and routing of AI calls in gateway mode, ensuring correct request formatting and response parsing.\n- Validate that credits telemetry is correctly extracted and logged, and that legacy token/cost telemetry remains supported in BYOK mode.\n- Perform integration tests to confirm that command execution and AI responses are consistent across both BYOK and gateway modes.\n- Simulate gateway errors and verify error handling and fallback mechanisms.\n- Review logs to ensure gateway interactions are properly recorded.\n- Confirm documentation updates accurately reflect new functionality and usage.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2,
         3,
@@ -6127,7 +6127,7 @@
           "description": "Modify the initialization logic to allow users to choose between BYOK and hosted gateway service modes, storing this selection in the configuration system.",
           "dependencies": [],
           "details": "Implement a configuration option that allows users to select between BYOK (Bring Your Own Key) and hosted gateway modes during system initialization. Create appropriate configuration parameters and storage mechanisms to persist this selection. Ensure the configuration is accessible throughout the application, particularly in ai-services-unified.js.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Create unit tests that verify the configuration is correctly set and retrieved based on user selection. Test both BYOK and gateway mode configurations.",
           "parentTaskId": 91
         },
@@ -6139,7 +6139,7 @@
             1
           ],
           "details": "Modify ai-services-unified.js to check the configuration and determine if the system is operating in gateway mode. Create helper functions to facilitate gateway-specific operations. Ensure this detection happens early in the processing flow to properly route subsequent operations.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Write tests that confirm the system correctly identifies when it's in gateway mode versus BYOK mode based on the configuration set in subtask 1.",
           "parentTaskId": 91
         },
@@ -6151,7 +6151,7 @@
             2
           ],
           "details": "Refactor the existing AI call flow to intercept requests before _resolveApiKey and _attemptProviderCallWithRetries methods are called. When gateway mode is active, construct appropriate gateway requests containing the full messages array, modelId, roleParams, and commandName. Implement the routing logic to direct these requests to the gateway endpoint instead of directly to the provider.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Create integration tests that verify requests are correctly intercepted and routed to the gateway endpoint when in gateway mode, and to the provider directly when in BYOK mode.",
           "parentTaskId": 91
         },
@@ -6163,7 +6163,7 @@
             3
           ],
           "details": "Create functions to parse responses from the gateway, extracting the AI result and handling telemetry fields for credits used/remaining instead of tokens/costs. Update the internal telemetry handling system to support both gateway and traditional formats. Ensure all relevant metrics are captured and properly stored.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test the response parsing with various mock gateway responses, verifying that AI results are correctly extracted and telemetry data is properly processed for both gateway and traditional formats.",
           "parentTaskId": 91
         },
@@ -6175,7 +6175,7 @@
             4
           ],
           "details": "Implement robust error handling and fallback logic for gateway failures. Add detailed logging for gateway interactions, including request/response payloads and credit telemetry, using the existing logging system. Update documentation to describe the new gateway mode, configuration options, and how the system behaves differently when in gateway mode versus BYOK mode. Ensure the command structure and response handling remain compatible with existing provider integrations.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test error scenarios by simulating gateway failures and verifying proper fallback behavior. Review logs to ensure appropriate information is captured. Conduct a documentation review to verify completeness and accuracy.",
           "parentTaskId": 91
         }
@@ -6333,6 +6333,20 @@
           "status": "pending"
         }
       ]
+    },
+    {
+      "id": 96,
+      "title": "Create TaskMaster Jingle",
+      "description": "Create an audio jingle or sound effect that plays when TaskMaster CLI commands complete successfully, providing auditory feedback for task completion.",
+      "details": "Implement a jingle system for TaskMaster including:\n- Create or source a short, pleasant audio file (2-3 seconds) in common formats (MP3, WAV)\n- Implement audio playback functionality using Node.js audio libraries (node-speaker, play-sound, or similar)\n- Add configuration option to enable/disable jingle playback in .taskmasterconfig\n- Integrate jingle playback into successful command completions (task creation, updates, completions)\n- Handle cross-platform audio playback (Windows, macOS, Linux)\n- Implement fallback behavior when audio playback fails (silent failure or console notification)\n- Add command line flag --silent to temporarily disable jingle\n- Consider volume control and respect system audio settings\n- Ensure jingle doesn't block command execution or cause delays\n- Add option for custom jingle file path in configuration",
+      "testStrategy": "Verify jingle implementation by:\n1. Testing audio playback on different operating systems (Windows, macOS, Linux)\n2. Confirming jingle plays after successful task operations (create, update, complete)\n3. Verifying configuration options work (enable/disable in config file)\n4. Testing --silent flag suppresses jingle playback\n5. Confirming graceful fallback when audio system unavailable\n6. Testing custom jingle file configuration\n7. Verifying jingle doesn't interfere with JSON output mode\n8. Testing volume levels are appropriate and respect system settings\n9. Confirming no audio artifacts or distortion during playback\n10. Testing concurrent command execution doesn't cause audio conflicts",
+      "status": "pending",
+      "dependencies": [
+        2,
+        16
+      ],
+      "priority": "medium",
+      "subtasks": []
     }
   ]
 }
