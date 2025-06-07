@@ -750,9 +750,9 @@ function displayHelp() {
  * @returns {string} Colored complexity score
  */
 function getComplexityWithColor(score) {
-	if (score <= 3) return chalk.green(`🟢 ${score}`);
-	if (score <= 6) return chalk.yellow(`🟡 ${score}`);
-	return chalk.red(`🔴 ${score}`);
+	if (score <= 3) return chalk.green(`● ${score}`);
+	if (score <= 6) return chalk.yellow(`● ${score}`);
+	return chalk.red(`● ${score}`);
 }
 
 /**
