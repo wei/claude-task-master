@@ -28,7 +28,9 @@ export function registerListTasksTool(server) {
 			status: z
 				.string()
 				.optional()
-				.describe("Filter tasks by status (e.g., 'pending', 'done')"),
+				.describe(
+					"Filter tasks by status (e.g., 'pending', 'done') or multiple statuses separated by commas (e.g., 'blocked,deferred')"
+				),
 			withSubtasks: z
 				.boolean()
 				.optional()
