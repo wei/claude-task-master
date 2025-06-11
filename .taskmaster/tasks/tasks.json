@@ -6471,6 +6471,211 @@
           "parentTaskId": 102
         }
       ]
+    },
+    {
+      "id": 103,
+      "title": "Implement Tagged Task Lists System for Multi-Context Task Management",
+      "description": "Develop a comprehensive tagged task lists system enabling users to organize, filter, and manage tasks across multiple contexts (e.g., personal, branch, version) with full backward compatibility.",
+      "status": "pending",
+      "dependencies": [
+        3,
+        11,
+        19
+      ],
+      "priority": "medium",
+      "details": "1. Extend the tasks.json schema to support a 'tags' structure, with 'master' as the default tag containing all existing tasks. Ensure seamless migration for users without tags.\n2. Add a 'defaultTag' configuration option to config.json in the global section, defaulting to 'master'.\n3. Implement tag management CLI commands: add-tag, delete, list, use (switch), rename, and copy. Each command should update the relevant data structures and persist changes.\n4. Update all existing task commands (list, add-task, set-status, etc.) to accept a --tag flag, filtering or applying actions within the specified tag context.\n5. Implement automatic tag creation from git branch names using a --from-branch flag, integrating with git APIs to detect current branch.\n6. Maintain the current tag state in .taskmaster/state.json with currentTag set to 'master' by default, ensuring session persistence and correct context switching.\n7. Guarantee backward compatibility: users without tags continue to operate in the 'master' context transparently.\n8. Provide comprehensive documentation and migration notes for users, and update help menus to reflect new tag-related features.",
+      "testStrategy": "- Migrate an existing tasks.json and verify all tasks appear under the 'master' tag.\n- Create, delete, rename, and copy tags using add-tag and other commands; confirm correct data structure updates and persistence.\n- Switch between tags and verify task isolation and context switching.\n- Use --tag flag with all supported commands and confirm correct filtering and operation.\n- Test --from-branch flag by switching git branches and verifying tag creation and selection.\n- Simulate usage without tags to ensure backward compatibility.\n- Review documentation and help menus for accuracy and completeness.\n- Run automated and manual tests for all new and modified commands, including edge cases (e.g., duplicate tag names, tag deletion with tasks).",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design Extended tasks.json Schema for Tag Support",
+          "description": "Define and document the updated tasks.json schema to include a 'tags' structure, ensuring 'master' is the default tag containing all existing tasks.",
+          "dependencies": [],
+          "details": "Create a schema that supports multiple tags, with backward compatibility for users without tags.",
+          "status": "pending",
+          "testStrategy": "Validate schema migration with sample data and ensure legacy tasks are accessible under 'master'."
+        },
+        {
+          "id": 2,
+          "title": "Implement Seamless Migration for Existing Users",
+          "description": "Develop a migration script or logic to move existing tasks into the 'master' tag for users upgrading from previous versions.",
+          "dependencies": [
+            1
+          ],
+          "details": "Ensure no data loss and that users without tags continue to operate transparently.",
+          "status": "pending",
+          "testStrategy": "Test migration on various legacy datasets and verify task integrity post-migration."
+        },
+        {
+          "id": 3,
+          "title": "Add 'defaultTag' Configuration Option to config.json Global Section",
+          "description": "Introduce a 'defaultTag' field in the global section of config.json, defaulting to 'master', and update configuration handling logic.",
+          "dependencies": [
+            1
+          ],
+          "details": "Allow users to set and persist their preferred default tag in the global configuration section.",
+          "status": "done",
+          "testStrategy": "Check that the default tag is respected on startup and when creating new tasks."
+        },
+        {
+          "id": 4,
+          "title": "Develop Tag Management CLI Commands",
+          "description": "Implement CLI commands for tag management: add-tag, delete, list, use (switch), rename, and copy, ensuring all changes are persisted.",
+          "dependencies": [
+            1,
+            3
+          ],
+          "details": "Each command should update the tasks.json and config files as needed. The primary command for creating tags should be 'add-tag' to maintain consistency with other task-master commands.",
+          "status": "pending",
+          "testStrategy": "Unit test each CLI command for correct behavior and data persistence, specifically testing add-tag command."
+        },
+        {
+          "id": 5,
+          "title": "Update Task Commands to Support --tag Flag",
+          "description": "Modify all existing task-related CLI commands (list, add-task, set-status, etc.) to accept a --tag flag, applying actions within the specified tag context.",
+          "dependencies": [
+            4
+          ],
+          "details": "Ensure commands filter or apply actions only to tasks within the selected tag.\n<info added on 2025-06-11T18:23:45.185Z>\nDependencies: [4, 13, 14] - Requires CLI commands foundation, MCP tools integration, and state management utilities to properly implement --tag flag support across both CLI and MCP interfaces.\n</info added on 2025-06-11T18:23:45.185Z>",
+          "status": "pending",
+          "testStrategy": "Test each command with and without the --tag flag for correct scoping."
+        },
+        {
+          "id": 6,
+          "title": "Integrate Automatic Tag Creation from Git Branches",
+          "description": "Implement logic to create tags based on git branch names using a --from-branch flag, integrating with git APIs to detect the current branch.",
+          "dependencies": [
+            4
+          ],
+          "details": "Enable seamless context switching between code branches and task tags. Use add-tag internally when creating tags from branch names.",
+          "status": "pending",
+          "testStrategy": "Test tag creation and switching in repositories with multiple branches."
+        },
+        {
+          "id": 7,
+          "title": "Update State Management for Current Tag Tracking",
+          "description": "Ensure .taskmaster/state.json properly tracks the current tag with currentTag field set to 'master' by default during initialization.",
+          "dependencies": [
+            4
+          ],
+          "details": "Update initialization logic to create state.json with currentTag set to 'master', ensuring the state file accurately reflects the active tag across sessions.",
+          "status": "done",
+          "testStrategy": "Verify state persistence after restarts and tag switches, confirm initialization creates proper currentTag field."
+        },
+        {
+          "id": 8,
+          "title": "Ensure Full Backward Compatibility",
+          "description": "Guarantee that users without tags continue to operate in the 'master' context without disruption or required changes.",
+          "dependencies": [
+            2,
+            5,
+            7
+          ],
+          "details": "Test all workflows for legacy users and ensure no regressions.",
+          "status": "pending",
+          "testStrategy": "Regression test with legacy data and workflows."
+        },
+        {
+          "id": 9,
+          "title": "Update Documentation and Help Menus",
+          "description": "Revise user documentation, migration notes, and CLI help menus to reflect new tag-related features and usage patterns, specifically documenting the add-tag command.",
+          "dependencies": [
+            4,
+            5,
+            6,
+            8
+          ],
+          "details": "Provide clear instructions and examples for all tag management features, ensuring add-tag command is properly documented with consistent naming.",
+          "status": "pending",
+          "testStrategy": "Review documentation for completeness and clarity; user acceptance testing."
+        },
+        {
+          "id": 10,
+          "title": "Conduct Comprehensive System Testing and QA",
+          "description": "Perform end-to-end testing of the tagged task lists system, including migration, tag management, task operations, and context switching.",
+          "dependencies": [
+            8,
+            9
+          ],
+          "details": "Ensure all features work as intended and meet quality standards, with specific focus on add-tag command functionality.",
+          "status": "pending",
+          "testStrategy": "Execute test cases covering all user scenarios, including edge cases and error handling."
+        },
+        {
+          "id": 11,
+          "title": "Create Core Tag Management Functions",
+          "description": "Implement core tag management functions in scripts/modules/task-manager/ following the established pattern. Include functions for createTag, deleteTag, listTags, useTag, renameTag, copyTag, and tag resolution logic.",
+          "details": "",
+          "status": "pending",
+          "dependencies": [
+            1,
+            3
+          ],
+          "parentTaskId": 103
+        },
+        {
+          "id": 12,
+          "title": "Implement MCP Direct Functions for Tag Management",
+          "description": "Create MCP direct function wrappers in mcp-server/src/core/direct-functions/ for all tag management operations, following the established pattern like add-task.js",
+          "details": "",
+          "status": "pending",
+          "dependencies": [
+            11
+          ],
+          "parentTaskId": 103
+        },
+        {
+          "id": 13,
+          "title": "Create MCP Tools for Tag Management",
+          "description": "Implement MCP tools in mcp-server/src/tools/ for all tag management operations (add-tag, delete-tag, list-tags, use-tag, rename-tag, copy-tag), following the established pattern like add-task.js",
+          "details": "",
+          "status": "pending",
+          "dependencies": [
+            12
+          ],
+          "parentTaskId": 103
+        },
+        {
+          "id": 14,
+          "title": "Create State Management Utilities",
+          "description": "Implement utilities for reading/writing current tag state, tag resolution logic (currentTag from state -> --tag flag -> defaultTag fallback), and state file validation",
+          "details": "",
+          "status": "pending",
+          "dependencies": [
+            3,
+            7
+          ],
+          "parentTaskId": 103
+        },
+        {
+          "id": 15,
+          "title": "Implement Tasks.json Migration Logic",
+          "description": "Create specific migration logic to transform existing tasks.json format (array of tasks) to the new tagged format ({tags: {master: {tasks: [...]}}}). Include validation and rollback capabilities.",
+          "details": "",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "parentTaskId": 103
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "title": "Implement 'scope-up' and 'scope-down' CLI Commands for Dynamic Task Complexity Adjustment",
+      "description": "Add new CLI commands 'scope-up' and 'scope-down' to enable users to dynamically increase or decrease the complexity of tasks or subtasks, with support for multiple IDs, strength levels, and milestone-aware adjustments.",
+      "details": "1. Extend the CLI (commands.js) to introduce 'scope-up' and 'scope-down' commands, following established subcommand patterns for consistency and discoverability. \n2. Accept comma-separated task/subtask IDs and an optional '--strength' flag (light|regular|heavy, defaulting to regular). Validate all inputs, ensuring referenced tasks/subtasks exist and strength is valid.\n3. Fetch current task details and associated milestone context to inform the adjustment logic.\n4. Implement core logic functions that:\n   - Construct context-aware AI prompts for scaling complexity up or down, leveraging the current state, project phase, and strength parameter.\n   - Call the unified AI service (ai-services-unified.js) to generate new task/subtask content at the desired complexity level.\n   - Replace existing task details and subtasks with the AI-generated output, preserving historical versions for rollback/comparison.\n   - Ensure task dependency integrity and update tasks.json and related files accordingly.\n5. Integrate robust error handling for invalid IDs, parameters, or AI failures, and provide clear CLI output showing before/after differences.\n6. Add corresponding MCP tool equivalents for integrated environments and update documentation/help text to reflect new commands and usage patterns.\n7. Ensure compatibility with batch operations, milestone-based guidelines, and existing task management workflows.",
+      "testStrategy": "- Write unit and integration tests for both 'scope-up' and 'scope-down' commands, covering single and multiple ID scenarios, all strength levels, and edge cases (e.g., non-existent IDs, invalid strength values).\n- Simulate CLI usage to verify correct parsing, validation, and error handling.\n- Test AI prompt construction and output integration, ensuring that task complexity is adjusted as expected for each strength level and milestone context.\n- Verify that historical data is preserved and that before/after summaries are accurate and clear.\n- Confirm that task dependencies remain intact and that batch operations work as intended.\n- Validate MCP tool integration and documentation updates.",
+      "status": "pending",
+      "dependencies": [
+        3,
+        11,
+        19,
+        94
+      ],
+      "priority": "high",
+      "subtasks": []
     }
   ]
 }

@@ -1,0 +1,120 @@
+# Task ID: 103
+# Title: Implement Tagged Task Lists System for Multi-Context Task Management
+# Status: pending
+# Dependencies: 3, 11, 19
+# Priority: medium
+# Description: Develop a comprehensive tagged task lists system enabling users to organize, filter, and manage tasks across multiple contexts (e.g., personal, branch, version) with full backward compatibility.
+# Details:
+1. Extend the tasks.json schema to support a 'tags' structure, with 'master' as the default tag containing all existing tasks. Ensure seamless migration for users without tags.
+2. Add a 'defaultTag' configuration option to config.json in the global section, defaulting to 'master'.
+3. Implement tag management CLI commands: add-tag, delete, list, use (switch), rename, and copy. Each command should update the relevant data structures and persist changes.
+4. Update all existing task commands (list, add-task, set-status, etc.) to accept a --tag flag, filtering or applying actions within the specified tag context.
+5. Implement automatic tag creation from git branch names using a --from-branch flag, integrating with git APIs to detect current branch.
+6. Maintain the current tag state in .taskmaster/state.json with currentTag set to 'master' by default, ensuring session persistence and correct context switching.
+7. Guarantee backward compatibility: users without tags continue to operate in the 'master' context transparently.
+8. Provide comprehensive documentation and migration notes for users, and update help menus to reflect new tag-related features.
+
+# Test Strategy:
+- Migrate an existing tasks.json and verify all tasks appear under the 'master' tag.
+- Create, delete, rename, and copy tags using add-tag and other commands; confirm correct data structure updates and persistence.
+- Switch between tags and verify task isolation and context switching.
+- Use --tag flag with all supported commands and confirm correct filtering and operation.
+- Test --from-branch flag by switching git branches and verifying tag creation and selection.
+- Simulate usage without tags to ensure backward compatibility.
+- Review documentation and help menus for accuracy and completeness.
+- Run automated and manual tests for all new and modified commands, including edge cases (e.g., duplicate tag names, tag deletion with tasks).
+
+# Subtasks:
+## 1. Design Extended tasks.json Schema for Tag Support [pending]
+### Dependencies: None
+### Description: Define and document the updated tasks.json schema to include a 'tags' structure, ensuring 'master' is the default tag containing all existing tasks.
+### Details:
+Create a schema that supports multiple tags, with backward compatibility for users without tags.
+
+## 2. Implement Seamless Migration for Existing Users [pending]
+### Dependencies: 103.1
+### Description: Develop a migration script or logic to move existing tasks into the 'master' tag for users upgrading from previous versions.
+### Details:
+Ensure no data loss and that users without tags continue to operate transparently.
+
+## 3. Add 'defaultTag' Configuration Option to config.json Global Section [done]
+### Dependencies: 103.1
+### Description: Introduce a 'defaultTag' field in the global section of config.json, defaulting to 'master', and update configuration handling logic.
+### Details:
+Allow users to set and persist their preferred default tag in the global configuration section.
+
+## 4. Develop Tag Management CLI Commands [pending]
+### Dependencies: 103.1, 103.3
+### Description: Implement CLI commands for tag management: add-tag, delete, list, use (switch), rename, and copy, ensuring all changes are persisted.
+### Details:
+Each command should update the tasks.json and config files as needed. The primary command for creating tags should be 'add-tag' to maintain consistency with other task-master commands.
+
+## 5. Update Task Commands to Support --tag Flag [pending]
+### Dependencies: 103.4
+### Description: Modify all existing task-related CLI commands (list, add-task, set-status, etc.) to accept a --tag flag, applying actions within the specified tag context.
+### Details:
+Ensure commands filter or apply actions only to tasks within the selected tag.
+<info added on 2025-06-11T18:23:45.185Z>
+Dependencies: [4, 13, 14] - Requires CLI commands foundation, MCP tools integration, and state management utilities to properly implement --tag flag support across both CLI and MCP interfaces.
+</info added on 2025-06-11T18:23:45.185Z>
+
+## 6. Integrate Automatic Tag Creation from Git Branches [pending]
+### Dependencies: 103.4
+### Description: Implement logic to create tags based on git branch names using a --from-branch flag, integrating with git APIs to detect the current branch.
+### Details:
+Enable seamless context switching between code branches and task tags. Use add-tag internally when creating tags from branch names.
+
+## 7. Update State Management for Current Tag Tracking [done]
+### Dependencies: 103.4
+### Description: Ensure .taskmaster/state.json properly tracks the current tag with currentTag field set to 'master' by default during initialization.
+### Details:
+Update initialization logic to create state.json with currentTag set to 'master', ensuring the state file accurately reflects the active tag across sessions.
+
+## 8. Ensure Full Backward Compatibility [pending]
+### Dependencies: 103.2, 103.5, 103.7
+### Description: Guarantee that users without tags continue to operate in the 'master' context without disruption or required changes.
+### Details:
+Test all workflows for legacy users and ensure no regressions.
+
+## 9. Update Documentation and Help Menus [pending]
+### Dependencies: 103.4, 103.5, 103.6, 103.8
+### Description: Revise user documentation, migration notes, and CLI help menus to reflect new tag-related features and usage patterns, specifically documenting the add-tag command.
+### Details:
+Provide clear instructions and examples for all tag management features, ensuring add-tag command is properly documented with consistent naming.
+
+## 10. Conduct Comprehensive System Testing and QA [pending]
+### Dependencies: 103.8, 103.9
+### Description: Perform end-to-end testing of the tagged task lists system, including migration, tag management, task operations, and context switching.
+### Details:
+Ensure all features work as intended and meet quality standards, with specific focus on add-tag command functionality.
+
+## 11. Create Core Tag Management Functions [pending]
+### Dependencies: 103.1, 103.3
+### Description: Implement core tag management functions in scripts/modules/task-manager/ following the established pattern. Include functions for createTag, deleteTag, listTags, useTag, renameTag, copyTag, and tag resolution logic.
+### Details:
+
+
+## 12. Implement MCP Direct Functions for Tag Management [pending]
+### Dependencies: 103.11
+### Description: Create MCP direct function wrappers in mcp-server/src/core/direct-functions/ for all tag management operations, following the established pattern like add-task.js
+### Details:
+
+
+## 13. Create MCP Tools for Tag Management [pending]
+### Dependencies: 103.12
+### Description: Implement MCP tools in mcp-server/src/tools/ for all tag management operations (add-tag, delete-tag, list-tags, use-tag, rename-tag, copy-tag), following the established pattern like add-task.js
+### Details:
+
+
+## 14. Create State Management Utilities [pending]
+### Dependencies: 103.3, 103.7
+### Description: Implement utilities for reading/writing current tag state, tag resolution logic (currentTag from state -> --tag flag -> defaultTag fallback), and state file validation
+### Details:
+
+
+## 15. Implement Tasks.json Migration Logic [pending]
+### Dependencies: 103.1, 103.2
+### Description: Create specific migration logic to transform existing tasks.json format (array of tasks) to the new tagged format ({tags: {master: {tasks: [...]}}}). Include validation and rollback capabilities.
+### Details:
+
+
