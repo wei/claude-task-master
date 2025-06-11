@@ -6492,7 +6492,7 @@
             "title": "Design Extended tasks.json Schema for Tag Support",
             "description": "Define and document the updated tasks.json schema to include a 'tags' structure, ensuring 'master' is the default tag containing all existing tasks.",
             "dependencies": [],
-            "details": "Create a schema that supports multiple tags, with backward compatibility for users without tags.",
+            "details": "Create a schema that supports multiple tags, with backward compatibility for users without tags.\n<info added on 2025-06-11T20:46:18.649Z>\nImplementation completed in Part 1: SCHEMA DESIGN: Defined data structure transformation from {\"tasks\": [...]} to {\"master\": {\"tasks\": [...]}}. Tags are direct top-level keys, not nested under a \"tags\" wrapper. Each tag contains a \"tasks\" array with the standard task structure. Tag resolution layer provides 100% backward compatibility by intercepting tagged format and returning old format transparently to existing code.\n</info added on 2025-06-11T20:46:18.649Z>",
             "status": "done",
             "testStrategy": "Validate schema migration with sample data and ensure legacy tasks are accessible under 'master'."
           },
@@ -6514,7 +6514,7 @@
             "dependencies": [
               1
             ],
-            "details": "Allow users to set and persist their preferred default tag in the global configuration section.",
+            "details": "Allow users to set and persist their preferred default tag in the global configuration section.\n<info added on 2025-06-11T20:46:57.669Z>\nAdded global.defaultTag configuration option to .taskmaster/config.json structure in assets/config.json. Implemented complete tags section including autoSwitchOnBranch and gitIntegration options. Created migrateConfigJson() function in utils.js to handle updating existing configuration files during the migration process. Configuration is automatically created and updated during the silent migration process to ensure seamless transition for existing users.\n</info added on 2025-06-11T20:46:57.669Z>",
             "status": "done",
             "testStrategy": "Check that the default tag is respected on startup and when creating new tasks."
           },
@@ -6559,7 +6559,7 @@
             "dependencies": [
               4
             ],
-            "details": "Update initialization logic to create state.json with currentTag set to 'master', ensuring the state file accurately reflects the active tag across sessions.",
+            "details": "Update initialization logic to create state.json with currentTag set to 'master', ensuring the state file accurately reflects the active tag across sessions.\n<info added on 2025-06-11T20:49:28.104Z>\nSTATE MANAGEMENT: Updated scripts/init.js to create state.json during initialization with proper initial state: currentTag: 'master', lastSwitched timestamp, branchTagMapping, migrationNoticeShown flag. createStateJson() function in utils.js handles state file creation during migration. State management integrated into complete migration system.\n</info added on 2025-06-11T20:49:28.104Z>",
             "status": "done",
             "testStrategy": "Verify state persistence after restarts and tag switches, confirm initialization creates proper currentTag field."
           },
@@ -6652,11 +6652,23 @@
             "id": 15,
             "title": "Implement Tasks.json Migration Logic",
             "description": "Create specific migration logic to transform existing tasks.json format (array of tasks) to the new tagged format ({tags: {master: {tasks: [...]}}}). Include validation and rollback capabilities.",
-            "details": "",
+            "details": "<info added on 2025-06-11T20:50:25.721Z>\nMIGRATION LOGIC: Implemented in scripts/modules/utils.js with performCompleteTagMigration(), migrateConfigJson(), createStateJson(), and markMigrationForNotice() functions. Silent migration triggers on readJSON() for tasks.json files. Migration notice system implemented in commands.js with displayTaggedTasksFYI() from ui.js. Complete 3-part migration: tasks.json + config.json + state.json all handled automatically.\n</info added on 2025-06-11T20:50:25.721Z>",
             "status": "done",
             "dependencies": [
               1,
               2
+            ],
+            "parentTaskId": 103
+          },
+          {
+            "id": 16,
+            "title": "Update Documentation for Tagged Task Lists System",
+            "description": "Update all documentation in /docs to reflect the new tagged task lists architecture and migration system",
+            "details": "Update docs to be aware of the new tagged structure: - Update command-reference.md with new tag-related commands - Update task-structure.md to explain tagged format - Update configuration.md with tagged system config - Update tutorial.md with tagged workflow - Update migration-guide.md for tagged migration - Ensure all examples reflect new structure\n<info added on 2025-06-11T21:12:52.662Z>\nCOMPLETED: All documentation files have been successfully updated to reflect the tagged task lists system. Key updates include:\n\n- docs/task-structure.md: Added complete tagged format explanation, data structure overview, migration details, and best practices\n- docs/configuration.md: Updated with tagged system configuration, state management, and new settings\n- docs/migration-guide.md: Added comprehensive tagged system migration process, verification steps, and team coordination guidelines\n- .cursor/rules/*.mdc files: Updated architecture.mdc, dev_workflow.mdc, taskmaster.mdc, tasks.mdc, utilities.mdc, new_features.mdc, git_workflow.mdc, and glossary.mdc to be aware of tagged system\n\nAll documentation now properly reflects Part 1 implementation and prepares for Part 2 features. Documentation is fully aligned with the new tagged task structure.\n</info added on 2025-06-11T21:12:52.662Z>",
+            "status": "done",
+            "dependencies": [
+              "103.8",
+              "103.9"
             ],
             "parentTaskId": 103
           }
