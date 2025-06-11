@@ -13,7 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON, findProjectRoot } from './utils.js';
+import { log, readJSON, writeJSON, findProjectRoot } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -74,7 +74,8 @@ import {
 	displayAvailableModels,
 	displayApiKeyStatus,
 	displayAiUsageSummary,
-	displayMultipleTasksSummary
+	displayMultipleTasksSummary,
+	displayTaggedTasksFYI
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -3265,6 +3266,42 @@ async function runCLI(argv = process.argv) {
 				updateInfo.currentVersion,
 				updateInfo.latestVersion
 			);
+		}
+
+		// Check if migration has occurred and show FYI notice once
+		try {
+			const projectRoot = findProjectRoot() || '.';
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+
+			if (fs.existsSync(tasksPath)) {
+				// Read raw file to check if it has master key (bypassing tag resolution)
+				const rawData = fs.readFileSync(tasksPath, 'utf8');
+				const parsedData = JSON.parse(rawData);
+
+				if (parsedData && parsedData.master) {
+					// Migration has occurred, check if we've shown the notice
+					let stateData = { migrationNoticeShown: false };
+					if (fs.existsSync(statePath)) {
+						stateData = readJSON(statePath) || stateData;
+					}
+
+					if (!stateData.migrationNoticeShown) {
+						displayTaggedTasksFYI({ _migrationHappened: true });
+
+						// Mark as shown
+						stateData.migrationNoticeShown = true;
+						writeJSON(statePath, stateData);
+					}
+				}
+			}
+		} catch (error) {
+			// Silently ignore errors checking for migration notice
 		}
 	} catch (error) {
 		// ** Specific catch block for missing configuration file **

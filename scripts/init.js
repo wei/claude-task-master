@@ -198,12 +198,8 @@ function createInitialStateFile(targetDir) {
 	const initialState = {
 		currentTag: 'master',
 		lastSwitched: new Date().toISOString(),
-		autoSwitchOnBranch: false, // Future feature for git branch integration
-		gitIntegration: {
-			enabled: false,
-			autoCreateTags: false,
-			branchTagMapping: {}
-		}
+		branchTagMapping: {},
+		migrationNoticeShown: false
 	};
 
 	try {

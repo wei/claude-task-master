@@ -25,13 +25,13 @@
 - Run automated and manual tests for all new and modified commands, including edge cases (e.g., duplicate tag names, tag deletion with tasks).
 
 # Subtasks:
-## 1. Design Extended tasks.json Schema for Tag Support [pending]
+## 1. Design Extended tasks.json Schema for Tag Support [done]
 ### Dependencies: None
 ### Description: Define and document the updated tasks.json schema to include a 'tags' structure, ensuring 'master' is the default tag containing all existing tasks.
 ### Details:
 Create a schema that supports multiple tags, with backward compatibility for users without tags.
 
-## 2. Implement Seamless Migration for Existing Users [pending]
+## 2. Implement Seamless Migration for Existing Users [done]
 ### Dependencies: 103.1
 ### Description: Develop a migration script or logic to move existing tasks into the 'master' tag for users upgrading from previous versions.
 ### Details:
@@ -112,7 +112,7 @@ Ensure all features work as intended and meet quality standards, with specific f
 ### Details:
 
 
-## 15. Implement Tasks.json Migration Logic [pending]
+## 15. Implement Tasks.json Migration Logic [done]
 ### Dependencies: 103.1, 103.2
 ### Description: Create specific migration logic to transform existing tasks.json format (array of tasks) to the new tagged format ({tags: {master: {tasks: [...]}}}). Include validation and rollback capabilities.
 ### Details:

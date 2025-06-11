@@ -35,6 +35,30 @@ const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
+ * Display FYI notice about tagged task lists (only if migration occurred)
+ * @param {Object} data - Data object that may contain _migrationHappened flag
+ */
+function displayTaggedTasksFYI(data) {
+	if (isSilentMode() || !data || !data._migrationHappened) return;
+
+	console.log(
+		boxen(
+			chalk.white.bold('FYI: ') +
+				chalk.gray('Taskmaster now supports separate task lists per tag. ') +
+				chalk.cyan(
+					'Use the --tag flag to create/read/update/filter tasks by tag.'
+				),
+			{
+				padding: { top: 0, bottom: 0, left: 2, right: 2 },
+				borderColor: 'cyan',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			}
+		)
+	);
+}
+
+/**
  * Display a fancy banner for the CLI
  */
 function displayBanner() {
@@ -1093,6 +1117,9 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 			margin: { top: 1 }
 		})
 	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
@@ -1554,6 +1581,9 @@ async function displayTaskById(
 			}
 		)
 	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
@@ -2452,7 +2482,7 @@ async function displayMultipleTasksSummary(
 						)
 					);
 					break;
-				case '5':
+				case '5': {
 					// Show dependency visualization
 					console.log(chalk.white.bold('\nDependency Relationships:'));
 					let hasDependencies = false;
@@ -2470,6 +2500,7 @@ async function displayMultipleTasksSummary(
 						console.log(chalk.gray('No dependencies found for selected tasks'));
 					}
 					break;
+				}
 				case '6':
 					console.log(chalk.blue(`\n→ Command: task-master generate`));
 					console.log(
@@ -2515,6 +2546,7 @@ async function displayMultipleTasksSummary(
 // Export UI functions
 export {
 	displayBanner,
+	displayTaggedTasksFYI,
 	startLoadingIndicator,
 	stopLoadingIndicator,
 	createProgressBar,

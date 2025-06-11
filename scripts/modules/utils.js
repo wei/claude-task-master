@@ -194,7 +194,7 @@ function log(level, ...args) {
 }
 
 /**
- * Reads and parses a JSON file
+ * Reads and parses a JSON file with automatic tag migration for tasks.json
  * @param {string} filepath - Path to the JSON file
  * @returns {Object|null} Parsed JSON data or null if error occurs
  */
@@ -212,7 +212,103 @@ function readJSON(filepath) {
 
 	try {
 		const rawData = fs.readFileSync(filepath, 'utf8');
-		return JSON.parse(rawData);
+		let data = JSON.parse(rawData);
+
+		// Silent migration for tasks.json files: Transform old format to tagged format
+		// Only migrate if: 1) has "tasks" array at top level, 2) no "master" key exists
+		// 3) filepath indicates this is likely a tasks.json file
+		const isTasksFile =
+			filepath.includes('tasks.json') ||
+			path.basename(filepath) === 'tasks.json';
+
+		if (
+			data &&
+			data.tasks &&
+			Array.isArray(data.tasks) &&
+			!data.master &&
+			isTasksFile
+		) {
+			// Migrate from old format { "tasks": [...] } to new format { "master": { "tasks": [...] } }
+			const migratedData = {
+				master: {
+					tasks: data.tasks
+				}
+			};
+
+			// Write the migrated format back using writeJSON for consistency
+			try {
+				writeJSON(filepath, migratedData);
+
+				if (isDebug) {
+					log(
+						'debug',
+						`Silently migrated tasks.json to tagged format: ${filepath}`
+					);
+				}
+
+				// Set global flag for CLI notice
+				global.taskMasterMigrationOccurred = true;
+
+				// Also perform complete project migration (config.json and state.json)
+				performCompleteTagMigration(filepath);
+
+				// Return the migrated data
+				data = migratedData;
+			} catch (writeError) {
+				// If we can't write back, log the error but continue with migrated data in memory
+				if (isDebug) {
+					log(
+						'warn',
+						`Could not write migrated tasks.json to ${filepath}: ${writeError.message}`
+					);
+				}
+
+				// Set global flag even on write failure
+				global.taskMasterMigrationOccurred = true;
+
+				// Still attempt other migrations
+				performCompleteTagMigration(filepath);
+
+				data = migratedData;
+			}
+		}
+
+		// Tag resolution: If data has tagged format, resolve the current tag and return old format
+		// This makes tag support completely transparent to existing code
+		if (data && !data.tasks && typeof data === 'object') {
+			// Check if this looks like tagged format (has tag-like keys)
+			const hasTaggedFormat = Object.keys(data).some(
+				(key) => data[key] && data[key].tasks && Array.isArray(data[key].tasks)
+			);
+
+			if (hasTaggedFormat) {
+				// This is tagged format - resolve which tag to use
+				// Derive project root from filepath to get correct tag context
+				const projectRoot =
+					findProjectRoot(path.dirname(filepath)) || path.dirname(filepath);
+				const resolvedTag = resolveTag({ projectRoot });
+
+				if (data[resolvedTag] && data[resolvedTag].tasks) {
+					// Return data in old format so existing code continues to work
+					data = {
+						tag: resolvedTag,
+						tasks: data[resolvedTag].tasks,
+						_rawTaggedData: data // Keep reference to full tagged data if needed
+					};
+				} else {
+					// Tag doesn't exist, create empty tasks array and log warning
+					if (isDebug) {
+						log(
+							'warn',
+							`Tag "${resolvedTag}" not found in tasks file, using empty tasks array`
+						);
+					}
+					data = { tasks: [], tag: resolvedTag, _rawTaggedData: data };
+				}
+			}
+		}
+
+		return data;
 	} catch (error) {
 		log('error', `Error reading JSON file ${filepath}:`, error.message);
 		if (isDebug) {
@@ -221,6 +317,145 @@ function readJSON(filepath) {
 			log('error', 'Full error details:', error);
 		}
 		return null;
+	}
+}
+
+/**
+ * Performs complete tag migration including config.json and state.json updates
+ * @param {string} tasksJsonPath - Path to the tasks.json file that was migrated
+ */
+function performCompleteTagMigration(tasksJsonPath) {
+	try {
+		// Derive project root from tasks.json path
+		const projectRoot =
+			findProjectRoot(path.dirname(tasksJsonPath)) ||
+			path.dirname(tasksJsonPath);
+
+		// 1. Migrate config.json - add defaultTag and tags section
+		const configPath = path.join(projectRoot, '.taskmaster', 'config.json');
+		if (fs.existsSync(configPath)) {
+			migrateConfigJson(configPath);
+		}
+
+		// 2. Create state.json if it doesn't exist
+		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+		if (!fs.existsSync(statePath)) {
+			createStateJson(statePath);
+		}
+
+		if (getDebugFlag()) {
+			log(
+				'debug',
+				`Complete tag migration performed for project: ${projectRoot}`
+			);
+		}
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('warn', `Error during complete tag migration: ${error.message}`);
+		}
+	}
+}
+
+/**
+ * Migrates config.json to add tagged task system configuration
+ * @param {string} configPath - Path to the config.json file
+ */
+function migrateConfigJson(configPath) {
+	try {
+		const configData = readJSON(configPath);
+		if (!configData) return;
+
+		let needsUpdate = false;
+
+		// Add defaultTag to global section if missing
+		if (!configData.global) {
+			configData.global = {};
+		}
+
+		if (!configData.global.defaultTag) {
+			configData.global.defaultTag = 'master';
+			needsUpdate = true;
+		}
+
+		// Add tags section if missing
+		if (!configData.tags) {
+			configData.tags = {
+				autoSwitchOnBranch: false,
+				gitIntegration: {
+					enabled: false,
+					autoSwitchTagWithBranch: false
+				}
+			};
+			needsUpdate = true;
+		}
+
+		if (needsUpdate) {
+			writeJSON(configPath, configData);
+			if (getDebugFlag()) {
+				log(
+					'debug',
+					`Migrated config.json with tagged task system configuration`
+				);
+			}
+		}
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('warn', `Error migrating config.json: ${error.message}`);
+		}
+	}
+}
+
+/**
+ * Creates initial state.json file for tagged task system
+ * @param {string} statePath - Path where state.json should be created
+ */
+function createStateJson(statePath) {
+	try {
+		const initialState = {
+			currentTag: 'master',
+			lastSwitched: new Date().toISOString(),
+			branchTagMapping: {},
+			migrationNoticeShown: false
+		};
+
+		writeJSON(statePath, initialState);
+		if (getDebugFlag()) {
+			log('debug', `Created initial state.json for tagged task system`);
+		}
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('warn', `Error creating state.json: ${error.message}`);
+		}
+	}
+}
+
+/**
+ * Marks in state.json that migration occurred and notice should be shown
+ * @param {string} tasksJsonPath - Path to the tasks.json file that was migrated
+ */
+function markMigrationForNotice(tasksJsonPath) {
+	try {
+		const projectRoot =
+			findProjectRoot(path.dirname(tasksJsonPath)) ||
+			path.dirname(tasksJsonPath);
+		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+
+		// Ensure state.json exists
+		if (!fs.existsSync(statePath)) {
+			createStateJson(statePath);
+		}
+
+		// Read and update state to mark migration occurred
+		const stateData = readJSON(statePath) || {};
+		if (stateData.migrationNoticeShown !== false) {
+			// Set to false to trigger notice display
+			stateData.migrationNoticeShown = false;
+			writeJSON(statePath, stateData);
+		}
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('warn', `Error marking migration for notice: ${error.message}`);
+		}
 	}
 }
 
@@ -661,6 +896,101 @@ function aggregateTelemetry(telemetryArray, overallCommandName) {
 	return aggregated;
 }
 
+/**
+ * Gets the current tag from state.json or falls back to defaultTag from config
+ * @param {string} projectRoot - The project root directory
+ * @returns {string} The current tag name
+ */
+function getCurrentTag(projectRoot = process.cwd()) {
+	try {
+		// Try to read current tag from state.json
+		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+		if (fs.existsSync(statePath)) {
+			const stateData = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+			if (stateData && stateData.currentTag) {
+				return stateData.currentTag;
+			}
+		}
+	} catch (error) {
+		// Ignore errors, fall back to default
+	}
+
+	// Fall back to defaultTag from config or hardcoded default
+	try {
+		const configPath = path.join(projectRoot, '.taskmaster', 'config.json');
+		if (fs.existsSync(configPath)) {
+			const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+			if (configData && configData.global && configData.global.defaultTag) {
+				return configData.global.defaultTag;
+			}
+		}
+	} catch (error) {
+		// Ignore errors, use hardcoded default
+	}
+
+	// Final fallback
+	return 'master';
+}
+
+/**
+ * Resolves which tag to use based on context
+ * @param {Object} options - Options object
+ * @param {string} [options.tag] - Explicit tag from --tag flag
+ * @param {string} [options.projectRoot] - Project root directory
+ * @returns {string} The resolved tag name
+ */
+function resolveTag(options = {}) {
+	// Priority: explicit tag > current tag from state > defaultTag from config > 'master'
+	if (options.tag) {
+		return options.tag;
+	}
+
+	return getCurrentTag(options.projectRoot);
+}
+
+/**
+ * Gets the tasks array for a specific tag from tagged tasks.json data
+ * @param {Object} data - The parsed tasks.json data (after migration)
+ * @param {string} tagName - The tag name to get tasks for
+ * @returns {Array} The tasks array for the specified tag, or empty array if not found
+ */
+function getTasksForTag(data, tagName) {
+	if (!data || !tagName) {
+		return [];
+	}
+
+	// Handle migrated format: { "master": { "tasks": [...] }, "otherTag": { "tasks": [...] } }
+	if (
+		data[tagName] &&
+		data[tagName].tasks &&
+		Array.isArray(data[tagName].tasks)
+	) {
+		return data[tagName].tasks;
+	}
+
+	return [];
+}
+
+/**
+ * Sets the tasks array for a specific tag in the data structure
+ * @param {Object} data - The tasks.json data object
+ * @param {string} tagName - The tag name to set tasks for
+ * @param {Array} tasks - The tasks array to set
+ * @returns {Object} The updated data object
+ */
+function setTasksForTag(data, tagName, tasks) {
+	if (!data) {
+		data = {};
+	}
+
+	if (!data[tagName]) {
+		data[tagName] = {};
+	}
+
+	data[tagName].tasks = tasks || [];
+	return data;
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -684,5 +1014,13 @@ export {
 	addComplexityToTask,
 	resolveEnvVariable,
 	findProjectRoot,
-	aggregateTelemetry
+	aggregateTelemetry,
+	getCurrentTag,
+	resolveTag,
+	getTasksForTag,
+	setTasksForTag,
+	performCompleteTagMigration,
+	migrateConfigJson,
+	createStateJson,
+	markMigrationForNotice
 };
