@@ -1181,7 +1181,11 @@ function registerCommands(programInstance) {
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
-		.option('-o, --output <dir>', 'Output directory', 'tasks')
+		.option(
+			'-o, --output <dir>',
+			'Output directory',
+			path.dirname(TASKMASTER_TASKS_FILE)
+		)
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const outputDir = options.output;
