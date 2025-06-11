@@ -33,7 +33,7 @@
 Integrate the new command into the CLI's command registry. Ensure it is discoverable via the CLI's help system and follows established naming and grouping conventions.
 
 ## 2. Parameter and Flag Handling [done]
-### Dependencies: 94.1
+### Dependencies: 98.1
 ### Description: Define and implement parsing for all arguments, flags, and options accepted by the 'research' command, including validation and default values.
 ### Details:
 Use a command-line parsing framework to handle parameters. Ensure support for optional and required arguments, order-independence, and clear error messages for invalid input.
@@ -83,7 +83,7 @@ The parameter validation is now production-ready and follows the same patterns u
 </info added on 2025-05-25T06:00:42.350Z>
 
 ## 3. Context Gathering [done]
-### Dependencies: 94.2
+### Dependencies: 98.2
 ### Description: Implement logic to gather necessary context for the research operation, such as reading from files, stdin, or other sources as specified by the user.
 ### Details:
 Support reading input from files or stdin using '-' as a convention. Validate and preprocess the gathered context to ensure it is suitable for AI processing.
@@ -191,7 +191,7 @@ The ContextGatherer utility is now ready for integration into the core research 
 </info added on 2025-05-25T06:13:19.991Z>
 
 ## 4. Core Function Implementation [done]
-### Dependencies: 94.2, 94.3
+### Dependencies: 98.2, 98.3
 ### Description: Implement the core research function in scripts/modules/task-manager/ following the add-task.js pattern
 ### Details:
 Create a new core function (e.g., research.js) in scripts/modules/task-manager/ that:
@@ -220,7 +220,7 @@ The research command now provides the same polished user experience as other AI-
 </info added on 2025-05-25T06:29:01.194Z>
 
 ## 5. Direct Function Implementation [pending]
-### Dependencies: 94.4
+### Dependencies: 98.4
 ### Description: Create the MCP direct function wrapper in mcp-server/src/core/direct-functions/ following the add-task pattern
 ### Details:
 Create a new direct function (e.g., research.js) in mcp-server/src/core/direct-functions/ that:
@@ -234,7 +234,7 @@ Create a new direct function (e.g., research.js) in mcp-server/src/core/direct-f
 - Export and register in task-master-core.js
 
 ## 6. MCP Tool Implementation [pending]
-### Dependencies: 94.5
+### Dependencies: 98.5
 ### Description: Create the MCP tool in mcp-server/src/tools/ following the add-task tool pattern
 ### Details:
 Create a new MCP tool (e.g., research.js) in mcp-server/src/tools/ that:
@@ -268,7 +268,7 @@ File structure:
 - Add metadata header with query details and context sources
 
 ## 8. Add research-to-task linking functionality [pending]
-### Dependencies: 94.7
+### Dependencies: None
 ### Description: Implement functionality to link saved research to specific tasks with interactive task selection
 ### Details:
 Add capability to link research results to specific tasks by updating task details with research references. For CLI mode, use inquirer to prompt user if they want to link research to tasks and provide task selection. For MCP mode, accept linkToTasks parameter.

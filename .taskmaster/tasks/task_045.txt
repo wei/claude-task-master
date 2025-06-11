@@ -1,7 +1,7 @@
 # Task ID: 45
 # Title: Implement GitHub Issue Import Feature
 # Status: pending
-# Dependencies: None
+# Dependencies: 97
 # Priority: medium
 # Description: Implement a comprehensive LLM-powered 'import_task' command that can intelligently import tasks from GitHub Issues and Discussions. The system uses our existing ContextGatherer.js infrastructure to analyze the full context of GitHub content and automatically generate well-structured tasks with appropriate subtasks, priorities, and implementation details. This feature works in conjunction with the GitHub export feature (Task #97) to provide bidirectional linking between Task Master tasks and GitHub issues.
 # Details:
