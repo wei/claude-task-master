@@ -65,7 +65,6 @@ export function registerShowTaskTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
 					'Absolute path to the project root directory (Optional, usually from session)'
 				)
