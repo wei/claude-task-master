@@ -1249,7 +1249,14 @@ function registerCommands(programInstance) {
 				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
 			);
 
-			await setTaskStatus(tasksPath, taskId, status);
+			// Find project root for tag resolution
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
+			await setTaskStatus(tasksPath, taskId, status, { projectRoot });
 		});
 
 	// list command
@@ -1269,6 +1276,12 @@ function registerCommands(programInstance) {
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
 			const statusFilter = options.status;
@@ -1282,7 +1295,15 @@ function registerCommands(programInstance) {
 				console.log(chalk.blue('Including subtasks in listing'));
 			}
 
-			await listTasks(tasksPath, statusFilter, reportPath, withSubtasks);
+			await listTasks(
+				tasksPath,
+				statusFilter,
+				reportPath,
+				withSubtasks,
+				'text',
+				null,
+				{ projectRoot }
+			);
 		});
 
 	// expand command

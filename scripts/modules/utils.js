@@ -234,12 +234,53 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		return null;
 	}
 
-	// If it's not a tasks.json file or already in legacy format, return as-is
-	if (!filepath.includes('tasks.json') || !data || Array.isArray(data.tasks)) {
+	// If it's not a tasks.json file, return as-is
+	if (!filepath.includes('tasks.json') || !data) {
 		if (isDebug) {
-			console.log(`File is not tagged format or is legacy, returning as-is`);
+			console.log(`File is not tasks.json or data is null, returning as-is`);
 		}
 		return data;
+	}
+
+	// Check if this is legacy format that needs migration
+	if (Array.isArray(data.tasks)) {
+		if (isDebug) {
+			console.log(`File is in legacy format, performing migration...`);
+		}
+
+		// This is legacy format - migrate it to tagged format
+		const migratedData = {
+			master: {
+				tasks: data.tasks,
+				metadata: data.metadata || {
+					created: new Date().toISOString(),
+					updated: new Date().toISOString(),
+					description: 'Tasks for master context'
+				}
+			}
+		};
+
+		// Write the migrated data back to the file
+		try {
+			writeJSON(filepath, migratedData);
+			if (isDebug) {
+				console.log(`Successfully migrated legacy format to tagged format`);
+			}
+
+			// Perform complete migration (config.json, state.json)
+			performCompleteTagMigration(filepath);
+
+			// Mark for migration notice
+			markMigrationForNotice(filepath);
+		} catch (writeError) {
+			if (isDebug) {
+				console.log(`Error writing migrated data: ${writeError.message}`);
+			}
+			// If write fails, continue with the original data
+		}
+
+		// Continue processing with the migrated data structure
+		data = migratedData;
 	}
 
 	// If we have tagged data, we need to resolve which tag to use

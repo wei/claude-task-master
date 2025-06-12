@@ -164,13 +164,13 @@ STATE MANAGEMENT: Updated scripts/init.js to create state.json during initializa
 ### Details:
 Test all workflows for legacy users and ensure no regressions.
 
-## 9. Update Documentation and Help Menus [pending]
+## 9. Update Documentation and Help Menus [done]
 ### Dependencies: 103.4, 103.5, 103.6, 103.8
 ### Description: Revise user documentation, migration notes, and CLI help menus to reflect new tag-related features and usage patterns, specifically documenting the add-tag command.
 ### Details:
 Provide clear instructions and examples for all tag management features, ensuring add-tag command is properly documented with consistent naming.
 
-## 10. Conduct Comprehensive System Testing and QA [pending]
+## 10. Conduct Comprehensive System Testing and QA [done]
 ### Dependencies: 103.8, 103.9
 ### Description: Perform end-to-end testing of the tagged task lists system, including migration, tag management, task operations, and context switching.
 ### Details:
