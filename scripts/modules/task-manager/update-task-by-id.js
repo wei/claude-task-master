@@ -10,7 +10,9 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	flattenTasksWithSubtasks,
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -26,6 +28,8 @@ import {
 	isApiKeySet // Keep this check
 } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
 // Zod schema for post-parsing validation of the updated task object
 const updatedTaskSchema = z
@@ -216,7 +220,7 @@ async function updateTaskById(
 	context = {},
 	outputFormat = 'text'
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -255,8 +259,14 @@ async function updateTaskById(
 			throw new Error(`Tasks file not found: ${tasksPath}`);
 		// --- End Input Validations ---
 
+		// Determine project root
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
 		// --- Task Loading and Status Check (Keep existing) ---
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
 		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
@@ -292,6 +302,35 @@ async function updateTaskById(
 			return null;
 		}
 		// --- End Task Loading ---
+
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-task');
+			const searchQuery = `${taskToUpdate.title} ${taskToUpdate.description} ${prompt}`;
+			const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const finalTaskIds = [
+				...new Set([taskId.toString(), ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult;
+			}
+		} catch (contextError) {
+			report('warn', `Could not gather context: ${contextError.message}`);
+		}
+		// --- End Context Gathering ---
 
 		// --- Display Task Info (CLI Only - Keep existing) ---
 		if (outputFormat === 'text') {
@@ -370,7 +409,13 @@ Guidelines:
 The changes described in the prompt should be thoughtfully applied to make the task more accurate and actionable.`;
 
 		const taskDataString = JSON.stringify(taskToUpdate, null, 2); // Use original task data
-		const userPrompt = `Here is the task to update:\n${taskDataString}\n\nPlease update this task based on the following new context:\n${prompt}\n\nIMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated task as a valid JSON object.`;
+		let userPrompt = `Here is the task to update:\n${taskDataString}\n\nPlease update this task based on the following new context:\n${prompt}\n\nIMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.`;
+
+		if (gatheredContext) {
+			userPrompt += `\n\n# Project Context\n\n${gatheredContext}`;
+		}
+
+		userPrompt += `\n\nReturn only the updated task as a valid JSON object.`;
 		// --- End Build Prompts ---
 
 		let loadingIndicator = null;

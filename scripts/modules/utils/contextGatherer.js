@@ -7,7 +7,13 @@
 import fs from 'fs';
 import path from 'path';
 import pkg from 'gpt-tokens';
-import { readJSON, findTaskById, truncate } from '../utils.js';
+import Fuse from 'fuse.js';
+import {
+	readJSON,
+	findTaskById,
+	truncate,
+	flattenTasksWithSubtasks
+} from '../utils.js';
 
 const { encode } = pkg;
 
@@ -17,7 +23,26 @@ const { encode } = pkg;
 export class ContextGatherer {
 	constructor(projectRoot) {
 		this.projectRoot = projectRoot;
-		this.tasksPath = path.join(projectRoot, 'tasks', 'tasks.json');
+		this.tasksPath = path.join(
+			projectRoot,
+			'.taskmaster',
+			'tasks',
+			'tasks.json'
+		);
+		this.allTasks = this._loadAllTasks();
+	}
+
+	_loadAllTasks() {
+		try {
+			const data = readJSON(this.tasksPath, this.projectRoot);
+			const tasks = data?.tasks || [];
+			return tasks;
+		} catch (error) {
+			console.warn(
+				`Warning: Could not load tasks for ContextGatherer: ${error.message}`
+			);
+			return [];
+		}
 	}
 
 	/**
@@ -46,7 +71,10 @@ export class ContextGatherer {
 	 * @param {string} [options.customContext] - Additional custom context
 	 * @param {boolean} [options.includeProjectTree] - Include project file tree
 	 * @param {string} [options.format] - Output format: 'research', 'chat', 'system-prompt'
-	 * @returns {Promise<string>} Formatted context string
+	 * @param {string} [options.semanticQuery] - A query string for semantic task searching.
+	 * @param {number} [options.maxSemanticResults] - Max number of semantic results.
+	 * @param {Array<number>} [options.dependencyTasks] - Array of task IDs to build dependency graphs from.
+	 * @returns {Promise<Object>} Object with context string and analysis data
 	 */
 	async gather(options = {}) {
 		const {
@@ -55,86 +83,304 @@ export class ContextGatherer {
 			customContext = '',
 			includeProjectTree = false,
 			format = 'research',
-			includeTokenCounts = false
+			semanticQuery,
+			maxSemanticResults = 10,
+			dependencyTasks = []
 		} = options;
 
 		const contextSections = [];
-		const tokenBreakdown = {
-			customContext: null,
-			tasks: [],
-			files: [],
-			projectTree: null,
-			total: 0
-		};
+		const finalTaskIds = new Set(tasks.map(String));
+		let analysisData = null;
 
-		// Add custom context first if provided
-		if (customContext && customContext.trim()) {
-			const formattedCustom = this._formatCustomContext(customContext, format);
-			contextSections.push(formattedCustom);
-			if (includeTokenCounts) {
-				tokenBreakdown.customContext = {
-					tokens: this.countTokens(formattedCustom),
-					characters: formattedCustom.length
-				};
-			}
+		// Semantic Search
+		if (semanticQuery && this.allTasks.length > 0) {
+			const semanticResults = this._performSemanticSearch(
+				semanticQuery,
+				maxSemanticResults
+			);
+
+			// Store the analysis data for UI display
+			analysisData = semanticResults.analysisData;
+
+			semanticResults.tasks.forEach((task) => {
+				finalTaskIds.add(String(task.id));
+			});
 		}
 
-		// Add task context
-		if (tasks.length > 0) {
+		// Dependency Graph Analysis
+		if (dependencyTasks.length > 0) {
+			const dependencyResults = this._buildDependencyContext(dependencyTasks);
+			dependencyResults.allRelatedTaskIds.forEach((id) =>
+				finalTaskIds.add(String(id))
+			);
+			// We can format and add dependencyResults.graphVisualization later if needed
+		}
+
+		// Add custom context first
+		if (customContext && customContext.trim()) {
+			contextSections.push(this._formatCustomContext(customContext, format));
+		}
+
+		// Gather context for the final list of tasks
+		if (finalTaskIds.size > 0) {
 			const taskContextResult = await this._gatherTaskContext(
-				tasks,
-				format,
-				includeTokenCounts
+				Array.from(finalTaskIds),
+				format
 			);
 			if (taskContextResult.context) {
 				contextSections.push(taskContextResult.context);
-				if (includeTokenCounts) {
-					tokenBreakdown.tasks = taskContextResult.breakdown;
-				}
 			}
 		}
 
 		// Add file context
 		if (files.length > 0) {
-			const fileContextResult = await this._gatherFileContext(
-				files,
-				format,
-				includeTokenCounts
-			);
+			const fileContextResult = await this._gatherFileContext(files, format);
 			if (fileContextResult.context) {
 				contextSections.push(fileContextResult.context);
-				if (includeTokenCounts) {
-					tokenBreakdown.files = fileContextResult.breakdown;
-				}
 			}
 		}
 
 		// Add project tree context
 		if (includeProjectTree) {
-			const treeContextResult = await this._gatherProjectTreeContext(
-				format,
-				includeTokenCounts
-			);
+			const treeContextResult = await this._gatherProjectTreeContext(format);
 			if (treeContextResult.context) {
 				contextSections.push(treeContextResult.context);
-				if (includeTokenCounts) {
-					tokenBreakdown.projectTree = treeContextResult.breakdown;
+			}
+		}
+
+		const finalContext = this._joinContextSections(contextSections, format);
+
+		return {
+			context: finalContext,
+			analysisData: analysisData,
+			contextSections: contextSections.length,
+			finalTaskIds: Array.from(finalTaskIds)
+		};
+	}
+
+	_performSemanticSearch(query, maxResults) {
+		const searchableTasks = this.allTasks.map((task) => {
+			const dependencyTitles =
+				task.dependencies?.length > 0
+					? task.dependencies
+							.map((depId) => this.allTasks.find((t) => t.id === depId)?.title)
+							.filter(Boolean)
+							.join(' ')
+					: '';
+			return { ...task, dependencyTitles };
+		});
+
+		// Use the exact same approach as add-task.js
+		const searchOptions = {
+			includeScore: true, // Return match scores
+			threshold: 0.4, // Lower threshold = stricter matching (range 0-1)
+			keys: [
+				{ name: 'title', weight: 1.5 }, // Title is most important
+				{ name: 'description', weight: 2 }, // Description is very important
+				{ name: 'details', weight: 3 }, // Details is most important
+				// Search dependencies to find tasks that depend on similar things
+				{ name: 'dependencyTitles', weight: 0.5 }
+			],
+			// Sort matches by score (lower is better)
+			shouldSort: true,
+			// Allow searching in nested properties
+			useExtendedSearch: true,
+			// Return up to 50 matches
+			limit: 50
+		};
+
+		// Create search index using Fuse.js
+		const fuse = new Fuse(searchableTasks, searchOptions);
+
+		// Extract significant words and phrases from the prompt (like add-task.js does)
+		const promptWords = query
+			.toLowerCase()
+			.replace(/[^\w\s-]/g, ' ') // Replace non-alphanumeric chars with spaces
+			.split(/\s+/)
+			.filter((word) => word.length > 3); // Words at least 4 chars
+
+		// Use the user's prompt for fuzzy search
+		const fuzzyResults = fuse.search(query);
+
+		// Also search for each significant word to catch different aspects
+		const wordResults = [];
+		for (const word of promptWords) {
+			if (word.length > 5) {
+				// Only use significant words
+				const results = fuse.search(word);
+				if (results.length > 0) {
+					wordResults.push(...results);
 				}
 			}
 		}
 
-		// Join all sections based on format
-		const finalContext = this._joinContextSections(contextSections, format);
+		// Merge and deduplicate results
+		const mergedResults = [...fuzzyResults];
 
-		if (includeTokenCounts) {
-			tokenBreakdown.total = this.countTokens(finalContext);
-			return {
-				context: finalContext,
-				tokenBreakdown: tokenBreakdown
-			};
+		// Add word results that aren't already in fuzzyResults
+		for (const wordResult of wordResults) {
+			if (!mergedResults.some((r) => r.item.id === wordResult.item.id)) {
+				mergedResults.push(wordResult);
+			}
 		}
 
-		return finalContext;
+		// Group search results by relevance
+		const highRelevance = mergedResults
+			.filter((result) => result.score < 0.25)
+			.map((result) => result.item);
+
+		const mediumRelevance = mergedResults
+			.filter((result) => result.score >= 0.25 && result.score < 0.4)
+			.map((result) => result.item);
+
+		// Get recent tasks (newest first)
+		const recentTasks = [...this.allTasks]
+			.sort((a, b) => b.id - a.id)
+			.slice(0, 5);
+
+		// Combine high relevance, medium relevance, and recent tasks
+		// Prioritize high relevance first
+		const allRelevantTasks = [...highRelevance];
+
+		// Add medium relevance if not already included
+		for (const task of mediumRelevance) {
+			if (!allRelevantTasks.some((t) => t.id === task.id)) {
+				allRelevantTasks.push(task);
+			}
+		}
+
+		// Add recent tasks if not already included
+		for (const task of recentTasks) {
+			if (!allRelevantTasks.some((t) => t.id === task.id)) {
+				allRelevantTasks.push(task);
+			}
+		}
+
+		// Get top N results for context
+		const finalResults = allRelevantTasks.slice(0, maxResults);
+		return {
+			tasks: finalResults,
+			analysisData: {
+				highRelevance: highRelevance,
+				mediumRelevance: mediumRelevance,
+				recentTasks: recentTasks,
+				allRelevantTasks: allRelevantTasks
+			}
+		};
+	}
+
+	_buildDependencyContext(taskIds) {
+		const { allRelatedTaskIds, graphs, depthMap } =
+			this._buildDependencyGraphs(taskIds);
+		if (allRelatedTaskIds.size === 0) return '';
+
+		const dependentTasks = Array.from(allRelatedTaskIds)
+			.map((id) => this.allTasks.find((t) => t.id === id))
+			.filter(Boolean)
+			.sort((a, b) => (depthMap.get(a.id) || 0) - (depthMap.get(b.id) || 0));
+
+		const uniqueDetailedTasks = dependentTasks.slice(0, 8);
+
+		let context = `\nThis task relates to a dependency structure with ${dependentTasks.length} related tasks in the chain.`;
+
+		const directDeps = this.allTasks.filter((t) => taskIds.includes(t.id));
+		if (directDeps.length > 0) {
+			context += `\n\nDirect dependencies:\n${directDeps
+				.map((t) => `- Task ${t.id}: ${t.title} - ${t.description}`)
+				.join('\n')}`;
+		}
+
+		const indirectDeps = dependentTasks.filter((t) => !taskIds.includes(t.id));
+		if (indirectDeps.length > 0) {
+			context += `\n\nIndirect dependencies (dependencies of dependencies):\n${indirectDeps
+				.slice(0, 5)
+				.map((t) => `- Task ${t.id}: ${t.title} - ${t.description}`)
+				.join('\n')}`;
+			if (indirectDeps.length > 5)
+				context += `\n- ... and ${
+					indirectDeps.length - 5
+				} more indirect dependencies`;
+		}
+
+		context += `\n\nDetailed information about dependencies:`;
+		for (const depTask of uniqueDetailedTasks) {
+			const isDirect = taskIds.includes(depTask.id)
+				? ' [DIRECT DEPENDENCY]'
+				: '';
+			context += `\n\n------ Task ${depTask.id}${isDirect}: ${depTask.title} ------\n`;
+			context += `Description: ${depTask.description}\n`;
+			if (depTask.dependencies?.length) {
+				context += `Dependencies: ${depTask.dependencies.join(', ')}\n`;
+			}
+			if (depTask.details) {
+				context += `Implementation Details: ${truncate(
+					depTask.details,
+					400
+				)}\n`;
+			}
+		}
+
+		if (graphs.length > 0) {
+			context += '\n\nDependency Chain Visualization:';
+			context += graphs
+				.map((graph) => this._formatDependencyChain(graph))
+				.join('');
+		}
+
+		return context;
+	}
+
+	_buildDependencyGraphs(taskIds) {
+		const visited = new Set();
+		const depthMap = new Map();
+		const graphs = [];
+
+		for (const id of taskIds) {
+			const graph = this._buildDependencyGraph(id, visited, depthMap);
+			if (graph) graphs.push(graph);
+		}
+
+		return { allRelatedTaskIds: visited, graphs, depthMap };
+	}
+
+	_buildDependencyGraph(taskId, visited, depthMap, depth = 0) {
+		if (visited.has(taskId) || depth > 5) return null; // Limit recursion depth
+		const task = this.allTasks.find((t) => t.id === taskId);
+		if (!task) return null;
+
+		visited.add(taskId);
+		if (!depthMap.has(taskId) || depth < depthMap.get(taskId)) {
+			depthMap.set(taskId, depth);
+		}
+
+		const dependencies =
+			task.dependencies
+				?.map((depId) =>
+					this._buildDependencyGraph(depId, visited, depthMap, depth + 1)
+				)
+				.filter(Boolean) || [];
+
+		return { ...task, dependencies };
+	}
+
+	_formatDependencyChain(node, prefix = '', isLast = true, depth = 0) {
+		if (depth > 3) return '';
+		const connector = isLast ? '└── ' : '├── ';
+		let result = `${prefix}${connector}Task ${node.id}: ${node.title}`;
+		if (node.dependencies?.length) {
+			const childPrefix = prefix + (isLast ? '    ' : '│   ');
+			result += node.dependencies
+				.map((dep, index) =>
+					this._formatDependencyChain(
+						dep,
+						childPrefix,
+						index === node.dependencies.length - 1,
+						depth + 1
+					)
+				)
+				.join('');
+		}
+		return '\n' + result;
 	}
 
 	/**
@@ -178,8 +424,7 @@ export class ContextGatherer {
 	 */
 	async _gatherTaskContext(taskIds, format, includeTokenCounts = false) {
 		try {
-			const tasksData = readJSON(this.tasksPath);
-			if (!tasksData || !tasksData.tasks) {
+			if (!this.allTasks || this.allTasks.length === 0) {
 				return { context: null, breakdown: [] };
 			}
 
@@ -192,7 +437,7 @@ export class ContextGatherer {
 				let itemInfo = null;
 
 				if (parsed.type === 'task') {
-					const result = findTaskById(tasksData.tasks, parsed.taskId);
+					const result = findTaskById(this.allTasks, parsed.taskId);
 					if (result.task) {
 						formattedItem = this._formatTaskForContext(result.task, format);
 						itemInfo = {
@@ -204,7 +449,7 @@ export class ContextGatherer {
 						};
 					}
 				} else if (parsed.type === 'subtask') {
-					const parentResult = findTaskById(tasksData.tasks, parsed.parentId);
+					const parentResult = findTaskById(this.allTasks, parsed.parentId);
 					if (parentResult.task && parentResult.task.subtasks) {
 						const subtask = parentResult.task.subtasks.find(
 							(st) => st.id === parsed.subtaskId
@@ -334,21 +579,16 @@ export class ContextGatherer {
 					: path.join(this.projectRoot, filePath);
 
 				if (!fs.existsSync(fullPath)) {
-					console.warn(`Warning: File not found: ${filePath}`);
 					continue;
 				}
 
 				const stats = fs.statSync(fullPath);
 				if (!stats.isFile()) {
-					console.warn(`Warning: Path is not a file: ${filePath}`);
 					continue;
 				}
 
 				// Check file size (limit to 50KB for context)
 				if (stats.size > 50 * 1024) {
-					console.warn(
-						`Warning: File too large, skipping: ${filePath} (${Math.round(stats.size / 1024)}KB)`
-					);
 					continue;
 				}
 

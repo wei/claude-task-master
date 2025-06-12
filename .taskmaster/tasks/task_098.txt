@@ -219,7 +219,7 @@ Create a new core function (e.g., research.js) in scripts/modules/task-manager/ 
 The research command now provides the same polished user experience as other AI-powered commands in the system.
 </info added on 2025-05-25T06:29:01.194Z>
 
-## 5. Direct Function Implementation [pending]
+## 5. Direct Function Implementation [done]
 ### Dependencies: 98.4
 ### Description: Create the MCP direct function wrapper in mcp-server/src/core/direct-functions/ following the add-task pattern
 ### Details:
@@ -233,7 +233,7 @@ Create a new direct function (e.g., research.js) in mcp-server/src/core/direct-f
 - Handles telemetry data propagation
 - Export and register in task-master-core.js
 
-## 6. MCP Tool Implementation [pending]
+## 6. MCP Tool Implementation [done]
 ### Dependencies: 98.5
 ### Description: Create the MCP tool in mcp-server/src/tools/ following the add-task tool pattern
 ### Details:

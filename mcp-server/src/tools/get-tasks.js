@@ -91,7 +91,13 @@ export function registerListTasksTool(server) {
 				log.info(
 					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
-				return handleApiResult(result, log, 'Error getting tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error getting tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error getting tasks: ${error.message}`);
 				return createErrorResponse(error.message);

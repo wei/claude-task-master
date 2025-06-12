@@ -3,7 +3,6 @@ description: Git workflow integrated with Task Master for feature development an
 globs: "**/*"
 alwaysApply: true
 ---
-
 # Git Workflow with Task Master Integration
 
 ## **Branch Strategy**
@@ -27,6 +26,26 @@ fix-database-issue
 random-branch-name
 ```
 
+## **Tagged Task Lists Integration**
+
+Task Master's **tagged task lists system** provides significant benefits for Git workflows:
+
+### **Multi-Context Development**
+- **Branch-Specific Tasks**: Each branch can have its own task context using tags
+- **Merge Conflict Prevention**: Tasks in different tags are completely isolated
+- **Context Switching**: Seamlessly switch between different development contexts
+- **Parallel Development**: Multiple team members can work on separate task contexts
+
+### **Migration and Compatibility**
+- **Seamless Migration**: Existing projects automatically migrate to use a "master" tag
+- **Zero Disruption**: All existing Git workflows continue unchanged
+- **Backward Compatibility**: Legacy projects work exactly as before
+
+### **Future Enhancements (Part 2)**
+- **Automatic Tag Creation**: Create tags based on git branch names
+- **Branch-Tag Mapping**: Automatically switch tag contexts with branch changes
+- **Git Integration**: Enhanced git branch integration features
+
 ## **Workflow Overview**
 
 ```mermaid
@@ -34,7 +53,7 @@ flowchart TD
     A[Start: On main branch] --> B[Pull latest changes]
     B --> C[Create task branch<br/>git checkout -b task-XXX]
     C --> D[Set task status: in-progress]
-    D --> E[Get task context & expand if needed]
+    D --> E[Get task context & expand if needed<br/>Tasks automatically use current tag]
     E --> F[Identify next subtask]
     
     F --> G[Set subtask: in-progress]
@@ -79,13 +98,13 @@ git branch  # Verify you're on main
 # 3. Create task-specific branch
 git checkout -b task-004  # For Task 4
 
-# 4. Set task status in Task Master
+# 4. Set task status in Task Master (tasks automatically use current tag context)
 # Use: set_task_status tool or `task-master set-status --id=4 --status=in-progress`
 ```
 
 ### **Phase 2: Task Analysis & Planning**
 ```bash
-# 5. Get task context and expand if needed
+# 5. Get task context and expand if needed (uses current tag automatically)
 # Use: get_task tool or `task-master show 4`
 # Use: expand_task tool or `task-master expand --id=4 --research --force` (if complex)
 
@@ -215,7 +234,7 @@ Task 4: Setup Express.js Server Project - Testing complete"
 
 ### **Essential Commands for Git Workflow**
 ```bash
-# Task management
+# Task management (uses current tag context automatically)
 task-master show <id>           # Get task/subtask details
 task-master next                # Find next task to work on
 task-master set-status --id=<id> --status=<status>
@@ -302,16 +321,17 @@ Mention any dependent tasks or follow-up work needed.
 
 ## **Conflict Resolution**
 
-### **Task Conflicts**
+### **Task Conflicts with Tagged System**
 ```bash
-# If multiple people work on overlapping tasks:
-# 1. Use Task Master's move functionality to reorganize
-task-master move --from=5 --to=25  # Move conflicting task
+# With tagged task lists, merge conflicts are significantly reduced:
+# 1. Different branches can use different tag contexts
+# 2. Tasks in separate tags are completely isolated
+# 3. Use Task Master's move functionality to reorganize if needed
 
-# 2. Update task dependencies
-task-master add-dependency --id=6 --depends-on=5
-
-# 3. Coordinate through PR comments and task updates
+# Future (Part 2): Enhanced git integration
+# - Automatic tag creation based on branch names
+# - Branch-tag mapping for seamless context switching
+# - Git hooks for automated tag management
 ```
 
 ### **Code Conflicts**
@@ -358,6 +378,23 @@ git push origin --delete task-<id>
 # 3. Document reasoning in task
 task-master update-task --id=<id> --prompt="Task cancelled due to..."
 ```
+
+## **Tagged System Benefits for Git Workflows**
+
+### **Multi-Team Development**
+- **Isolated Contexts**: Different teams can work on separate tag contexts without conflicts
+- **Feature Branches**: Each feature branch can have its own task context
+- **Release Management**: Separate tags for different release versions or environments
+
+### **Merge Conflict Prevention**
+- **Context Separation**: Tasks in different tags don't interfere with each other
+- **Clean Merges**: Reduced likelihood of task-related merge conflicts
+- **Parallel Development**: Multiple developers can work simultaneously without task conflicts
+
+### **Future Git Integration (Part 2)**
+- **Branch-Tag Mapping**: Automatic tag switching based on git branch
+- **Git Hooks**: Automated tag management during branch operations
+- **Enhanced Workflow**: Seamless integration between git branches and task contexts
 
 ---
 

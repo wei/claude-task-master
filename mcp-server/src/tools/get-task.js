@@ -130,7 +130,8 @@ export function registerShowTaskTool(server) {
 					result,
 					log,
 					'Error retrieving task details',
-					processTaskResponse
+					processTaskResponse,
+					projectRoot
 				);
 			} catch (error) {
 				log.error(`Error in get-task tool: ${error.message}\n${error.stack}`);

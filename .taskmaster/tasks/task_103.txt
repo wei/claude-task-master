@@ -115,7 +115,7 @@ Ensure all features work as intended and meet quality standards, with specific f
 ### Details:
 
 
-## 14. Create State Management Utilities [pending]
+## 14. Create State Management Utilities [done]
 ### Dependencies: 103.3, 103.7
 ### Description: Implement utilities for reading/writing current tag state, tag resolution logic (currentTag from state -> --tag flag -> defaultTag fallback), and state file validation
 ### Details:
@@ -144,4 +144,10 @@ COMPLETED: All documentation files have been successfully updated to reflect the
 
 All documentation now properly reflects Part 1 implementation and prepares for Part 2 features. Documentation is fully aligned with the new tagged task structure.
 </info added on 2025-06-11T21:12:52.662Z>
+
+## 17. Implement Task Template Importing from External .json Files [pending]
+### Dependencies: None
+### Description: Implement a mechanism to import tasks from external .json files, treating them as task templates. This allows users to add new .json files to the .taskmaster/tasks folder. The system should read these files, extract tasks under a specific tag, and merge them into the main tasks.json. The 'master' tag from template files must be ignored to prevent conflicts, and the primary tasks.json file will always take precedence over imported tags.
+### Details:
+Key implementation steps: 1. Develop a file watcher or a manual import command to detect and process new .json files in the tasks directory. 2. Implement logic to read an external json file, identify the tag key, and extract the array of tasks. 3. Handle potential conflicts: if an imported tag already exists in the main tasks.json, the existing tasks should be preserved and new ones appended, or the import should be skipped based on a defined precedence rule. 4. Ignore any 'master' key in template files to protect the integrity of the main task list. 5. Update task ID sequencing to ensure imported tasks are assigned unique IDs that don't conflict with existing tasks.
 

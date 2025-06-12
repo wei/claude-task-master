@@ -38,11 +38,16 @@ Taskmaster uses two primary methods for configuration:
           "debug": false,
           "defaultSubtasks": 5,
           "defaultPriority": "medium",
+          "defaultTag": "master",
           "projectName": "Your Project Name",
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/",
           "vertexProjectId": "your-gcp-project-id",
           "vertexLocation": "us-central1"
+        },
+        "tags": {
+          "enabledGitworkflow": false,
+          "autoSwitchTagWithBranch": false
         }
       }
       ```
@@ -78,6 +83,52 @@ Taskmaster uses two primary methods for configuration:
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
+
+## Tagged Task Lists Configuration (v0.17+)
+
+Taskmaster includes a tagged task lists system for multi-context task management. The following settings control this functionality:
+
+### Tags Configuration Section
+
+```json
+"tags": {
+  "enabledGitworkflow": false,
+  "autoSwitchTagWithBranch": false
+}
+```
+
+- **`enabledGitworkflow`** (boolean): Enable git branch integration features (Part 2 feature)
+- **`autoSwitchTagWithBranch`** (boolean): Automatically switch tag context when git branch changes
+
+### Global Tag Settings
+
+```json
+"global": {
+  "defaultTag": "master"
+}
+```
+
+- **`defaultTag`** (string): Default tag context for new operations (default: "master")
+
+## State Management File
+
+Taskmaster uses `.taskmaster/state.json` to track tagged system runtime information:
+
+```json
+{
+  "currentTag": "master",
+  "lastSwitched": "2025-06-11T20:26:12.598Z",
+  "branchTagMapping": {},
+  "migrationNoticeShown": true
+}
+```
+
+- **`currentTag`**: Currently active tag context
+- **`lastSwitched`**: Timestamp of last tag switch
+- **`branchTagMapping`**: Mapping between git branches and tag names
+- **`migrationNoticeShown`**: Whether migration notice has been displayed
+
+This file is automatically created during tagged system migration and should not be manually edited.
 
 ## Example `.env` File (for API Keys)
 

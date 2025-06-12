@@ -32,10 +32,7 @@
     "defaultTag": "master"
   },
   "tags": {
-    "autoSwitchOnBranch": false,
-    "gitIntegration": {
-      "enabled": false,
-      "autoSwitchTagWithBranch": false
-    }
+    "enabledGitworkflow": false,
+    "autoSwitchTagWithBranch": false
   }
 }

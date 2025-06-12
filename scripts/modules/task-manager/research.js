@@ -11,7 +11,12 @@ import { highlight } from 'cli-highlight';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { generateTextService } from '../ai-services-unified.js';
-import { log as consoleLog, findProjectRoot, readJSON } from '../utils.js';
+import {
+	log as consoleLog,
+	findProjectRoot,
+	readJSON,
+	flattenTasksWithSubtasks
+} from '../utils.js';
 import {
 	displayAiUsageSummary,
 	startLoadingIndicator,
@@ -577,42 +582,6 @@ function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
 
 	// Success footer
 	console.log(chalk.green('✅ Research completed'));
-}
-
-/**
- * Flatten tasks array to include subtasks as individual searchable items
- * @param {Array} tasks - Array of task objects
- * @returns {Array} Flattened array including both tasks and subtasks
- */
-function flattenTasksWithSubtasks(tasks) {
-	const flattened = [];
-
-	for (const task of tasks) {
-		// Add the main task
-		flattened.push({
-			...task,
-			searchableId: task.id.toString(), // For consistent ID handling
-			isSubtask: false
-		});
-
-		// Add subtasks if they exist
-		if (task.subtasks && task.subtasks.length > 0) {
-			for (const subtask of task.subtasks) {
-				flattened.push({
-					...subtask,
-					searchableId: `${task.id}.${subtask.id}`, // Format: "15.2"
-					isSubtask: true,
-					parentId: task.id,
-					parentTitle: task.title,
-					// Enhance subtask context with parent information
-					title: `${subtask.title} (subtask of: ${task.title})`,
-					description: `${subtask.description} [Parent: ${task.description}]`
-				});
-			}
-		}
-	}
-
-	return flattened;
 }
 
 /**
