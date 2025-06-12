@@ -366,7 +366,8 @@ Output Requirements:
 
 		return {
 			updatedSubtask: updatedSubtask,
-			telemetryData: aiServiceResponse.telemetryData
+			telemetryData: aiServiceResponse.telemetryData,
+			tagInfo: aiServiceResponse.tagInfo
 		};
 	} catch (error) {
 		if (outputFormat === 'text' && loadingIndicator) {

@@ -225,7 +225,8 @@ export async function expandTaskDirect(args, log, context = {}) {
 					task: coreResult.task,
 					subtasksAdded,
 					hasExistingSubtasks,
-					telemetryData: coreResult.telemetryData
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
 				}
 			};
 		} catch (error) {

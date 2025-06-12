@@ -486,7 +486,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 			return {
 				success: true,
 				updatedTasks: parsedUpdatedTasks,
-				telemetryData: aiServiceResponse.telemetryData
+				telemetryData: aiServiceResponse.telemetryData,
+				tagInfo: aiServiceResponse.tagInfo
 			};
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

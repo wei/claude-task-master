@@ -644,7 +644,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 			return {
 				report: report,
-				telemetryData: aiServiceResponse?.telemetryData
+				telemetryData: aiServiceResponse?.telemetryData,
+				tagInfo: aiServiceResponse?.tagInfo
 			};
 		} catch (aiError) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

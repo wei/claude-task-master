@@ -686,7 +686,8 @@ async function expandTask(
 		// Return the updated task object AND telemetry data
 		return {
 			task,
-			telemetryData: aiServiceResponse?.telemetryData
+			telemetryData: aiServiceResponse?.telemetryData,
+			tagInfo: aiServiceResponse?.tagInfo
 		};
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.

@@ -535,7 +535,8 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			// --- Return Success with Telemetry ---
 			return {
 				updatedTask: updatedTask, // Return the updated task object
-				telemetryData: aiServiceResponse.telemetryData // <<< ADD telemetryData
+				telemetryData: aiServiceResponse.telemetryData, // <<< ADD telemetryData
+				tagInfo: aiServiceResponse.tagInfo
 			};
 		} catch (error) {
 			// Catch errors from generateTextService

@@ -624,7 +624,8 @@ async function addTask(
 		);
 		return {
 			newTaskId: newTaskId,
-			telemetryData: aiServiceResponse ? aiServiceResponse.telemetryData : null
+			telemetryData: aiServiceResponse ? aiServiceResponse.telemetryData : null,
+			tagInfo: aiServiceResponse ? aiServiceResponse.tagInfo : null
 		};
 	} catch (error) {
 		// Stop any loading indicator on error

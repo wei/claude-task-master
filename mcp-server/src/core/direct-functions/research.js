@@ -140,7 +140,8 @@ export async function researchDirect(args, log, context = {}) {
 				userPromptTokens: result.userPromptTokens,
 				totalInputTokens: result.totalInputTokens,
 				detailLevel: result.detailLevel,
-				telemetryData: result.telemetryData
+				telemetryData: result.telemetryData,
+				tagInfo: result.tagInfo
 			}
 		};
 	} catch (error) {

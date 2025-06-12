@@ -244,6 +244,7 @@ async function performResearch(
 
 		const researchResult = aiResult.mainResult;
 		const telemetryData = aiResult.telemetryData;
+		const tagInfo = aiResult.tagInfo;
 
 		// Format and display results
 		if (outputFormat === 'text') {
@@ -285,7 +286,8 @@ async function performResearch(
 			userPromptTokens,
 			totalInputTokens,
 			detailLevel,
-			telemetryData
+			telemetryData,
+			tagInfo
 		};
 	} catch (error) {
 		logFn.error(`Research query failed: ${error.message}`);

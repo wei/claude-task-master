@@ -359,7 +359,8 @@ Guidelines:
 		return {
 			success: true,
 			tasksPath,
-			telemetryData: aiServiceResponse?.telemetryData
+			telemetryData: aiServiceResponse?.telemetryData,
+			tagInfo: aiServiceResponse?.tagInfo
 		};
 	} catch (error) {
 		report(`Error parsing PRD: ${error.message}`, 'error');
