@@ -895,10 +895,16 @@ function truncateString(str, maxLength) {
 /**
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} complexityReportPath - Path to the complexity report file
+ * @param {string} tag - Optional tag to override current tag resolution
  */
-async function displayNextTask(tasksPath, complexityReportPath = null) {
+async function displayNextTask(
+	tasksPath,
+	complexityReportPath = null,
+	tag = null
+) {
 	// Read the tasks file
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -1162,16 +1168,19 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
  * Display a specific task by ID
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string|number} taskId - The ID of the task to display
+ * @param {string} complexityReportPath - Path to the complexity report file
  * @param {string} [statusFilter] - Optional status to filter subtasks by
+ * @param {string} tag - Optional tag to override current tag resolution
  */
 async function displayTaskById(
 	tasksPath,
 	taskId,
 	complexityReportPath = null,
-	statusFilter = null
+	statusFilter = null,
+	tag = null
 ) {
 	// Read the tasks file
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);

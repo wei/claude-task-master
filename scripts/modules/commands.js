@@ -3011,6 +3011,13 @@ Examples:
 				process.exit(1);
 			}
 
+			// Find project root for tag resolution
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
 			// Check if we're moving multiple tasks (comma-separated IDs)
 			const sourceIds = sourceId.split(',').map((id) => id.trim());
 			const destinationIds = destinationId.split(',').map((id) => id.trim());
@@ -3067,7 +3074,8 @@ Examples:
 								tasksPath,
 								fromId,
 								toId,
-								i === sourceIds.length - 1
+								i === sourceIds.length - 1,
+								{ projectRoot }
 							);
 							console.log(
 								chalk.green(
@@ -3096,7 +3104,8 @@ Examples:
 						tasksPath,
 						sourceId,
 						destinationId,
-						true
+						true,
+						{ projectRoot }
 					);
 					console.log(
 						chalk.green(

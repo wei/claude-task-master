@@ -26,6 +26,7 @@ import {
  * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
+ * @param {string} tag - Optional tag to override current tag resolution
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
@@ -33,10 +34,11 @@ function listTasks(
 	statusFilter,
 	reportPath = null,
 	withSubtasks = false,
-	outputFormat = 'text'
+	outputFormat = 'text',
+	tag = null
 ) {
 	try {
-		const data = readJSON(tasksPath); // Reads the whole tasks.json
+		const data = readJSON(tasksPath, null, tag); // Pass tag to readJSON
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}

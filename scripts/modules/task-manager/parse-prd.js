@@ -11,7 +11,8 @@ import {
 	disableSilentMode,
 	isSilentMode,
 	readJSON,
-	findTaskById
+	findTaskById,
+	ensureTagMetadata
 } from '../utils.js';
 
 import { generateObjectService } from '../ai-services-unified.js';
@@ -312,7 +313,23 @@ Guidelines:
 		const finalTasks = append
 			? [...existingTasks, ...processedNewTasks]
 			: processedNewTasks;
-		const outputData = { tasks: finalTasks };
+
+		// Create proper tagged structure with metadata
+		const outputData = {
+			master: {
+				tasks: finalTasks,
+				metadata: {
+					created: new Date().toISOString(),
+					updated: new Date().toISOString(),
+					description: 'Tasks for master context'
+				}
+			}
+		};
+
+		// Ensure the master tag has proper metadata
+		ensureTagMetadata(outputData.master, {
+			description: 'Tasks for master context'
+		});
 
 		// Write the final tasks to the file
 		writeJSON(tasksPath, outputData);

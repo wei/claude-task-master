@@ -19,9 +19,16 @@ import {
  * @param {string} taskIdInput - Task ID(s) to update
  * @param {string} newStatus - New status
  * @param {Object} options - Additional options (mcpLog for MCP mode)
+ * @param {string} tag - Optional tag to override current tag resolution
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
+async function setTaskStatus(
+	tasksPath,
+	taskIdInput,
+	newStatus,
+	options = {},
+	tag = null
+) {
 	try {
 		if (!isValidTaskStatus(newStatus)) {
 			throw new Error(
@@ -43,7 +50,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		}
 
 		log('info', `Reading tasks from ${tasksPath}...`);
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, null, tag);
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}

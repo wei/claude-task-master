@@ -15,7 +15,15 @@ import {
 	displayAiUsageSummary,
 	displayContextAnalysis
 } from '../ui.js';
-import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
+import {
+	readJSON,
+	writeJSON,
+	log as consoleLog,
+	truncate,
+	ensureTagMetadata,
+	performCompleteTagMigration,
+	markMigrationForNotice
+} from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
@@ -42,6 +50,25 @@ const AiTaskDataSchema = z.object({
 });
 
 /**
+ * Get all tasks from all tags
+ * @param {Object} rawData - The raw tagged data object
+ * @returns {Array} A flat array of all task objects
+ */
+function getAllTasks(rawData) {
+	let allTasks = [];
+	for (const tagName in rawData) {
+		if (
+			Object.prototype.hasOwnProperty.call(rawData, tagName) &&
+			rawData[tagName] &&
+			Array.isArray(rawData[tagName].tasks)
+		) {
+			allTasks = allTasks.concat(rawData[tagName].tasks);
+		}
+	}
+	return allTasks;
+}
+
+/**
  * Add a new task using AI
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} prompt - Description of the task to add (required for AI-driven creation)
@@ -58,6 +85,7 @@ const AiTaskDataSchema = z.object({
  * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
  * @param {string} [context.commandName] - The name of the command being executed (for telemetry)
  * @param {string} [context.outputType] - The output type ('cli' or 'mcp', for telemetry)
+ * @param {string} [tag] - Tag for the task (optional)
  * @returns {Promise<object>} An object containing newTaskId and telemetryData
  */
 async function addTask(
@@ -68,7 +96,8 @@ async function addTask(
 	context = {},
 	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
-	useResearch = false
+	useResearch = false,
+	tag = null
 ) {
 	const { session, mcpLog, projectRoot, commandName, outputType } = context;
 	const isMCP = !!mcpLog;
@@ -90,6 +119,9 @@ async function addTask(
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
 	);
+	if (tag) {
+		logFn.info(`Using tag context: ${tag}`);
+	}
 
 	let loadingIndicator = null;
 	let aiServiceResponse = null; // To store the full response from AI service
@@ -165,24 +197,82 @@ async function addTask(
 	}
 
 	try {
-		// Read the existing tasks
-		let data = readJSON(tasksPath);
+		// Read the existing tasks - IMPORTANT: Read the raw data without tag resolution
+		let rawData = readJSON(tasksPath, projectRoot); // No tag parameter
 
-		// If tasks.json doesn't exist or is invalid, create a new one
-		if (!data || !data.tasks) {
-			report('tasks.json not found or invalid. Creating a new one.', 'info');
-			// Create default tasks data structure
-			data = {
-				tasks: []
-			};
-			// Ensure the directory exists and write the new file
-			writeJSON(tasksPath, data);
-			report('Created new tasks.json file with empty tasks array.', 'info');
+		// Handle the case where readJSON returns resolved data with _rawTaggedData
+		if (rawData && rawData._rawTaggedData) {
+			// Use the raw tagged data and discard the resolved view
+			rawData = rawData._rawTaggedData;
 		}
 
-		// Find the highest task ID to determine the next ID
+		// If file doesn't exist or is invalid, create a new structure
+		if (!rawData) {
+			report('tasks.json not found or invalid. Creating a new one.', 'info');
+			rawData = {
+				master: {
+					tasks: [],
+					metadata: {
+						created: new Date().toISOString(),
+						description: 'Default tasks context'
+					}
+				}
+			};
+			writeJSON(tasksPath, rawData);
+			report(
+				'Created new tasks.json file with a default "master" tag.',
+				'info'
+			);
+		}
+
+		// Handle legacy format migration using utilities
+		if (rawData && Array.isArray(rawData.tasks)) {
+			report('Migrating legacy tasks.json format to tagged format...', 'info');
+			const legacyTasks = rawData.tasks;
+			rawData = {
+				master: {
+					tasks: legacyTasks
+				}
+			};
+			// Ensure proper metadata using utility
+			ensureTagMetadata(rawData.master, {
+				description: 'Tasks for master context'
+			});
+			writeJSON(tasksPath, rawData);
+
+			// Perform complete migration (config.json, state.json)
+			performCompleteTagMigration(tasksPath);
+			markMigrationForNotice(tasksPath);
+
+			report('Successfully migrated to tagged format.', 'success');
+		}
+
+		// Use the provided tag, or the current tag, or default to 'master'
+		const targetTag = tag || context.tag || 'master';
+
+		// Ensure the target tag exists
+		if (!rawData[targetTag]) {
+			report(
+				`Tag "${targetTag}" does not exist. Please create it first using the 'add-tag' command.`,
+				'error'
+			);
+			throw new Error(`Tag "${targetTag}" not found.`);
+		}
+
+		// Ensure the target tag has a metadata object
+		if (!rawData[targetTag].metadata) {
+			rawData[targetTag].metadata = {
+				created: new Date().toISOString(),
+				description: ``
+			};
+		}
+
+		// Get a flat list of ALL tasks across ALL tags to calculate new ID and validate dependencies
+		const allTasks = getAllTasks(rawData);
+
+		// Find the highest task ID across all tags to determine the next ID
 		const highestId =
-			data.tasks.length > 0 ? Math.max(...data.tasks.map((t) => t.id)) : 0;
+			allTasks.length > 0 ? Math.max(...allTasks.map((t) => t.id)) : 0;
 		const newTaskId = highestId + 1;
 
 		// Only show UI box for CLI mode
@@ -201,9 +291,7 @@ async function addTask(
 		const invalidDeps = dependencies.filter((depId) => {
 			// Ensure depId is parsed as a number for comparison
 			const numDepId = parseInt(depId, 10);
-			return (
-				Number.isNaN(numDepId) || !data.tasks.some((t) => t.id === numDepId)
-			);
+			return Number.isNaN(numDepId) || !allTasks.some((t) => t.id === numDepId);
 		});
 
 		if (invalidDeps.length > 0) {
@@ -226,12 +314,7 @@ async function addTask(
 
 		// First pass: build a complete dependency graph for each specified dependency
 		for (const depId of numericDependencies) {
-			const graph = buildDependencyGraph(
-				data.tasks,
-				depId,
-				new Set(),
-				depthMap
-			);
+			const graph = buildDependencyGraph(allTasks, depId, new Set(), depthMap);
 			if (graph) {
 				dependencyGraphs.push(graph);
 			}
@@ -444,7 +527,7 @@ async function addTask(
 			const allValidDeps = taskData.dependencies.every((depId) => {
 				const numDepId = parseInt(depId, 10);
 				return (
-					!Number.isNaN(numDepId) && data.tasks.some((t) => t.id === numDepId)
+					!Number.isNaN(numDepId) && allTasks.some((t) => t.id === numDepId)
 				);
 			});
 
@@ -456,18 +539,23 @@ async function addTask(
 				newTask.dependencies = taskData.dependencies.filter((depId) => {
 					const numDepId = parseInt(depId, 10);
 					return (
-						!Number.isNaN(numDepId) && data.tasks.some((t) => t.id === numDepId)
+						!Number.isNaN(numDepId) && allTasks.some((t) => t.id === numDepId)
 					);
 				});
 			}
 		}
 
-		// Add the task to the tasks array
-		data.tasks.push(newTask);
+		// Add the task to the tasks array OF THE CORRECT TAG
+		rawData[targetTag].tasks.push(newTask);
+		// Update the tag's metadata
+		ensureTagMetadata(rawData[targetTag], {
+			description: `Tasks for ${targetTag} context`
+		});
 
 		report('DEBUG: Writing tasks.json...', 'debug');
-		// Write the updated tasks to the file
-		writeJSON(tasksPath, data);
+		// Write the updated raw data back to the file
+		// The writeJSON function will automatically filter out _rawTaggedData
+		writeJSON(tasksPath, rawData);
 		report('DEBUG: tasks.json written.', 'debug');
 
 		// Generate markdown task files
@@ -522,7 +610,7 @@ async function addTask(
 			// Get task titles for dependencies to display
 			const depTitles = {};
 			newTask.dependencies.forEach((dep) => {
-				const depTask = data.tasks.find((t) => t.id === dep);
+				const depTask = allTasks.find((t) => t.id === dep);
 				if (depTask) {
 					depTitles[dep] = truncate(depTask.title, 30);
 				}
@@ -550,7 +638,7 @@ async function addTask(
 					chalk.gray('\nUser-specified dependencies that were not used:') +
 					'\n';
 				aiRemovedDeps.forEach((dep) => {
-					const depTask = data.tasks.find((t) => t.id === dep);
+					const depTask = allTasks.find((t) => t.id === dep);
 					const title = depTask ? truncate(depTask.title, 30) : 'Unknown task';
 					dependencyDisplay += chalk.gray(`  - ${dep}: ${title}`) + '\n';
 				});

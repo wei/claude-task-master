@@ -63,15 +63,32 @@ async function moveTask(
 	}
 
 	// Single move logic
-	const data = readJSON(tasksPath);
-	if (!data || !data.tasks) {
-		throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
+	// Read the raw data without tag resolution to preserve tagged structure
+	let rawData = readJSON(tasksPath, options.projectRoot); // No tag parameter
+
+	// Handle the case where readJSON returns resolved data with _rawTaggedData
+	if (rawData && rawData._rawTaggedData) {
+		// Use the raw tagged data and discard the resolved view
+		rawData = rawData._rawTaggedData;
 	}
 
-	// Note: readJSON() already handles tag resolution transparently
-	// data.tasks contains the tasks for the current tag
-	const tasks = data.tasks;
-	const currentTag = data.tag || 'master';
+	// Determine the current tag
+	const currentTag =
+		options.tag || getCurrentTag(options.projectRoot) || 'master';
+
+	// Ensure the tag exists in the raw data
+	if (
+		!rawData ||
+		!rawData[currentTag] ||
+		!Array.isArray(rawData[currentTag].tasks)
+	) {
+		throw new Error(
+			`Invalid tasks file or tag "${currentTag}" not found at ${tasksPath}`
+		);
+	}
+
+	// Get the tasks for the current tag
+	const tasks = rawData[currentTag].tasks;
 
 	log(
 		'info',
@@ -99,15 +116,11 @@ async function moveTask(
 	}
 
 	// Update the data structure with the modified tasks
-	data.tasks = tasks;
+	rawData[currentTag].tasks = tasks;
 
-	// If we have raw tagged data, also update that to maintain consistency
-	if (data._rawTaggedData && data._rawTaggedData[currentTag]) {
-		data._rawTaggedData[currentTag].tasks = tasks;
-	}
-
-	// Write the updated data back
-	writeJSON(tasksPath, data._rawTaggedData || data);
+	// Always write the data object, never the _rawTaggedData directly
+	// The writeJSON function will filter out _rawTaggedData automatically
+	writeJSON(tasksPath, rawData);
 
 	if (generateFiles) {
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
@@ -425,6 +438,25 @@ function moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId) {
 			});
 		}
 	});
+
+	// Update dependencies within movedTask's subtasks that reference sibling subtasks
+	if (Array.isArray(movedTask.subtasks)) {
+		movedTask.subtasks.forEach((subtask) => {
+			if (Array.isArray(subtask.dependencies)) {
+				subtask.dependencies = subtask.dependencies.map((dep) => {
+					// If dependency is a string like "oldParent.subId", update to "newParent.subId"
+					if (typeof dep === 'string' && dep.includes('.')) {
+						const [depParent, depSub] = dep.split('.');
+						if (parseInt(depParent, 10) === sourceTask.id) {
+							return `${destTaskId}.${depSub}`;
+						}
+					}
+					// If dependency is a number, and matches a subtask ID in the moved task, leave as is (context is implied)
+					return dep;
+				});
+			}
+		});
+	}
 
 	// Strategy based on commit fixes: remove source first, then replace destination
 	// This avoids index shifting problems
