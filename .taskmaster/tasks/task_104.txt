@@ -24,3 +24,11 @@
 - Verify that historical data is preserved and that before/after summaries are accurate and clear.
 - Confirm that task dependencies remain intact and that batch operations work as intended.
 - Validate MCP tool integration and documentation updates.
+
+# Subtasks:
+## 2. Set up Authentication System and User Management Backend [pending]
+### Dependencies: None
+### Description: Implement the complete authentication infrastructure including user registration, login, password reset, and session management with database schema and API endpoints.
+### Details:
+Create user database schema with fields for id, email, password_hash, name, bio, avatar_url, created_at, updated_at. Implement JWT-based authentication with refresh tokens. Set up API endpoints for /auth/register, /auth/login, /auth/logout, /auth/refresh, /auth/forgot-password, /auth/reset-password, /auth/verify-email. Include password hashing with bcrypt, email verification system, and role-based access control with user roles (admin, user). Implement middleware for route protection and session validation.
+

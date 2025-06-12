@@ -1,7 +1,13 @@
-import path from "path";
-import { log, readJSON, writeJSON } from "../utils.js";
-import { isTaskDependentOn } from "../task-manager.js";
-import generateTaskFiles from "./generate-task-files.js";
+import path from 'path';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	getCurrentTag,
+	setTasksForTag
+} from '../utils.js';
+import { isTaskDependentOn } from '../task-manager.js';
+import generateTaskFiles from './generate-task-files.js';
 
 /**
  * Move one or more tasks/subtasks to new positions
@@ -9,705 +15,442 @@ import generateTaskFiles from "./generate-task-files.js";
  * @param {string} sourceId - ID(s) of the task/subtask to move (e.g., '5' or '5.2' or '5,6,7')
  * @param {string} destinationId - ID(s) of the destination (e.g., '7' or '7.3' or '7,8,9')
  * @param {boolean} generateFiles - Whether to regenerate task files after moving
+ * @param {Object} options - Additional options
+ * @param {string} options.projectRoot - Project root directory for tag resolution
+ * @param {string} options.tag - Explicit tag to use (optional)
  * @returns {Object} Result object with moved task details
  */
 async function moveTask(
-  tasksPath,
-  sourceId,
-  destinationId,
-  generateFiles = true
+	tasksPath,
+	sourceId,
+	destinationId,
+	generateFiles = true,
+	options = {}
 ) {
-  // Check if we have comma-separated IDs (multiple moves)
-  const sourceIds = sourceId.split(",").map((id) => id.trim());
-  const destinationIds = destinationId.split(",").map((id) => id.trim());
+	// Check if we have comma-separated IDs (batch move)
+	const sourceIds = sourceId.split(',').map((id) => id.trim());
+	const destinationIds = destinationId.split(',').map((id) => id.trim());
 
-  // If multiple IDs, validate they match in count
-  if (sourceIds.length > 1 || destinationIds.length > 1) {
-    if (sourceIds.length !== destinationIds.length) {
-      throw new Error(
-        `Number of source IDs (${sourceIds.length}) must match number of destination IDs (${destinationIds.length})`
-      );
-    }
+	if (sourceIds.length !== destinationIds.length) {
+		throw new Error(
+			`Number of source IDs (${sourceIds.length}) must match number of destination IDs (${destinationIds.length})`
+		);
+	}
 
-    // Perform multiple moves
-    return await moveMultipleTasks(
-      tasksPath,
-      sourceIds,
-      destinationIds,
-      generateFiles
-    );
-  }
-
-  // Single move - use existing logic
-  return await moveSingleTask(
-    tasksPath,
-    sourceId,
-    destinationId,
-    generateFiles
-  );
-}
-
-/**
- * Move multiple tasks/subtasks to new positions
- * @param {string} tasksPath - Path to tasks.json file
- * @param {string[]} sourceIds - Array of source IDs
- * @param {string[]} destinationIds - Array of destination IDs
- * @param {boolean} generateFiles - Whether to regenerate task files after moving
- * @returns {Object} Result object with moved task details
- */
-async function moveMultipleTasks(
-  tasksPath,
-  sourceIds,
-  destinationIds,
-  generateFiles = true
-) {
-  try {
-    log(
-      "info",
-      `Moving multiple tasks/subtasks: ${sourceIds.join(", ")} to ${destinationIds.join(", ")}...`
-    );
-
-    const results = [];
-
-    // Perform moves one by one, but don't regenerate files until the end
-    for (let i = 0; i < sourceIds.length; i++) {
-      const result = await moveSingleTask(
-        tasksPath,
-        sourceIds[i],
-        destinationIds[i],
-        false
-      );
-      results.push(result);
-    }
-
-    // Generate task files once at the end if requested
-    if (generateFiles) {
-      log("info", "Regenerating task files...");
-      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    }
-
-    return {
-      message: `Successfully moved ${sourceIds.length} tasks/subtasks`,
-      moves: results,
-    };
-  } catch (error) {
-    log("error", `Error moving multiple tasks/subtasks: ${error.message}`);
-    throw error;
-  }
-}
-
-/**
- * Move a single task or subtask to a new position
- * @param {string} tasksPath - Path to tasks.json file
- * @param {string} sourceId - ID of the task/subtask to move (e.g., '5' or '5.2')
- * @param {string} destinationId - ID of the destination (e.g., '7' or '7.3')
- * @param {boolean} generateFiles - Whether to regenerate task files after moving
- * @returns {Object} Result object with moved task details
- */
-async function moveSingleTask(
-  tasksPath,
-  sourceId,
-  destinationId,
-  generateFiles = true
-) {
-  try {
-    log("info", `Moving task/subtask ${sourceId} to ${destinationId}...`);
-
-    // Read the existing tasks
-    const data = readJSON(tasksPath);
-    if (!data || !data.tasks) {
-      throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
-    }
-
-    // Parse source ID to determine if it's a task or subtask
-    const isSourceSubtask = sourceId.includes(".");
-    let sourceTask,
-      sourceParentTask,
-      sourceSubtask,
-      sourceTaskIndex,
-      sourceSubtaskIndex;
-
-    // Parse destination ID to determine the target
-    const isDestinationSubtask = destinationId.includes(".");
-    let destTask, destParentTask, destSubtask, destTaskIndex, destSubtaskIndex;
-
-    // Validate source exists
-    if (isSourceSubtask) {
-      // Source is a subtask
-      const [parentIdStr, subtaskIdStr] = sourceId.split(".");
-      const parentIdNum = parseInt(parentIdStr, 10);
-      const subtaskIdNum = parseInt(subtaskIdStr, 10);
-
-      sourceParentTask = data.tasks.find((t) => t.id === parentIdNum);
-      if (!sourceParentTask) {
-        throw new Error(`Source parent task with ID ${parentIdNum} not found`);
-      }
-
-      if (
-        !sourceParentTask.subtasks ||
-        sourceParentTask.subtasks.length === 0
-      ) {
-        throw new Error(`Source parent task ${parentIdNum} has no subtasks`);
-      }
-
-      sourceSubtaskIndex = sourceParentTask.subtasks.findIndex(
-        (st) => st.id === subtaskIdNum
-      );
-      if (sourceSubtaskIndex === -1) {
-        throw new Error(`Source subtask ${sourceId} not found`);
-      }
-
-      sourceSubtask = { ...sourceParentTask.subtasks[sourceSubtaskIndex] };
-    } else {
-      // Source is a task
-      const sourceIdNum = parseInt(sourceId, 10);
-      sourceTaskIndex = data.tasks.findIndex((t) => t.id === sourceIdNum);
-      if (sourceTaskIndex === -1) {
-        throw new Error(`Source task with ID ${sourceIdNum} not found`);
-      }
-
-      sourceTask = { ...data.tasks[sourceTaskIndex] };
-    }
-
-    // Validate destination exists
-    if (isDestinationSubtask) {
-      // Destination is a subtask (target will be the parent of this subtask)
-      const [parentIdStr, subtaskIdStr] = destinationId.split(".");
-      const parentIdNum = parseInt(parentIdStr, 10);
-      const subtaskIdNum = parseInt(subtaskIdStr, 10);
-
-      destParentTask = data.tasks.find((t) => t.id === parentIdNum);
-      if (!destParentTask) {
-        throw new Error(
-          `Destination parent task with ID ${parentIdNum} not found`
-        );
-      }
-
-			// Initialize subtasks array if it doesn't exist
-			if (!destParentTask.subtasks) {
-				destParentTask.subtasks = [];
-			}
-
-			// If there are existing subtasks, try to find the specific destination subtask
-			if (destParentTask.subtasks.length > 0) {
-				destSubtaskIndex = destParentTask.subtasks.findIndex(
-					(st) => st.id === subtaskIdNum
-				);
-				if (destSubtaskIndex !== -1) {
-					destSubtask = destParentTask.subtasks[destSubtaskIndex];
-				} else {
-					// Subtask doesn't exist, we'll insert at the end
-					destSubtaskIndex = destParentTask.subtasks.length - 1;
-				}
-			} else {
-				// No existing subtasks, this will be the first one
-				destSubtaskIndex = -1; // Will insert at position 0
-			}
-			// Initialize subtasks array if it doesn't exist
-			if (!destParentTask.subtasks) {
-				destParentTask.subtasks = [];
-			}
-
-      // If there are existing subtasks, try to find the specific destination subtask
-      if (destParentTask.subtasks.length > 0) {
-        destSubtaskIndex = destParentTask.subtasks.findIndex(
-          (st) => st.id === subtaskIdNum
-        );
-        if (destSubtaskIndex !== -1) {
-          destSubtask = destParentTask.subtasks[destSubtaskIndex];
-        } else {
-          // Subtask doesn't exist, we'll insert at the end
-          destSubtaskIndex = destParentTask.subtasks.length - 1;
-        }
-      } else {
-        // No existing subtasks, this will be the first one
-        destSubtaskIndex = -1; // Will insert at position 0
-      }
-    } else {
-      // Destination is a task
-      const destIdNum = parseInt(destinationId, 10);
-      destTaskIndex = data.tasks.findIndex((t) => t.id === destIdNum);
-
-      if (destTaskIndex === -1) {
-        // Create placeholder for destination if it doesn't exist
-        log("info", `Creating placeholder for destination task ${destIdNum}`);
-        const newTask = {
-          id: destIdNum,
-          title: `Task ${destIdNum}`,
-          description: "",
-          status: "pending",
-          priority: "medium",
-          details: "",
-          testStrategy: "",
-        };
-
-        // Find correct position to insert the new task
-        let insertIndex = 0;
-        while (
-          insertIndex < data.tasks.length &&
-          data.tasks[insertIndex].id < destIdNum
-        ) {
-          insertIndex++;
-        }
-
-				// Insert the new task at the appropriate position
-				data.tasks.splice(insertIndex, 0, newTask);
-				destTaskIndex = insertIndex;
-				destTask = data.tasks[destTaskIndex];
-			} else {
-				destTask = data.tasks[destTaskIndex];
-			}
+	// For batch moves, process each pair sequentially
+	if (sourceIds.length > 1) {
+		const results = [];
+		for (let i = 0; i < sourceIds.length; i++) {
+			const result = await moveTask(
+				tasksPath,
+				sourceIds[i],
+				destinationIds[i],
+				false, // Don't generate files for each individual move
+				options
+			);
+			results.push(result);
 		}
 
-    // Validate that we aren't trying to move a task to itself
-    if (sourceId === destinationId) {
-      throw new Error("Cannot move a task/subtask to itself");
-    }
+		// Generate files once at the end if requested
+		if (generateFiles) {
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		}
 
-    // Prevent moving a parent to its own subtask
-    if (!isSourceSubtask && isDestinationSubtask) {
-      const destParentId = parseInt(destinationId.split(".")[0], 10);
-      if (parseInt(sourceId, 10) === destParentId) {
-        throw new Error("Cannot move a parent task to one of its own subtasks");
-      }
-    }
+		return {
+			message: `Successfully moved ${sourceIds.length} tasks/subtasks`,
+			moves: results
+		};
+	}
 
-    // Check for circular dependency when moving tasks
-    if (!isSourceSubtask && !isDestinationSubtask) {
-      const sourceIdNum = parseInt(sourceId, 10);
-      const destIdNum = parseInt(destinationId, 10);
+	// Single move logic
+	const data = readJSON(tasksPath);
+	if (!data || !data.tasks) {
+		throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
+	}
 
-      // Check if destination is dependent on source
-      if (isTaskDependentOn(data.tasks, destTask, sourceIdNum)) {
-        throw new Error(
-          `Cannot move task ${sourceId} to task ${destinationId} as it would create a circular dependency`
-        );
-      }
-    }
+	// Note: readJSON() already handles tag resolution transparently
+	// data.tasks contains the tasks for the current tag
+	const tasks = data.tasks;
+	const currentTag = data.tag || 'master';
 
-    let movedTask;
+	log(
+		'info',
+		`Moving task/subtask ${sourceId} to ${destinationId} (tag: ${currentTag})`
+	);
 
-    // Handle different move scenarios
-    if (!isSourceSubtask && !isDestinationSubtask) {
-      // Case: Moving task to task position
-      // Always treat this as a task replacement/move to new ID
-      // The destination task will be replaced by the source task
-      movedTask = moveTaskToNewId(
-        data,
-        sourceTask,
-        sourceTaskIndex,
-        destTask,
-        destTaskIndex
-      );
-    } else if (!isSourceSubtask && isDestinationSubtask) {
-      // Case 2: Move standalone task to become a subtask at a specific position
-      movedTask = moveTaskToSubtaskPosition(
-        data,
-        sourceTask,
-        sourceTaskIndex,
-        destParentTask,
-        destSubtaskIndex
-      );
-    } else if (isSourceSubtask && !isDestinationSubtask) {
-      // Case 3: Move subtask to become a standalone task
-      movedTask = moveSubtaskToTask(
-        data,
-        sourceSubtask,
-        sourceParentTask,
-        sourceSubtaskIndex,
-        destTask
-      );
-    } else if (isSourceSubtask && isDestinationSubtask) {
-      // Case 4: Move subtask to another parent or position
-      // First check if it's the same parent
-      const sourceParentId = parseInt(sourceId.split(".")[0], 10);
-      const destParentId = parseInt(destinationId.split(".")[0], 10);
-		// Handle different move scenarios
-		if (!isSourceSubtask && !isDestinationSubtask) {
-			// Case: Moving task to task position
-			// Always treat this as a task replacement/move to new ID
-			// The destination task will be replaced by the source task
-			movedTask = moveTaskToNewId(
-				data,
-				sourceTask,
-				sourceTaskIndex,
-				destTask,
-				destTaskIndex
+	// Parse source and destination IDs
+	const isSourceSubtask = sourceId.includes('.');
+	const isDestSubtask = destinationId.includes('.');
+
+	let result;
+
+	if (isSourceSubtask && isDestSubtask) {
+		// Subtask to subtask
+		result = moveSubtaskToSubtask(tasks, sourceId, destinationId);
+	} else if (isSourceSubtask && !isDestSubtask) {
+		// Subtask to task
+		result = moveSubtaskToTask(tasks, sourceId, destinationId);
+	} else if (!isSourceSubtask && isDestSubtask) {
+		// Task to subtask
+		result = moveTaskToSubtask(tasks, sourceId, destinationId);
+	} else {
+		// Task to task
+		result = moveTaskToTask(tasks, sourceId, destinationId);
+	}
+
+	// Update the data structure with the modified tasks
+	data.tasks = tasks;
+
+	// If we have raw tagged data, also update that to maintain consistency
+	if (data._rawTaggedData && data._rawTaggedData[currentTag]) {
+		data._rawTaggedData[currentTag].tasks = tasks;
+	}
+
+	// Write the updated data back
+	writeJSON(tasksPath, data._rawTaggedData || data);
+
+	if (generateFiles) {
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+	}
+
+	return result;
+}
+
+// Helper functions for different move scenarios
+function moveSubtaskToSubtask(tasks, sourceId, destinationId) {
+	// Parse IDs
+	const [sourceParentId, sourceSubtaskId] = sourceId
+		.split('.')
+		.map((id) => parseInt(id, 10));
+	const [destParentId, destSubtaskId] = destinationId
+		.split('.')
+		.map((id) => parseInt(id, 10));
+
+	// Find source and destination parent tasks
+	const sourceParentTask = tasks.find((t) => t.id === sourceParentId);
+	const destParentTask = tasks.find((t) => t.id === destParentId);
+
+	if (!sourceParentTask) {
+		throw new Error(`Source parent task with ID ${sourceParentId} not found`);
+	}
+	if (!destParentTask) {
+		throw new Error(
+			`Destination parent task with ID ${destParentId} not found`
+		);
+	}
+
+	// Initialize subtasks arrays if they don't exist (based on commit fixes)
+	if (!sourceParentTask.subtasks) {
+		sourceParentTask.subtasks = [];
+	}
+	if (!destParentTask.subtasks) {
+		destParentTask.subtasks = [];
+	}
+
+	// Find source subtask
+	const sourceSubtaskIndex = sourceParentTask.subtasks.findIndex(
+		(st) => st.id === sourceSubtaskId
+	);
+	if (sourceSubtaskIndex === -1) {
+		throw new Error(`Source subtask ${sourceId} not found`);
+	}
+
+	const sourceSubtask = sourceParentTask.subtasks[sourceSubtaskIndex];
+
+	if (sourceParentId === destParentId) {
+		// Moving within the same parent
+		if (destParentTask.subtasks.length > 0) {
+			const destSubtaskIndex = destParentTask.subtasks.findIndex(
+				(st) => st.id === destSubtaskId
 			);
-		} else if (!isSourceSubtask && isDestinationSubtask) {
-			// Case 2: Move standalone task to become a subtask at a specific position
-			movedTask = moveTaskToSubtaskPosition(
-				data,
-				sourceTask,
-				sourceTaskIndex,
-				destParentTask,
-				destSubtaskIndex
-			);
-		} else if (isSourceSubtask && !isDestinationSubtask) {
-			// Case 3: Move subtask to become a standalone task
-			movedTask = moveSubtaskToTask(
-				data,
-				sourceSubtask,
-				sourceParentTask,
-				sourceSubtaskIndex,
-				destTask
-			);
-		} else if (isSourceSubtask && isDestinationSubtask) {
-			// Case 4: Move subtask to another parent or position
-			// First check if it's the same parent
-			const sourceParentId = parseInt(sourceId.split('.')[0], 10);
-			const destParentId = parseInt(destinationId.split('.')[0], 10);
+			if (destSubtaskIndex !== -1) {
+				// Remove from old position
+				sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
+				// Insert at new position (adjust index if moving within same array)
+				const adjustedIndex =
+					sourceSubtaskIndex < destSubtaskIndex
+						? destSubtaskIndex - 1
+						: destSubtaskIndex;
+				destParentTask.subtasks.splice(adjustedIndex + 1, 0, sourceSubtask);
+			} else {
+				// Destination subtask doesn't exist, insert at end
+				sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
+				destParentTask.subtasks.push(sourceSubtask);
+			}
+		} else {
+			// No existing subtasks, this will be the first one
+			sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
+			destParentTask.subtasks.push(sourceSubtask);
+		}
+	} else {
+		// Moving between different parents
+		moveSubtaskToAnotherParent(
+			sourceSubtask,
+			sourceParentTask,
+			sourceSubtaskIndex,
+			destParentTask,
+			destSubtaskId
+		);
+	}
 
-      if (sourceParentId === destParentId) {
-        // Case 4a: Move subtask within the same parent (reordering)
-        movedTask = reorderSubtask(
-          sourceParentTask,
-          sourceSubtaskIndex,
-          destSubtaskIndex
-        );
-      } else {
-        // Case 4b: Move subtask to a different parent
-        movedTask = moveSubtaskToAnotherParent(
-          sourceSubtask,
-          sourceParentTask,
-          sourceSubtaskIndex,
-          destParentTask,
-          destSubtaskIndex
-        );
-      }
-    }
-
-    // Write the updated tasks back to the file
-    writeJSON(tasksPath, data);
-
-    // Generate task files if requested
-    if (generateFiles) {
-      log("info", "Regenerating task files...");
-      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    }
-
-    return movedTask;
-  } catch (error) {
-    log("error", `Error moving task/subtask: ${error.message}`);
-    throw error;
-  }
+	return {
+		message: `Moved subtask ${sourceId} to ${destinationId}`,
+		movedItem: sourceSubtask
+	};
 }
 
-/**
- * Move a standalone task to become a subtask of another task
- * @param {Object} data - Tasks data object
- * @param {Object} sourceTask - Source task to move
- * @param {number} sourceTaskIndex - Index of source task in data.tasks
- * @param {Object} destTask - Destination task
- * @returns {Object} Moved task object
- */
-function moveTaskToTask(data, sourceTask, sourceTaskIndex, destTask) {
-  // Initialize subtasks array if it doesn't exist
-  if (!destTask.subtasks) {
-    destTask.subtasks = [];
-  }
+function moveSubtaskToTask(tasks, sourceId, destinationId) {
+	// Parse source ID
+	const [sourceParentId, sourceSubtaskId] = sourceId
+		.split('.')
+		.map((id) => parseInt(id, 10));
+	const destTaskId = parseInt(destinationId, 10);
 
-  // Find the highest subtask ID to determine the next ID
-  const highestSubtaskId =
-    destTask.subtasks.length > 0
-      ? Math.max(...destTask.subtasks.map((st) => st.id))
-      : 0;
-  const newSubtaskId = highestSubtaskId + 1;
+	// Find source parent and destination task
+	const sourceParentTask = tasks.find((t) => t.id === sourceParentId);
 
-  // Create the new subtask from the source task
-  const newSubtask = {
-    ...sourceTask,
-    id: newSubtaskId,
-    parentTaskId: destTask.id,
-  };
+	if (!sourceParentTask) {
+		throw new Error(`Source parent task with ID ${sourceParentId} not found`);
+	}
+	if (!sourceParentTask.subtasks) {
+		throw new Error(`Source parent task ${sourceParentId} has no subtasks`);
+	}
 
-  // Add to destination's subtasks
-  destTask.subtasks.push(newSubtask);
+	// Find source subtask
+	const sourceSubtaskIndex = sourceParentTask.subtasks.findIndex(
+		(st) => st.id === sourceSubtaskId
+	);
+	if (sourceSubtaskIndex === -1) {
+		throw new Error(`Source subtask ${sourceId} not found`);
+	}
 
-  // Remove the original task from the tasks array
-  data.tasks.splice(sourceTaskIndex, 1);
+	const sourceSubtask = sourceParentTask.subtasks[sourceSubtaskIndex];
 
-  log(
-    "info",
-    `Moved task ${sourceTask.id} to become subtask ${destTask.id}.${newSubtaskId}`
-  );
+	// Check if destination task exists
+	const existingDestTask = tasks.find((t) => t.id === destTaskId);
+	if (existingDestTask) {
+		throw new Error(
+			`Cannot move to existing task ID ${destTaskId}. Choose a different ID or use subtask destination.`
+		);
+	}
 
-  return newSubtask;
+	// Create new task from subtask
+	const newTask = {
+		id: destTaskId,
+		title: sourceSubtask.title,
+		description: sourceSubtask.description,
+		status: sourceSubtask.status || 'pending',
+		dependencies: sourceSubtask.dependencies || [],
+		priority: sourceSubtask.priority || 'medium',
+		details: sourceSubtask.details || '',
+		testStrategy: sourceSubtask.testStrategy || '',
+		subtasks: []
+	};
+
+	// Remove subtask from source parent
+	sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
+
+	// Insert new task in correct position
+	const insertIndex = tasks.findIndex((t) => t.id > destTaskId);
+	if (insertIndex === -1) {
+		tasks.push(newTask);
+	} else {
+		tasks.splice(insertIndex, 0, newTask);
+	}
+
+	return {
+		message: `Converted subtask ${sourceId} to task ${destinationId}`,
+		movedItem: newTask
+	};
 }
 
-/**
- * Move a standalone task to become a subtask at a specific position
- * @param {Object} data - Tasks data object
- * @param {Object} sourceTask - Source task to move
- * @param {number} sourceTaskIndex - Index of source task in data.tasks
- * @param {Object} destParentTask - Destination parent task
- * @param {number} destSubtaskIndex - Index of the subtask before which to insert
- * @returns {Object} Moved task object
- */
-function moveTaskToSubtaskPosition(
-  data,
-  sourceTask,
-  sourceTaskIndex,
-  destParentTask,
-  destSubtaskIndex
-) {
-  // Initialize subtasks array if it doesn't exist
-  if (!destParentTask.subtasks) {
-    destParentTask.subtasks = [];
-  }
+function moveTaskToSubtask(tasks, sourceId, destinationId) {
+	// Parse IDs
+	const sourceTaskId = parseInt(sourceId, 10);
+	const [destParentId, destSubtaskId] = destinationId
+		.split('.')
+		.map((id) => parseInt(id, 10));
 
-  // Find the highest subtask ID to determine the next ID
-  const highestSubtaskId =
-    destParentTask.subtasks.length > 0
-      ? Math.max(...destParentTask.subtasks.map((st) => st.id))
-      : 0;
-  const newSubtaskId = highestSubtaskId + 1;
+	// Find source task and destination parent
+	const sourceTaskIndex = tasks.findIndex((t) => t.id === sourceTaskId);
+	const destParentTask = tasks.find((t) => t.id === destParentId);
 
-  // Create the new subtask from the source task
-  const newSubtask = {
-    ...sourceTask,
-    id: newSubtaskId,
-    parentTaskId: destParentTask.id,
-  };
+	if (sourceTaskIndex === -1) {
+		throw new Error(`Source task with ID ${sourceTaskId} not found`);
+	}
+	if (!destParentTask) {
+		throw new Error(
+			`Destination parent task with ID ${destParentId} not found`
+		);
+	}
 
-  // Insert at specific position
-  // If destSubtaskIndex is -1, insert at the beginning (position 0)
-  // Otherwise, insert after the specified subtask
-  const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
-  destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
+	const sourceTask = tasks[sourceTaskIndex];
 
-  // Remove the original task from the tasks array
-  data.tasks.splice(sourceTaskIndex, 1);
+	// Initialize subtasks array if it doesn't exist (based on commit fixes)
+	if (!destParentTask.subtasks) {
+		destParentTask.subtasks = [];
+	}
 
-  log(
-    "info",
-    `Moved task ${sourceTask.id} to become subtask ${destParentTask.id}.${newSubtaskId}`
-  );
+	// Create new subtask from task
+	const newSubtask = {
+		id: destSubtaskId,
+		title: sourceTask.title,
+		description: sourceTask.description,
+		status: sourceTask.status || 'pending',
+		dependencies: sourceTask.dependencies || [],
+		details: sourceTask.details || '',
+		testStrategy: sourceTask.testStrategy || ''
+	};
 
-  return newSubtask;
+	// Find insertion position (based on commit fixes)
+	let destSubtaskIndex = -1;
+	if (destParentTask.subtasks.length > 0) {
+		destSubtaskIndex = destParentTask.subtasks.findIndex(
+			(st) => st.id === destSubtaskId
+		);
+		if (destSubtaskIndex === -1) {
+			// Subtask doesn't exist, we'll insert at the end
+			destSubtaskIndex = destParentTask.subtasks.length - 1;
+		}
+	}
+
+	// Insert at specific position (based on commit fixes)
+	const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
+	destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
+
+	// Remove the original task from the tasks array
+	tasks.splice(sourceTaskIndex, 1);
+
+	return {
+		message: `Converted task ${sourceId} to subtask ${destinationId}`,
+		movedItem: newSubtask
+	};
 }
 
-/**
- * Move a subtask to become a standalone task
- * @param {Object} data - Tasks data object
- * @param {Object} sourceSubtask - Source subtask to move
- * @param {Object} sourceParentTask - Parent task of the source subtask
- * @param {number} sourceSubtaskIndex - Index of source subtask in parent's subtasks
- * @param {Object} destTask - Destination task (for position reference)
- * @returns {Object} Moved task object
- */
-function moveSubtaskToTask(
-  data,
-  sourceSubtask,
-  sourceParentTask,
-  sourceSubtaskIndex,
-  destTask
-) {
-  // Find the highest task ID to determine the next ID
-  const highestId = Math.max(...data.tasks.map((t) => t.id));
-  const newTaskId = highestId + 1;
+function moveTaskToTask(tasks, sourceId, destinationId) {
+	const sourceTaskId = parseInt(sourceId, 10);
+	const destTaskId = parseInt(destinationId, 10);
 
-  // Create the new task from the subtask
-  const newTask = {
-    ...sourceSubtask,
-    id: newTaskId,
-    priority: sourceParentTask.priority || "medium", // Inherit priority from parent
-  };
-  delete newTask.parentTaskId;
+	// Find source task
+	const sourceTaskIndex = tasks.findIndex((t) => t.id === sourceTaskId);
+	if (sourceTaskIndex === -1) {
+		throw new Error(`Source task with ID ${sourceTaskId} not found`);
+	}
 
-  // Add the parent task as a dependency if not already present
-  if (!newTask.dependencies) {
-    newTask.dependencies = [];
-  }
-  if (!newTask.dependencies.includes(sourceParentTask.id)) {
-    newTask.dependencies.push(sourceParentTask.id);
-  }
+	const sourceTask = tasks[sourceTaskIndex];
 
-  // Find the destination index to insert the new task
-  const destTaskIndex = data.tasks.findIndex((t) => t.id === destTask.id);
+	// Check if destination exists
+	const destTaskIndex = tasks.findIndex((t) => t.id === destTaskId);
 
-  // Insert the new task after the destination task
-  data.tasks.splice(destTaskIndex + 1, 0, newTask);
+	if (destTaskIndex !== -1) {
+		// Destination exists - this could be overwriting or swapping
+		const destTask = tasks[destTaskIndex];
 
-  // Remove the subtask from the parent
-  sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
-
-  // If parent has no more subtasks, remove the subtasks array
-  if (sourceParentTask.subtasks.length === 0) {
-    delete sourceParentTask.subtasks;
-  }
-
-  log(
-    "info",
-    `Moved subtask ${sourceParentTask.id}.${sourceSubtask.id} to become task ${newTaskId}`
-  );
-
-  return newTask;
+		// For now, throw an error to avoid accidental overwrites
+		throw new Error(
+			`Task with ID ${destTaskId} already exists. Use a different destination ID.`
+		);
+	} else {
+		// Destination doesn't exist - create new task ID
+		return moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId);
+	}
 }
 
-/**
- * Reorder a subtask within the same parent
- * @param {Object} parentTask - Parent task containing the subtask
- * @param {number} sourceIndex - Current index of the subtask
- * @param {number} destIndex - Destination index for the subtask
- * @returns {Object} Moved subtask object
- */
-function reorderSubtask(parentTask, sourceIndex, destIndex) {
-  // Get the subtask to move
-  const subtask = parentTask.subtasks[sourceIndex];
-
-  // Remove the subtask from its current position
-  parentTask.subtasks.splice(sourceIndex, 1);
-
-  // Insert the subtask at the new position
-  // If destIndex was after sourceIndex, it's now one less because we removed an item
-  const adjustedDestIndex = sourceIndex < destIndex ? destIndex - 1 : destIndex;
-  parentTask.subtasks.splice(adjustedDestIndex, 0, subtask);
-
-  log(
-    "info",
-    `Reordered subtask ${parentTask.id}.${subtask.id} within parent task ${parentTask.id}`
-  );
-
-  return subtask;
-}
-
-/**
- * Move a subtask to a different parent
- * @param {Object} sourceSubtask - Source subtask to move
- * @param {Object} sourceParentTask - Parent task of the source subtask
- * @param {number} sourceSubtaskIndex - Index of source subtask in parent's subtasks
- * @param {Object} destParentTask - Destination parent task
- * @param {number} destSubtaskIndex - Index of the subtask before which to insert
- * @returns {Object} Moved subtask object
- */
 function moveSubtaskToAnotherParent(
-  sourceSubtask,
-  sourceParentTask,
-  sourceSubtaskIndex,
-  destParentTask,
-  destSubtaskIndex
+	sourceSubtask,
+	sourceParentTask,
+	sourceSubtaskIndex,
+	destParentTask,
+	destSubtaskId
 ) {
-  // Find the highest subtask ID in the destination parent
-  const highestSubtaskId =
-    destParentTask.subtasks.length > 0
-      ? Math.max(...destParentTask.subtasks.map((st) => st.id))
-      : 0;
-  const newSubtaskId = highestSubtaskId + 1;
+	const destSubtaskId_num = parseInt(destSubtaskId, 10);
 
-  // Create the new subtask with updated parent reference
-  const newSubtask = {
-    ...sourceSubtask,
-    id: newSubtaskId,
-    parentTaskId: destParentTask.id,
-  };
+	// Create new subtask with destination ID
+	const newSubtask = {
+		...sourceSubtask,
+		id: destSubtaskId_num
+	};
 
-	// If the subtask depends on its original parent, keep that dependency
-	if (!newSubtask.dependencies) {
-		newSubtask.dependencies = [];
-	}
-	if (!newSubtask.dependencies.includes(sourceParentTask.id)) {
-		newSubtask.dependencies.push(sourceParentTask.id);
+	// Initialize subtasks array if it doesn't exist (based on commit fixes)
+	if (!destParentTask.subtasks) {
+		destParentTask.subtasks = [];
 	}
 
-  // Insert at the destination position
-  // If destSubtaskIndex is -1, insert at the beginning (position 0)
-  // Otherwise, insert after the specified subtask
-  const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
-  destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
+	// Find insertion position
+	let destSubtaskIndex = -1;
+	if (destParentTask.subtasks.length > 0) {
+		destSubtaskIndex = destParentTask.subtasks.findIndex(
+			(st) => st.id === destSubtaskId_num
+		);
+		if (destSubtaskIndex === -1) {
+			// Subtask doesn't exist, we'll insert at the end
+			destSubtaskIndex = destParentTask.subtasks.length - 1;
+		}
+	}
 
-  // Remove the subtask from the original parent
-  sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
+	// Insert at the destination position (based on commit fixes)
+	const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
+	destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
 
-  // If original parent has no more subtasks, remove the subtasks array
-  if (sourceParentTask.subtasks.length === 0) {
-    delete sourceParentTask.subtasks;
-  }
+	// Remove the subtask from the original parent
+	sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
 
-  log(
-    "info",
-    `Moved subtask ${sourceParentTask.id}.${sourceSubtask.id} to become subtask ${destParentTask.id}.${newSubtaskId}`
-  );
-
-  return newSubtask;
+	return newSubtask;
 }
 
-/**
- * Move a standalone task to a new ID position
- * @param {Object} data - Tasks data object
- * @param {Object} sourceTask - Source task to move
- * @param {number} sourceTaskIndex - Index of source task in data.tasks
- * @param {Object} destTask - Destination task (will be replaced)
- * @param {number} destTaskIndex - Index of destination task in data.tasks
- * @returns {Object} Moved task object
- */
-function moveTaskToNewId(
-  data,
-  sourceTask,
-  sourceTaskIndex,
-  destTask,
-  destTaskIndex
-) {
-  // Create a copy of the source task with the new ID
-  const movedTask = {
-    ...sourceTask,
-    id: destTask.id,
-  };
+function moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId) {
+	const destTaskIndex = tasks.findIndex((t) => t.id === destTaskId);
 
-  // Get numeric IDs for comparison
-  const sourceIdNum = parseInt(sourceTask.id, 10);
-  const destIdNum = parseInt(destTask.id, 10);
+	// Create moved task with new ID
+	const movedTask = {
+		...sourceTask,
+		id: destTaskId
+	};
 
-  // Handle subtasks if present
-  if (sourceTask.subtasks && sourceTask.subtasks.length > 0) {
-    // Update subtasks to reference the new parent ID if needed
-    movedTask.subtasks = sourceTask.subtasks.map((subtask) => ({
-      ...subtask,
-      parentTaskId: destIdNum,
-    }));
-  }
+	// Update any dependencies that reference the old task ID
+	tasks.forEach((task) => {
+		if (task.dependencies && task.dependencies.includes(sourceTask.id)) {
+			const depIndex = task.dependencies.indexOf(sourceTask.id);
+			task.dependencies[depIndex] = destTaskId;
+		}
+		if (task.subtasks) {
+			task.subtasks.forEach((subtask) => {
+				if (
+					subtask.dependencies &&
+					subtask.dependencies.includes(sourceTask.id)
+				) {
+					const depIndex = subtask.dependencies.indexOf(sourceTask.id);
+					subtask.dependencies[depIndex] = destTaskId;
+				}
+			});
+		}
+	});
 
-  // Update any dependencies in other tasks that referenced the old source ID
-  data.tasks.forEach((task) => {
-    if (task.dependencies && task.dependencies.includes(sourceIdNum)) {
-      // Replace the old source ID with the new destination ID
-      const depIndex = task.dependencies.indexOf(sourceIdNum);
-      task.dependencies[depIndex] = destIdNum;
-    }
+	// Strategy based on commit fixes: remove source first, then replace destination
+	// This avoids index shifting problems
 
-    // Also check for subtask dependencies that might reference the source task
-    if (task.subtasks && task.subtasks.length > 0) {
-      task.subtasks.forEach((subtask) => {
-        if (
-          subtask.dependencies &&
-          subtask.dependencies.includes(sourceIdNum)
-        ) {
-          const depIndex = subtask.dependencies.indexOf(sourceIdNum);
-          subtask.dependencies[depIndex] = destIdNum;
-        }
-      });
-    }
-  });
+	// Remove the source task first
+	tasks.splice(sourceTaskIndex, 1);
 
-  // Remove tasks in the correct order to avoid index shifting issues
-  // Always remove the higher index first to avoid shifting the lower index
-  if (sourceTaskIndex > destTaskIndex) {
-    // Remove source first (higher index), then destination
-    data.tasks.splice(sourceTaskIndex, 1);
-    data.tasks.splice(destTaskIndex, 1);
-    // Insert the moved task at the destination position
-    data.tasks.splice(destTaskIndex, 0, movedTask);
-  } else {
-    // Remove destination first (higher index), then source
-    data.tasks.splice(destTaskIndex, 1);
-    data.tasks.splice(sourceTaskIndex, 1);
-    // Insert the moved task at the original destination position (now shifted down by 1)
-    data.tasks.splice(sourceTaskIndex, 0, movedTask);
-  }
+	// Adjust the destination index if the source was before the destination
+	// Since we removed the source, indices after it shift down by 1
+	const adjustedDestIndex =
+		sourceTaskIndex < destTaskIndex ? destTaskIndex - 1 : destTaskIndex;
 
-  log("info", `Moved task ${sourceIdNum} to replace task ${destIdNum}`);
+	// Replace the placeholder destination task with the moved task (based on commit fixes)
+	if (adjustedDestIndex >= 0 && adjustedDestIndex < tasks.length) {
+		tasks[adjustedDestIndex] = movedTask;
+	} else {
+		// Insert at the end if index is out of bounds
+		tasks.push(movedTask);
+	}
 
-  return movedTask;
+	log('info', `Moved task ${sourceTask.id} to new ID ${destTaskId}`);
+
+	return {
+		message: `Moved task ${sourceTask.id} to new ID ${destTaskId}`,
+		movedItem: movedTask
+	};
 }
 
 export default moveTask;
