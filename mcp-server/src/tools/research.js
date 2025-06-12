@@ -72,7 +72,13 @@ export function registerResearchTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(result, log);
+				return handleApiResult(
+					result,
+					log,
+					'Error performing research',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in research tool: ${error.message}`);
 				return createErrorResponse(error.message);

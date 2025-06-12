@@ -660,6 +660,42 @@ function displayHelp() {
 			]
 		},
 		{
+			title: 'Tag Management',
+			color: 'magenta',
+			commands: [
+				{
+					name: 'tags',
+					args: '[--show-metadata]',
+					desc: 'List all available tags with task counts'
+				},
+				{
+					name: 'add-tag',
+					args: '<tagName> [--copy-from-current] [--copy-from=<tag>] [-d="<desc>"]',
+					desc: 'Create a new tag context for organizing tasks'
+				},
+				{
+					name: 'use-tag',
+					args: '<tagName>',
+					desc: 'Switch to a different tag context'
+				},
+				{
+					name: 'delete-tag',
+					args: '<tagName> [--yes]',
+					desc: 'Delete an existing tag and all its tasks'
+				},
+				{
+					name: 'rename-tag',
+					args: '<oldName> <newName>',
+					desc: 'Rename an existing tag'
+				},
+				{
+					name: 'copy-tag',
+					args: '<sourceName> <targetName> [-d="<desc>"]',
+					desc: 'Copy an existing tag to create a new tag with the same tasks'
+				}
+			]
+		},
+		{
 			title: 'Dependency Management',
 			color: 'blue',
 			commands: [

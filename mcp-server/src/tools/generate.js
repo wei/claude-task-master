@@ -70,7 +70,13 @@ export function registerGenerateTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error generating task files');
+				return handleApiResult(
+					result,
+					log,
+					'Error generating task files',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in generate tool: ${error.message}`);
 				return createErrorResponse(error.message);

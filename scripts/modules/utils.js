@@ -231,9 +231,24 @@ function readJSON(filepath, projectRoot = null) {
 			filepath.includes('tasks.json')
 		) {
 			// This is legacy format - migrate to tagged format
+			// Get file creation/modification date for the master tag
+			let createdDate;
+			try {
+				const stats = fs.statSync(filepath);
+				// Use the earlier of creation time or modification time
+				createdDate =
+					stats.birthtime < stats.mtime ? stats.birthtime : stats.mtime;
+			} catch (error) {
+				// Fallback to current date if we can't get file stats
+				createdDate = new Date();
+			}
+
 			const migratedData = {
 				master: {
-					tasks: data.tasks
+					tasks: data.tasks,
+					description: 'Tasks live here by default',
+					created: createdDate.toISOString(),
+					taskCount: data.tasks ? data.tasks.length : 0
 				}
 			};
 
@@ -312,22 +327,25 @@ function readJSON(filepath, projectRoot = null) {
 					resolvedTag = 'master';
 				}
 
+				// Store the raw tagged data BEFORE modifying data
+				const rawTaggedData = { ...data };
+
 				// Return the tasks for the resolved tag, or master as fallback, or empty array
 				if (data[resolvedTag] && data[resolvedTag].tasks) {
 					data = {
 						tag: resolvedTag,
 						tasks: data[resolvedTag].tasks,
-						_rawTaggedData: data
+						_rawTaggedData: rawTaggedData
 					};
 				} else if (data.master && data.master.tasks) {
 					data = {
 						tag: 'master',
 						tasks: data.master.tasks,
-						_rawTaggedData: data
+						_rawTaggedData: rawTaggedData
 					};
 				} else {
 					// No valid tags found, return empty
-					data = { tasks: [], tag: 'master', _rawTaggedData: data };
+					data = { tasks: [], tag: 'master', _rawTaggedData: rawTaggedData };
 				}
 			}
 		}
@@ -512,7 +530,16 @@ function writeJSON(filepath, data) {
 		if (!fs.existsSync(dir)) {
 			fs.mkdirSync(dir, { recursive: true });
 		}
-		fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
+
+		// Clean the data before writing - remove internal properties that should not be persisted
+		let cleanData = data;
+		if (data && typeof data === 'object' && data._rawTaggedData !== undefined) {
+			// Create a clean copy without internal properties using destructuring
+			const { _rawTaggedData, ...cleanedData } = data;
+			cleanData = cleanedData;
+		}
+
+		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
 	} catch (error) {
 		log('error', `Error writing JSON file ${filepath}:`, error.message);
 		if (isDebug) {

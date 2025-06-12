@@ -49,11 +49,90 @@ Allow users to set and persist their preferred default tag in the global configu
 Added global.defaultTag configuration option to .taskmaster/config.json structure in assets/config.json. Implemented complete tags section including autoSwitchOnBranch and gitIntegration options. Created migrateConfigJson() function in utils.js to handle updating existing configuration files during the migration process. Configuration is automatically created and updated during the silent migration process to ensure seamless transition for existing users.
 </info added on 2025-06-11T20:46:57.669Z>
 
-## 4. Develop Tag Management CLI Commands [pending]
+## 4. Develop Tag Management CLI Commands [done]
 ### Dependencies: 103.1, 103.3
 ### Description: Implement CLI commands for tag management: add-tag, delete, list, use (switch), rename, and copy, ensuring all changes are persisted.
 ### Details:
 Each command should update the tasks.json and config files as needed. The primary command for creating tags should be 'add-tag' to maintain consistency with other task-master commands.
+<info added on 2025-06-12T07:14:51.761Z>
+✅ **COMPLETED: CLI Command Integration for Tag Management**
+
+Successfully implemented complete CLI command integration for all tag management functions with enhanced UX features:
+
+**Commands Implemented:**
+
+1. **`task-master tags [--show-metadata]`** - List all available tags
+   - Shows tag names, task counts, completion status
+   - Optional metadata display (creation date, description)
+   - Dynamic table width that adapts to terminal size
+   - Current tag indicator with visual highlighting
+
+2. **`task-master add-tag <name> [options]`** - Create new tags
+   - `--copy-from-current` - Copy tasks from current tag
+   - `--copy-from=<tag>` - Copy tasks from specified tag
+   - `-d, --description <text>` - Set tag description
+   - **Default behavior: Creates empty tags** (fixed from previous copying behavior)
+
+3. **`task-master delete-tag <name> [--yes]`** - Delete tags with enhanced safety
+   - **Changed from `--force` to `--yes`** for consistency
+   - **Double confirmation system** using inquirer:
+     - First: Yes/No confirmation prompt
+     - Second: Type tag name to confirm deletion
+   - Visual warning box showing impact
+   - Automatic current tag switching if deleting active tag
+
+4. **`task-master use-tag <name>`** - Switch tag contexts
+   - Updates current tag in state.json
+   - Validates tag existence before switching
+   - Clear success messaging
+
+5. **`task-master rename-tag <old> <new>`** - Rename existing tags
+   - Validates both source and target names
+   - Updates current tag reference if renaming active tag
+
+6. **`task-master copy-tag <source> <target> [options]`** - Copy tags
+   - `-d, --description <text>` - Set description for new tag
+   - Deep copy of all tasks and metadata
+
+**Key Improvements Made:**
+
+Enhanced User Experience:
+- **Double confirmation for destructive operations** using inquirer prompts
+- **Consistent option naming** (`--yes` instead of `--force`)
+- **Dynamic table layouts** that use full terminal width
+- **Visual warning boxes** for dangerous operations
+- **Contextual help displays** on command errors
+
+Technical Fixes:
+- **Fixed critical `_rawTaggedData` corruption bug** in readJSON/writeJSON cycle
+- **Dynamic task counting** instead of stored counters (eliminates sync issues)
+- **Master tag metadata enhancement** with creation dates and descriptions
+- **Proper error handling** with command-specific help displays
+
+CLI Integration:
+- **Added all commands to help menu** in ui.js under "Tag Management" section
+- **Comprehensive help functions** for each command with examples
+- **Error handlers with contextual help** for better user guidance
+- **Consistent command patterns** following established CLI conventions
+
+**Testing Completed:**
+- ✅ Created empty tags (default behavior)
+- ✅ Created tags with task copying (explicit flags)
+- ✅ Listed tags with and without metadata
+- ✅ Double confirmation for tag deletion
+- ✅ Tag switching and current tag persistence
+- ✅ Table width responsiveness
+- ✅ Master tag metadata enhancement
+- ✅ Error handling and help displays
+
+**Files Modified:**
+- `scripts/modules/commands.js` - Added all tag management commands
+- `scripts/modules/task-manager/tag-management.js` - Enhanced functions with inquirer
+- `scripts/modules/ui.js` - Added tag commands to help menu
+- Fixed critical data corruption bug in utils.js
+
+The CLI integration is now complete and production-ready with enhanced safety features and improved user experience!
+</info added on 2025-06-12T07:14:51.761Z>
 
 ## 5. Update Task Commands to Support --tag Flag [pending]
 ### Dependencies: 103.4

@@ -70,7 +70,13 @@ export function registerNextTaskTool(server) {
 				);
 
 				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);
-				return handleApiResult(result, log, 'Error finding next task');
+				return handleApiResult(
+					result,
+					log,
+					'Error finding next task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error finding next task: ${error.message}`);
 				return createErrorResponse(error.message);

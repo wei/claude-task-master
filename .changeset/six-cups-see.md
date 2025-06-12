@@ -2,29 +2,34 @@
 "task-master-ai": minor
 ---
 
-Introduces tagged task lists for multi-context task management
+Implements core tagged task lists system with full CLI support
 
-This release adds support for organizing tasks into separate lists (tags) to enable working across multiple contexts such as different branches, environments, or project phases without conflicts.
+This release adds tagged task lists for multi-context task management, enabling users to organize tasks into separate contexts like "master", "feature-branch", teammate names or "v2" without conflicts.
 
 **New Features:**
 
-- **Tagged Task Lists**: Organize tasks into separate contexts with tags like "master", "feature-branch", or "v2.0"
+- **Complete Tag Management CLI**: Full suite of tag commands (`tags`, `add-tag`, `delete-tag`, `use-tag`, `rename-tag`, `copy-tag`)
+- **Tagged Task Lists**: Organize tasks into separate contexts with complete isolation between tags
 - **Seamless Migration**: Existing projects automatically migrate to use a "master" tag with zero disruption
+- **Enhanced Delete Confirmation**: Double confirmation with inquirer prompts for destructive tag operations
+- **Master Tag Metadata**: Automatic metadata enhancement for existing tags with creation dates and descriptions
+- **Dynamic Task Counting**: Real-time task count calculation without stored counters
+- **Full Terminal Width Tables**: Responsive table layouts that adapt to terminal size
 - **Backward Compatibility**: All existing commands continue to work exactly as before
-- **Tag Management**: Commands to create, switch between, and manage different task contexts
-- **Git Integration**: Automatically create tags based on git branch names
-- **Context Isolation**: Tasks in different tags are completely separate and isolated
 
-**Migration:**
+**Tag Management Commands:**
 
-- Existing `tasks.json` files are automatically migrated to the new tagged format
-- Your tasks will appear under the "master" tag by default
-- No action required - migration happens transparently on first use
-- All existing workflows continue to work unchanged
+- `task-master tags [--show-metadata]` - List all available tags with task counts and metadata
+- `task-master add-tag <name> [--copy-from-current] [--copy-from=<tag>] [-d="<desc>"]` - Create new tag contexts
+- `task-master delete-tag <name> [--yes]` - Delete tags with double confirmation (changed from `--force` to `--yes`)
+- `task-master use-tag <name>` - Switch between tag contexts
+- `task-master rename-tag <old> <new>` - Rename existing tags
+- `task-master copy-tag <source> <target> [-d="<desc>"]` - Copy tags to create new contexts
 
-**Coming in Part 2:**
+**Migration & Compatibility:**
 
-- CLI commands for tag management (`add-tag`, `use-tag`, `list-tags`)
-- MCP tool support for tag operations
-- Enhanced git branch integration
-- Tag switching and context management
+- Existing `tasks.json` files are automatically migrated to tagged format
+- Master tag gets proper metadata (creation date, description) during migration
+- All existing workflows continue unchanged
+- Silent migration with user-friendly notifications
+

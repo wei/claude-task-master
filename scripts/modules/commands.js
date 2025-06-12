@@ -37,6 +37,15 @@ import {
 } from './task-manager.js';
 
 import {
+	createTag,
+	deleteTag,
+	tags,
+	useTag,
+	renameTag,
+	copyTag
+} from './task-manager/tag-management.js';
+
+import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
@@ -2348,6 +2357,117 @@ ${result.result}
 		);
 	}
 
+	// Helper function to show tags command help
+	function showTagsHelp() {
+		console.log(
+			boxen(
+				chalk.white.bold('Tags Command Help') +
+					'\n\n' +
+					chalk.cyan('Usage:') +
+					'\n' +
+					`  task-master tags [options]\n\n` +
+					chalk.cyan('Options:') +
+					'\n' +
+					'  -f, --file <file>   Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n' +
+					'  --show-metadata     Show detailed metadata for each tag\n\n' +
+					chalk.cyan('Examples:') +
+					'\n' +
+					'  task-master tags\n' +
+					'  task-master tags --show-metadata\n\n' +
+					chalk.cyan('Related Commands:') +
+					'\n' +
+					'  task-master add-tag <name>      Create a new tag\n' +
+					'  task-master use-tag <name>      Switch to a tag\n' +
+					'  task-master delete-tag <name>   Delete a tag',
+				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+			)
+		);
+	}
+
+	// Helper function to show add-tag command help
+	function showAddTagHelp() {
+		console.log(
+			boxen(
+				chalk.white.bold('Add Tag Command Help') +
+					'\n\n' +
+					chalk.cyan('Usage:') +
+					'\n' +
+					`  task-master add-tag <tagName> [options]\n\n` +
+					chalk.cyan('Options:') +
+					'\n' +
+					'  -f, --file <file>        Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n' +
+					'  --copy-from-current      Copy tasks from the current tag to the new tag\n' +
+					'  --copy-from <tag>        Copy tasks from the specified tag to the new tag\n' +
+					'  -d, --description <text> Optional description for the tag\n\n' +
+					chalk.cyan('Examples:') +
+					'\n' +
+					'  task-master add-tag feature-xyz\n' +
+					'  task-master add-tag feature-xyz --copy-from-current\n' +
+					'  task-master add-tag feature-xyz --copy-from master\n' +
+					'  task-master add-tag feature-xyz -d "Feature XYZ development"',
+				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+			)
+		);
+	}
+
+	// Helper function to show delete-tag command help
+	function showDeleteTagHelp() {
+		console.log(
+			boxen(
+				chalk.white.bold('Delete Tag Command Help') +
+					'\n\n' +
+					chalk.cyan('Usage:') +
+					'\n' +
+					`  task-master delete-tag <tagName> [options]\n\n` +
+					chalk.cyan('Options:') +
+					'\n' +
+					'  -f, --file <file>   Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n' +
+					'  -y, --yes           Skip confirmation prompts\n\n' +
+					chalk.cyan('Examples:') +
+					'\n' +
+					'  task-master delete-tag feature-xyz\n' +
+					'  task-master delete-tag feature-xyz --yes\n\n' +
+					chalk.yellow('Warning:') +
+					'\n' +
+					'  This will permanently delete the tag and all its tasks!',
+				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+			)
+		);
+	}
+
+	// Helper function to show use-tag command help
+	function showUseTagHelp() {
+		console.log(
+			boxen(
+				chalk.white.bold('Use Tag Command Help') +
+					'\n\n' +
+					chalk.cyan('Usage:') +
+					'\n' +
+					`  task-master use-tag <tagName> [options]\n\n` +
+					chalk.cyan('Options:') +
+					'\n' +
+					'  -f, --file <file>   Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n\n' +
+					chalk.cyan('Examples:') +
+					'\n' +
+					'  task-master use-tag feature-xyz\n' +
+					'  task-master use-tag master\n\n' +
+					chalk.cyan('Related Commands:') +
+					'\n' +
+					'  task-master tags                 List all available tags\n' +
+					'  task-master add-tag <name>       Create a new tag',
+				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+			)
+		);
+	}
+
 	// remove-task command
 	programInstance
 		.command('remove-task')
@@ -3071,6 +3191,330 @@ Examples:
 			}
 		});
 
+	// ===== TAG MANAGEMENT COMMANDS =====
+
+	// add-tag command
+	programInstance
+		.command('add-tag')
+		.description('Create a new tag context for organizing tasks')
+		.argument('<tagName>', 'Name of the new tag to create')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'--copy-from-current',
+			'Copy tasks from the current tag to the new tag'
+		)
+		.option(
+			'--copy-from <tag>',
+			'Copy tasks from the specified tag to the new tag'
+		)
+		.option('-d, --description <text>', 'Optional description for the tag')
+		.action(async (tagName, options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					console.log(
+						chalk.yellow(
+							'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
+						)
+					);
+					process.exit(1);
+				}
+
+				const createOptions = {
+					copyFromCurrent: options.copyFromCurrent || false,
+					copyFromTag: options.copyFrom,
+					description: options.description
+				};
+
+				const context = {
+					projectRoot,
+					commandName: 'add-tag',
+					outputType: 'cli'
+				};
+
+				await createTag(tasksPath, tagName, createOptions, context, 'text');
+			} catch (error) {
+				console.error(chalk.red(`Error creating tag: ${error.message}`));
+				showAddTagHelp();
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			showAddTagHelp();
+			process.exit(1);
+		});
+
+	// delete-tag command
+	programInstance
+		.command('delete-tag')
+		.description('Delete an existing tag and all its tasks')
+		.argument('<tagName>', 'Name of the tag to delete')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option('-y, --yes', 'Skip confirmation prompts')
+		.action(async (tagName, options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				const deleteOptions = {
+					yes: options.yes || false
+				};
+
+				const context = {
+					projectRoot,
+					commandName: 'delete-tag',
+					outputType: 'cli'
+				};
+
+				await deleteTag(tasksPath, tagName, deleteOptions, context, 'text');
+			} catch (error) {
+				console.error(chalk.red(`Error deleting tag: ${error.message}`));
+				showDeleteTagHelp();
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			showDeleteTagHelp();
+			process.exit(1);
+		});
+
+	// tags command
+	programInstance
+		.command('tags')
+		.description('List all available tags with metadata')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option('--show-metadata', 'Show detailed metadata for each tag')
+		.action(async (options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				const listOptions = {
+					showTaskCounts: true,
+					showMetadata: options.showMetadata || false
+				};
+
+				const context = {
+					projectRoot,
+					commandName: 'tags',
+					outputType: 'cli'
+				};
+
+				await tags(tasksPath, listOptions, context, 'text');
+			} catch (error) {
+				console.error(chalk.red(`Error listing tags: ${error.message}`));
+				showTagsHelp();
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			showTagsHelp();
+			process.exit(1);
+		});
+
+	// use-tag command
+	programInstance
+		.command('use-tag')
+		.description('Switch to a different tag context')
+		.argument('<tagName>', 'Name of the tag to switch to')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.action(async (tagName, options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				const context = {
+					projectRoot,
+					commandName: 'use-tag',
+					outputType: 'cli'
+				};
+
+				await useTag(tasksPath, tagName, {}, context, 'text');
+			} catch (error) {
+				console.error(chalk.red(`Error switching tag: ${error.message}`));
+				showUseTagHelp();
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			showUseTagHelp();
+			process.exit(1);
+		});
+
+	// rename-tag command
+	programInstance
+		.command('rename-tag')
+		.description('Rename an existing tag')
+		.argument('<oldName>', 'Current name of the tag')
+		.argument('<newName>', 'New name for the tag')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.action(async (oldName, newName, options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				const context = {
+					projectRoot,
+					commandName: 'rename-tag',
+					outputType: 'cli'
+				};
+
+				await renameTag(tasksPath, oldName, newName, {}, context, 'text');
+			} catch (error) {
+				console.error(chalk.red(`Error renaming tag: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// copy-tag command
+	programInstance
+		.command('copy-tag')
+		.description('Copy an existing tag to create a new tag with the same tasks')
+		.argument('<sourceName>', 'Name of the source tag to copy from')
+		.argument('<targetName>', 'Name of the new tag to create')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option('-d, --description <text>', 'Optional description for the new tag')
+		.action(async (sourceName, targetName, options) => {
+			try {
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				const tasksPath = path.resolve(projectRoot, options.file);
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				const copyOptions = {
+					description: options.description
+				};
+
+				const context = {
+					projectRoot,
+					commandName: 'copy-tag',
+					outputType: 'cli'
+				};
+
+				await copyTag(
+					tasksPath,
+					sourceName,
+					targetName,
+					copyOptions,
+					context,
+					'text'
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error copying tag: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
 	return programInstance;
 }
 
@@ -3105,8 +3549,15 @@ function setupCLI() {
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false); // Disable default help command
 
-	// Modify the help option to use your custom display
-	programInstance.helpInformation = () => {
+	// Only override help for the main program, not for individual commands
+	const originalHelpInformation =
+		programInstance.helpInformation.bind(programInstance);
+	programInstance.helpInformation = function () {
+		// If this is being called for a subcommand, use the default Commander.js help
+		if (this.parent && this.parent !== programInstance) {
+			return originalHelpInformation();
+		}
+		// If this is the main program help, use our custom display
 		displayHelp();
 		return '';
 	};

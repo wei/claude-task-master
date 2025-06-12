@@ -100,7 +100,13 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error setting task status');
+				return handleApiResult(
+					result,
+					log,
+					'Error setting task status',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);
 				return createErrorResponse(
