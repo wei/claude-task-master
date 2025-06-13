@@ -6128,7 +6128,7 @@
             "id": 7,
             "title": "Add research save-to-file functionality",
             "description": "Implement functionality to save research results to /research/ folder with optional interactive prompts",
-            "details": "Add capability to save research results to files in a /research/ directory at project root. For CLI mode, use inquirer to prompt user if they want to save the research. For MCP mode, accept a saveToFile parameter.\n\nKey implementation details:\n- Create /research/ directory if it doesn't exist (similar to how tasks/ is handled)\n- Generate meaningful filenames based on query and timestamp\n- Support both CLI interactive mode (inquirer prompts) and MCP parameter mode\n- Follow project root detection pattern from add-task.js stack\n- Handle file writing with proper error handling\n- Return saved file path in response for confirmation\n\nFile structure:\n- /research/YYYY-MM-DD_query-summary.md (markdown format)\n- Include query, timestamp, context used, and full AI response\n- Add metadata header with query details and context sources",
+            "details": "Add capability to save research results to files in a /research/ directory at project root. For CLI mode, use inquirer to prompt user if they want to save the research. For MCP mode, accept a saveToFile parameter.\n\nKey implementation details:\n- Create /research/ directory if it doesn't exist (similar to how tasks/ is handled)\n- Generate meaningful filenames based on query and timestamp\n- Support both CLI interactive mode (inquirer prompts) and MCP parameter mode\n- Follow project root detection pattern from add-task.js stack\n- Handle file writing with proper error handling\n- Return saved file path in response for confirmation\n\nFile structure:\n- /research/YYYY-MM-DD_query-summary.md (markdown format)\n- Include query, timestamp, context used, and full AI response\n- Add metadata header with query details and context sources\n<info added on 2025-06-13T17:20:09.162Z>\nImplementation approach confirmed with detailed plan:\n\n**Modified handleFollowUpQuestions:**\n- Added \"Save to file\" option to inquirer prompt choices\n- Option triggers new handleSaveToFile function when selected\n\n**New handleSaveToFile function:**\n- Manages complete file-saving workflow\n- Creates .taskmaster/docs/research/ directory structure (following project patterns)\n- Generates slugified filenames: YYYY-MM-DD_query-summary.md format\n- Formats full conversation history into comprehensive Markdown with metadata header\n- Handles file writing with proper error handling\n- Returns confirmation message with saved file path\n\n**Enhanced performResearch for MCP integration:**\n- Added saveToFile boolean parameter to options object\n- Non-interactive mode (MCP) bypasses user prompts when saveToFile=true\n- Direct invocation of handleSaveToFile logic for programmatic saves\n- Updated main action in commands.js to support new saveToFile option parameter\n\nThis maintains consistency with existing project patterns while supporting both interactive CLI and programmatic MCP usage modes.\n</info added on 2025-06-13T17:20:09.162Z>",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 98
@@ -6578,7 +6578,7 @@
               7
             ],
             "details": "Test all workflows for legacy users and ensure no regressions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Regression test with legacy data and workflows."
           },
           {
@@ -6635,7 +6635,7 @@
             "title": "Create MCP Tools for Tag Management",
             "description": "Implement MCP tools in mcp-server/src/tools/ for all tag management operations (add-tag, delete-tag, list-tags, use-tag, rename-tag, copy-tag), following the established pattern like add-task.js",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               12
             ],
@@ -6748,7 +6748,7 @@
     ],
     "metadata": {
       "created": "2025-06-13T02:49:12.129Z",
-      "updated": "2025-06-13T16:49:38.587Z",
+      "updated": "2025-06-13T17:22:17.929Z",
       "description": "Tasks for master context"
     }
   }
