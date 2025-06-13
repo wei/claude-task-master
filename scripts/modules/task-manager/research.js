@@ -994,12 +994,6 @@ exchanges: ${conversationHistory.length}
 
 # Research Session
 
-**Query:** ${initialQuery}  
-**Date:** ${date} ${time}  
-**Exchanges:** ${conversationHistory.length}
-
----
-
 `;
 
 	// Add each conversation exchange

@@ -95,9 +95,11 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 					const nextResult = await nextTaskDirect(
 						{
 							tasksJsonPath: tasksJsonPath,
-							reportPath: complexityReportPath
+							reportPath: complexityReportPath,
+							projectRoot: projectRoot
 						},
-						log
+						log,
+						{ session }
 					);
 
 					if (nextResult.success) {

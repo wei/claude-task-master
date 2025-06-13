@@ -24,8 +24,7 @@ import { findTasksPath } from '../utils/path-utils.js';
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function showTaskDirect(args, log) {
-	// Destructure session from context if needed later, otherwise ignore
-	// const { session } = context;
+	// This function doesn't need session context since it only reads data
 	// Destructure projectRoot and other args. projectRoot is assumed normalized.
 	const { id, file, reportPath, status, projectRoot } = args;
 
@@ -56,7 +55,7 @@ export async function showTaskDirect(args, log) {
 
 	// --- Rest of the function remains the same, using tasksJsonPath ---
 	try {
-		const tasksData = readJSON(tasksJsonPath);
+		const tasksData = readJSON(tasksJsonPath, projectRoot);
 		if (!tasksData || !tasksData.tasks) {
 			return {
 				success: false,

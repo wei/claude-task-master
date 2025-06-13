@@ -5,10 +5,10 @@
  * MCP-friendly: All functions require projectRoot parameter
  */
 
-const { exec, execSync } = require('child_process');
-const { promisify } = require('util');
-const path = require('path');
-const fs = require('fs');
+import { exec, execSync } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -614,7 +614,7 @@ function getCurrentBranchSync(projectRoot) {
 }
 
 // Export all functions
-module.exports = {
+export {
 	isGitRepository,
 	getCurrentBranch,
 	getLocalBranches,

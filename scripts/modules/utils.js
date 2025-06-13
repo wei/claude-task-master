@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
+import * as gitUtils from './utils/git-utils.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_COMPLEXITY_REPORT_FILE,
@@ -302,8 +303,6 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// This needs to run synchronously BEFORE tag resolution
 			if (projectRoot) {
 				try {
-					// Import git utilities synchronously
-					const gitUtils = require('./utils/git-utils.js');
 					// Run git integration synchronously
 					gitUtils.checkAndAutoSwitchGitTagSync(projectRoot, filepath);
 				} catch (error) {
@@ -361,8 +360,6 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		// This needs to run synchronously BEFORE tag resolution
 		if (projectRoot) {
 			try {
-				// Import git utilities synchronously
-				const gitUtils = require('./utils/git-utils.js');
 				// Run git integration synchronously
 				gitUtils.checkAndAutoSwitchGitTagSync(projectRoot, filepath);
 			} catch (error) {

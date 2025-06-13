@@ -1645,8 +1645,8 @@ function registerCommands(programInstance) {
 			'Automatically save research results to specified task/subtask ID (e.g., "15" or "15.2")'
 		)
 		.option(
-			'--save-to-file <file>',
-			'Save research results to the specified file'
+			'--save-file',
+			'Save research results to .taskmaster/docs/research/ directory'
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
@@ -1846,7 +1846,7 @@ function registerCommands(programInstance) {
 					includeProjectTree: validatedParams.includeProjectTree,
 					detailLevel: validatedParams.detailLevel,
 					projectRoot: validatedParams.projectRoot,
-					saveToFile: validatedParams.saveFile,
+					saveToFile: !!options.saveFile,
 					tag: tag
 				};
 

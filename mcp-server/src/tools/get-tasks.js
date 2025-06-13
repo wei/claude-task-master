@@ -83,9 +83,11 @@ export function registerListTasksTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						status: args.status,
 						withSubtasks: args.withSubtasks,
-						reportPath: complexityReportPath
+						reportPath: complexityReportPath,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				log.info(
