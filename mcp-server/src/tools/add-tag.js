@@ -32,6 +32,12 @@ export function registerAddTagTool(server) {
 				.string()
 				.optional()
 				.describe('Specific tag to copy tasks from'),
+			fromBranch: z
+				.boolean()
+				.optional()
+				.describe(
+					'Create tag name from current git branch (ignores name parameter)'
+				),
 			description: z
 				.string()
 				.optional()
@@ -69,6 +75,7 @@ export function registerAddTagTool(server) {
 						name: args.name,
 						copyFromCurrent: args.copyFromCurrent,
 						copyFromTag: args.copyFromTag,
+						fromBranch: args.fromBranch,
 						description: args.description,
 						projectRoot: args.projectRoot
 					},

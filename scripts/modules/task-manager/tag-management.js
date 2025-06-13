@@ -1235,7 +1235,7 @@ async function createTagFromBranch(
 
 	// Import git utilities
 	const { sanitizeBranchNameForTag, isValidBranchForTag } = await import(
-		'../../utils/git-utils.js'
+		'../utils/git-utils.js'
 	);
 
 	// Create a consistent logFn object regardless of context
@@ -1341,7 +1341,7 @@ async function autoSwitchTagForBranch(
 		isGitRepository,
 		sanitizeBranchNameForTag,
 		isValidBranchForTag
-	} = await import('../../utils/git-utils.js');
+	} = await import('../utils/git-utils.js');
 
 	// Create a consistent logFn object regardless of context
 	const logFn = mcpLog || {
@@ -1475,13 +1475,8 @@ async function checkAndAutoSwitchTag(projectRoot, tasksPath, context = {}) {
 		const rawConfig = fs.readFileSync(configPath, 'utf8');
 		const config = JSON.parse(rawConfig);
 
-		// Check if git workflow is enabled
-		const gitWorkflowEnabled = config.tags?.enabledGitworkflow || false;
-		const autoSwitchEnabled = config.tags?.autoSwitchTagWithBranch || false;
-
-		if (!gitWorkflowEnabled || !autoSwitchEnabled) {
-			return null;
-		}
+		// Git workflow has been removed - return null to disable auto-switching
+		return null;
 
 		// Perform auto-switch
 		return await autoSwitchTagForBranch(

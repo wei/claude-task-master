@@ -38,6 +38,7 @@ Task Master's multi-context capabilities are now fully exposed through the MCP s
 **Tag Creation Options:**
 - `--copy-from-current` - Copy tasks from currently active tag
 - `--copy-from=<tag>` - Copy tasks from specific tag
+- `--from-branch` - Creates a new tag usin active git branch name (for `add-tag` only)
 - `--description="<text>"` - Add custom tag descriptions
 - Empty tag creation for fresh contexts
 

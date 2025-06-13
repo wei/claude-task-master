@@ -524,15 +524,6 @@ function migrateConfigJson(configPath) {
 			modified = true;
 		}
 
-		// Add tags section if missing
-		if (!config.tags) {
-			config.tags = {
-				enabledGitworkflow: false,
-				autoSwitchTagWithBranch: false
-			};
-			modified = true;
-		}
-
 		if (modified) {
 			fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
 			if (process.env.TASKMASTER_DEBUG === 'true') {

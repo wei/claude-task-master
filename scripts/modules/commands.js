@@ -3715,6 +3715,10 @@ Examples:
 			'--copy-from <tag>',
 			'Copy tasks from the specified tag to the new tag'
 		)
+		.option(
+			'--from-branch',
+			'Create tag name from current git branch (ignores tagName argument)'
+		)
 		.option('-d, --description <text>', 'Optional description for the tag')
 		.action(async (tagName, options) => {
 			try {
@@ -3745,19 +3749,70 @@ Examples:
 					outputType: 'cli'
 				};
 
-				// Regular tag creation
-				const createOptions = {
-					copyFromCurrent: options.copyFromCurrent || false,
-					copyFromTag: options.copyFrom,
-					description: options.description
-				};
+				// Handle --from-branch option
+				if (options.fromBranch) {
+					const { createTagFromBranch } = await import(
+						'./task-manager/tag-management.js'
+					);
+					const gitUtils = await import('./utils/git-utils.js');
 
-				await createTag(tasksPath, tagName, createOptions, context, 'text');
+					// Check if we're in a git repository
+					if (!(await gitUtils.isGitRepository(projectRoot))) {
+						console.error(
+							chalk.red(
+								'Error: Not in a git repository. Cannot use --from-branch option.'
+							)
+						);
+						process.exit(1);
+					}
+
+					// Get current git branch
+					const currentBranch = await gitUtils.getCurrentBranch(projectRoot);
+					if (!currentBranch) {
+						console.error(
+							chalk.red('Error: Could not determine current git branch.')
+						);
+						process.exit(1);
+					}
+
+					// Create tag from branch
+					const branchOptions = {
+						copyFromCurrent: options.copyFromCurrent || false,
+						copyFromTag: options.copyFrom,
+						description:
+							options.description ||
+							`Tag created from git branch "${currentBranch}"`
+					};
+
+					await createTagFromBranch(
+						tasksPath,
+						currentBranch,
+						branchOptions,
+						context,
+						'text'
+					);
+				} else {
+					// Regular tag creation
+					const createOptions = {
+						copyFromCurrent: options.copyFromCurrent || false,
+						copyFromTag: options.copyFrom,
+						description: options.description
+					};
+
+					await createTag(tasksPath, tagName, createOptions, context, 'text');
+				}
 
 				// Handle auto-switch if requested
 				if (options.autoSwitch) {
 					const { useTag } = await import('./task-manager/tag-management.js');
-					await useTag(tasksPath, tagName, {}, context, 'text');
+					const finalTagName = options.fromBranch
+						? (await import('./utils/git-utils.js')).sanitizeBranchNameForTag(
+								await (await import('./utils/git-utils.js')).getCurrentBranch(
+									projectRoot
+								)
+							)
+						: tagName;
+					await useTag(tasksPath, finalTagName, {}, context, 'text');
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error creating tag: ${error.message}`));

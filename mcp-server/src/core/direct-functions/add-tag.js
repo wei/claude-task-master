@@ -3,7 +3,10 @@
  * Direct function implementation for creating a new tag
  */
 
-import { createTag } from '../../../../scripts/modules/task-manager/tag-management.js';
+import {
+	createTag,
+	createTagFromBranch
+} from '../../../../scripts/modules/task-manager/tag-management.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -17,6 +20,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} args.name - Name of the new tag to create
  * @param {boolean} [args.copyFromCurrent=false] - Whether to copy tasks from current tag
  * @param {string} [args.copyFromTag] - Specific tag to copy tasks from
+ * @param {boolean} [args.fromBranch=false] - Create tag name from current git branch
  * @param {string} [args.description] - Optional description for the tag
  * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
  * @param {string} [args.projectRoot] - Project root path
@@ -31,6 +35,7 @@ export async function addTagDirect(args, log, context = {}) {
 		name,
 		copyFromCurrent = false,
 		copyFromTag,
+		fromBranch = false,
 		description,
 		projectRoot
 	} = args;
@@ -56,55 +61,127 @@ export async function addTagDirect(args, log, context = {}) {
 			};
 		}
 
-		// Check required parameters
-		if (!name || typeof name !== 'string') {
-			log.error('Missing required parameter: name');
+		// Handle --from-branch option
+		if (fromBranch) {
+			log.info('Creating tag from current git branch');
+
+			// Import git utilities
+			const gitUtils = await import(
+				'../../../../scripts/modules/utils/git-utils.js'
+			);
+
+			// Check if we're in a git repository
+			if (!(await gitUtils.isGitRepository(projectRoot))) {
+				log.error('Not in a git repository');
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'NOT_GIT_REPO',
+						message: 'Not in a git repository. Cannot use fromBranch option.'
+					}
+				};
+			}
+
+			// Get current git branch
+			const currentBranch = await gitUtils.getCurrentBranch(projectRoot);
+			if (!currentBranch) {
+				log.error('Could not determine current git branch');
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'NO_CURRENT_BRANCH',
+						message: 'Could not determine current git branch.'
+					}
+				};
+			}
+
+			// Prepare options for branch-based tag creation
+			const branchOptions = {
+				copyFromCurrent,
+				copyFromTag,
+				description:
+					description || `Tag created from git branch "${currentBranch}"`
+			};
+
+			// Call the createTagFromBranch function
+			const result = await createTagFromBranch(
+				tasksJsonPath,
+				currentBranch,
+				branchOptions,
+				{
+					session,
+					mcpLog,
+					projectRoot
+				},
+				'json' // outputFormat - use 'json' to suppress CLI UI
+			);
+
+			// Restore normal logging
 			disableSilentMode();
+
 			return {
-				success: false,
-				error: {
-					code: 'MISSING_PARAMETER',
-					message: 'Tag name is required and must be a string'
+				success: true,
+				data: {
+					branchName: result.branchName,
+					tagName: result.tagName,
+					created: result.created,
+					mappingUpdated: result.mappingUpdated,
+					message: `Successfully created tag "${result.tagName}" from git branch "${result.branchName}"`
+				}
+			};
+		} else {
+			// Check required parameters for regular tag creation
+			if (!name || typeof name !== 'string') {
+				log.error('Missing required parameter: name');
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'MISSING_PARAMETER',
+						message: 'Tag name is required and must be a string'
+					}
+				};
+			}
+
+			log.info(`Creating new tag: ${name}`);
+
+			// Prepare options
+			const options = {
+				copyFromCurrent,
+				copyFromTag,
+				description
+			};
+
+			// Call the createTag function
+			const result = await createTag(
+				tasksJsonPath,
+				name,
+				options,
+				{
+					session,
+					mcpLog,
+					projectRoot
+				},
+				'json' // outputFormat - use 'json' to suppress CLI UI
+			);
+
+			// Restore normal logging
+			disableSilentMode();
+
+			return {
+				success: true,
+				data: {
+					tagName: result.tagName,
+					created: result.created,
+					tasksCopied: result.tasksCopied,
+					sourceTag: result.sourceTag,
+					description: result.description,
+					message: `Successfully created tag "${result.tagName}"`
 				}
 			};
 		}
-
-		log.info(`Creating new tag: ${name}`);
-
-		// Prepare options
-		const options = {
-			copyFromCurrent,
-			copyFromTag,
-			description
-		};
-
-		// Call the createTag function
-		const result = await createTag(
-			tasksJsonPath,
-			name,
-			options,
-			{
-				session,
-				mcpLog,
-				projectRoot
-			},
-			'json' // outputFormat - use 'json' to suppress CLI UI
-		);
-
-		// Restore normal logging
-		disableSilentMode();
-
-		return {
-			success: true,
-			data: {
-				tagName: result.tagName,
-				created: result.created,
-				tasksCopied: result.tasksCopied,
-				sourceTag: result.sourceTag,
-				description: result.description,
-				message: `Successfully created tag "${result.tagName}"`
-			}
-		};
 	} catch (error) {
 		// Make sure to restore normal logging even if there's an error
 		disableSilentMode();
