@@ -44,5 +44,34 @@ task-master research "Quick implementation steps?" --context="Using JWT tokens" 
 - Fresh fuzzy search for each follow-up to discover newly relevant tasks
 - Cumulative context building across the conversation
 - Clean visual separation between exchanges
+- **Save to Tasks**: Save entire research conversations (including follow-ups) directly to task or subtask details with timestamps
+- **Clean Menu Interface**: Streamlined inquirer-based menu for follow-up actions without redundant UI elements
 
-The research command integrates with the existing AI service layer and supports all configured AI providers. MCP integration provides the same functionality for programmatic access without interactive features.
+**Save Functionality:**
+
+The research command now supports saving complete conversation threads to tasks or subtasks:
+
+- Save research results and follow-up conversations to any task (e.g., "15") or subtask (e.g., "15.2")
+- Automatic timestamping and formatting of conversation history
+- Validation of task/subtask existence before saving
+- Appends to existing task details without overwriting content
+- Supports both CLI interactive mode and MCP programmatic access via `--save-to` flag
+
+**Enhanced CLI Options:**
+
+```bash
+# Auto-save research results to a task
+task-master research "Implementation approach?" --save-to=15
+
+# Combine auto-save with context gathering
+task-master research "How to optimize this?" --id=23 --save-to=23.1
+```
+
+**MCP Integration:**
+
+- `saveTo` parameter for automatic saving to specified task/subtask ID
+- Structured response format with telemetry data
+- Silent operation mode for programmatic usage
+- Full feature parity with CLI except interactive follow-ups
+
+The research command integrates with the existing AI service layer and supports all configured AI providers. Both CLI and MCP interfaces provide comprehensive research capabilities with intelligent context gathering and flexible output options.

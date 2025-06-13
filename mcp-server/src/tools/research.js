@@ -47,6 +47,12 @@ export function registerResearchTool(server) {
 				.enum(['low', 'medium', 'high'])
 				.optional()
 				.describe('Detail level for the research response (default: medium)'),
+			saveTo: z
+				.string()
+				.optional()
+				.describe(
+					'Automatically save research results to specified task/subtask ID (e.g., "15" or "15.2")'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -66,6 +72,7 @@ export function registerResearchTool(server) {
 						customContext: args.customContext,
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
+						saveTo: args.saveTo,
 						projectRoot: args.projectRoot
 					},
 					log,

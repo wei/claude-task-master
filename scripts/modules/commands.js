@@ -1607,7 +1607,7 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('research')
 		.description('Perform AI-powered research queries with project context')
-		.argument('<prompt>', 'Research prompt to investigate')
+		.argument('[prompt]', 'Research prompt to investigate')
 		.option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-i, --id <ids>',
@@ -1634,6 +1634,10 @@ function registerCommands(programInstance) {
 			'Output detail level: low, medium, high',
 			'medium'
 		)
+		.option(
+			'--save-to <id>',
+			'Automatically save research results to specified task/subtask ID (e.g., "15" or "15.2")'
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
 			// Parameter validation
@@ -1641,6 +1645,7 @@ function registerCommands(programInstance) {
 				console.error(
 					chalk.red('Error: Research prompt is required and cannot be empty')
 				);
+				showResearchHelp();
 				process.exit(1);
 			}
 
@@ -1697,7 +1702,25 @@ function registerCommands(programInstance) {
 				}
 			}
 
-			// Validate save option if provided
+			// Validate save-to option if provided
+			if (options.saveTo) {
+				const saveToId = options.saveTo.trim();
+				if (saveToId.length === 0) {
+					console.error(chalk.red('Error: Save-to ID cannot be empty'));
+					process.exit(1);
+				}
+				// Validate ID format: number or number.number
+				if (!/^\d+(\.\d+)?$/.test(saveToId)) {
+					console.error(
+						chalk.red(
+							'Error: Save-to ID must be in format "15" for task or "15.2" for subtask'
+						)
+					);
+					process.exit(1);
+				}
+			}
+
+			// Validate save option if provided (legacy file save)
 			if (options.save) {
 				const saveTarget = options.save.trim();
 				if (saveTarget.length === 0) {
@@ -1765,6 +1788,8 @@ function registerCommands(programInstance) {
 				customContext: options.context ? options.context.trim() : null,
 				includeProjectTree: !!options.tree,
 				saveTarget: options.save ? options.save.trim() : null,
+				saveToId: options.saveTo ? options.saveTo.trim() : null,
+				allowFollowUp: true, // Always allow follow-up in CLI
 				detailLevel: options.detail ? options.detail.toLowerCase() : 'medium',
 				tasksPath: tasksPath,
 				projectRoot: projectRoot
@@ -1822,10 +1847,85 @@ function registerCommands(programInstance) {
 						commandName: 'research',
 						outputType: 'cli'
 					},
-					'text'
+					'text',
+					validatedParams.allowFollowUp // Pass follow-up flag
 				);
 
-				// Save results if requested
+				// Auto-save to task/subtask if requested
+				if (validatedParams.saveToId) {
+					try {
+						const isSubtask = validatedParams.saveToId.includes('.');
+
+						// Format research content for saving
+						const researchContent = `## Research Query: ${validatedParams.prompt}
+
+**Detail Level:** ${result.detailLevel}
+**Context Size:** ${result.contextSize} characters
+**Timestamp:** ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+### Results
+
+${result.result}`;
+
+						if (isSubtask) {
+							// Save to subtask
+							const { updateSubtaskById } = await import(
+								'./task-manager/update-subtask-by-id.js'
+							);
+
+							await updateSubtaskById(
+								validatedParams.tasksPath,
+								validatedParams.saveToId,
+								researchContent,
+								false, // useResearch = false for simple append
+								{
+									commandName: 'research-save',
+									outputType: 'cli',
+									projectRoot: validatedParams.projectRoot
+								},
+								'text'
+							);
+
+							console.log(
+								chalk.green(
+									`✅ Research saved to subtask ${validatedParams.saveToId}`
+								)
+							);
+						} else {
+							// Save to task
+							const updateTaskById = (
+								await import('./task-manager/update-task-by-id.js')
+							).default;
+
+							const taskIdNum = parseInt(validatedParams.saveToId, 10);
+							await updateTaskById(
+								validatedParams.tasksPath,
+								taskIdNum,
+								researchContent,
+								false, // useResearch = false for simple append
+								{
+									commandName: 'research-save',
+									outputType: 'cli',
+									projectRoot: validatedParams.projectRoot
+								},
+								'text',
+								true // appendMode = true
+							);
+
+							console.log(
+								chalk.green(
+									`✅ Research saved to task ${validatedParams.saveToId}`
+								)
+							);
+						}
+					} catch (saveError) {
+						console.log(
+							chalk.red(`❌ Error saving to task/subtask: ${saveError.message}`)
+						);
+					}
+				}
+
+				// Save results to file if requested (legacy)
 				if (validatedParams.saveTarget) {
 					const saveContent = `# Research Query: ${validatedParams.prompt}
 
@@ -2796,6 +2896,40 @@ ${result.result}
 					'\n' +
 					'  task-master tags                 List all available tags\n' +
 					'  task-master add-tag <name>       Create a new tag',
+				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+			)
+		);
+	}
+
+	// Helper function to show research command help
+	function showResearchHelp() {
+		console.log(
+			boxen(
+				chalk.white.bold('Research Command Help') +
+					'\n\n' +
+					chalk.cyan('Usage:') +
+					'\n' +
+					`  task-master research "<query>" [options]\n\n` +
+					chalk.cyan('Required:') +
+					'\n' +
+					'  <query>             Research question or prompt (required)\n\n' +
+					chalk.cyan('Context Options:') +
+					'\n' +
+					'  -i, --id <ids>      Comma-separated task/subtask IDs for context (e.g., "15,23.2")\n' +
+					'  -f, --files <paths> Comma-separated file paths for context\n' +
+					'  -c, --context <text> Additional custom context text\n' +
+					'  --tree              Include project file tree structure\n\n' +
+					chalk.cyan('Output Options:') +
+					'\n' +
+					'  -d, --detail <level> Detail level: low, medium, high (default: medium)\n' +
+					'  --save-to <id>      Auto-save results to task/subtask ID (e.g., "15" or "15.2")\n' +
+					'  --tag <tag>         Specify tag context for task operations\n\n' +
+					chalk.cyan('Examples:') +
+					'\n' +
+					'  task-master research "How should I implement user authentication?"\n' +
+					'  task-master research "What\'s the best approach?" --id=15,23.2\n' +
+					'  task-master research "How does auth work?" --files=src/auth.js --tree\n' +
+					'  task-master research "Implementation steps?" --save-to=15.2 --detail=high',
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);

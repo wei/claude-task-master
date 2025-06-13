@@ -3,6 +3,7 @@
  * Core research functionality for AI-powered queries with project context
  */
 
+import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
@@ -587,7 +588,7 @@ function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
 }
 
 /**
- * Handle follow-up questions in interactive mode
+ * Handle follow-up questions and save functionality in interactive mode
  * @param {Object} originalOptions - Original research options
  * @param {Object} context - Execution context
  * @param {string} outputFormat - Output format
@@ -606,88 +607,279 @@ async function handleFollowUpQuestions(
 	initialResult
 ) {
 	try {
+		// Import required modules for saving
+		const { readJSON } = await import('../utils.js');
+		const updateTaskById = (await import('./update-task-by-id.js')).default;
+		const { updateSubtaskById } = await import('./update-subtask-by-id.js');
+
 		// Initialize conversation history with the initial Q&A
 		const conversationHistory = [
 			{
 				question: initialQuery,
 				answer: initialResult,
-				type: 'initial'
+				type: 'initial',
+				timestamp: new Date().toISOString()
 			}
 		];
 
 		while (true) {
-			// Ask if user wants to ask a follow-up question
-			const { wantFollowUp } = await inquirer.prompt([
+			// Get user choice
+			const { action } = await inquirer.prompt([
 				{
-					type: 'confirm',
-					name: 'wantFollowUp',
-					message: 'Would you like to ask a follow-up question?',
-					default: false // Default to 'n' as requested
+					type: 'list',
+					name: 'action',
+					message: 'What would you like to do next?',
+					choices: [
+						{ name: 'Ask a follow-up question', value: 'followup' },
+						{ name: 'Save to task/subtask', value: 'save' },
+						{ name: 'Quit', value: 'quit' }
+					],
+					pageSize: 3
 				}
 			]);
 
-			if (!wantFollowUp) {
+			if (action === 'quit') {
 				break;
 			}
 
-			// Get the follow-up question
-			const { followUpQuery } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'followUpQuery',
-					message: 'Enter your follow-up question:',
-					validate: (input) => {
-						if (!input || input.trim().length === 0) {
-							return 'Please enter a valid question.';
-						}
-						return true;
-					}
-				}
-			]);
-
-			if (!followUpQuery || followUpQuery.trim().length === 0) {
+			if (action === 'save') {
+				// Handle save functionality
+				await handleSaveToTask(
+					conversationHistory,
+					projectRoot,
+					context,
+					logFn
+				);
 				continue;
 			}
 
-			console.log('\n' + chalk.gray('─'.repeat(60)) + '\n');
+			if (action === 'followup') {
+				// Get the follow-up question
+				const { followUpQuery } = await inquirer.prompt([
+					{
+						type: 'input',
+						name: 'followUpQuery',
+						message: 'Enter your follow-up question:',
+						validate: (input) => {
+							if (!input || input.trim().length === 0) {
+								return 'Please enter a valid question.';
+							}
+							return true;
+						}
+					}
+				]);
 
-			// Build cumulative conversation context from all previous exchanges
-			const conversationContext = buildConversationContext(conversationHistory);
+				if (!followUpQuery || followUpQuery.trim().length === 0) {
+					continue;
+				}
 
-			// Create enhanced options for follow-up with full conversation context
-			// Remove explicit task IDs to allow fresh fuzzy search based on new question
-			const followUpOptions = {
-				...originalOptions,
-				taskIds: [], // Clear task IDs to allow fresh fuzzy search
-				customContext:
-					conversationContext +
-					(originalOptions.customContext
-						? `\n\n--- Original Context ---\n${originalOptions.customContext}`
-						: '')
-			};
+				console.log('\n' + chalk.gray('─'.repeat(60)) + '\n');
 
-			// Perform follow-up research with fresh fuzzy search and conversation context
-			// Disable follow-up prompts for nested calls to prevent infinite recursion
-			const followUpResult = await performResearch(
-				followUpQuery.trim(),
-				followUpOptions,
-				context,
-				outputFormat,
-				false // allowFollowUp = false for nested calls
-			);
+				// Build cumulative conversation context from all previous exchanges
+				const conversationContext =
+					buildConversationContext(conversationHistory);
 
-			// Add this exchange to the conversation history
-			conversationHistory.push({
-				question: followUpQuery.trim(),
-				answer: followUpResult.result,
-				type: 'followup'
-			});
+				// Create enhanced options for follow-up with full conversation context
+				const followUpOptions = {
+					...originalOptions,
+					taskIds: [], // Clear task IDs to allow fresh fuzzy search
+					customContext:
+						conversationContext +
+						(originalOptions.customContext
+							? `\n\n--- Original Context ---\n${originalOptions.customContext}`
+							: '')
+				};
+
+				// Perform follow-up research
+				const followUpResult = await performResearch(
+					followUpQuery.trim(),
+					followUpOptions,
+					context,
+					outputFormat,
+					false // allowFollowUp = false for nested calls
+				);
+
+				// Add this exchange to the conversation history
+				conversationHistory.push({
+					question: followUpQuery.trim(),
+					answer: followUpResult.result,
+					type: 'followup',
+					timestamp: new Date().toISOString()
+				});
+			}
 		}
 	} catch (error) {
 		// If there's an error with inquirer (e.g., non-interactive terminal),
 		// silently continue without follow-up functionality
 		logFn.debug(`Follow-up questions not available: ${error.message}`);
 	}
+}
+
+/**
+ * Handle saving conversation to a task or subtask
+ * @param {Array} conversationHistory - Array of conversation exchanges
+ * @param {string} projectRoot - Project root directory
+ * @param {Object} context - Execution context
+ * @param {Object} logFn - Logger function
+ */
+async function handleSaveToTask(
+	conversationHistory,
+	projectRoot,
+	context,
+	logFn
+) {
+	try {
+		// Import required modules
+		const { readJSON } = await import('../utils.js');
+		const updateTaskById = (await import('./update-task-by-id.js')).default;
+		const { updateSubtaskById } = await import('./update-subtask-by-id.js');
+
+		// Get task ID from user
+		const { taskId } = await inquirer.prompt([
+			{
+				type: 'input',
+				name: 'taskId',
+				message: 'Enter task ID (e.g., "15" for task or "15.2" for subtask):',
+				validate: (input) => {
+					if (!input || input.trim().length === 0) {
+						return 'Please enter a task ID.';
+					}
+
+					const trimmedInput = input.trim();
+					// Validate format: number or number.number
+					if (!/^\d+(\.\d+)?$/.test(trimmedInput)) {
+						return 'Invalid format. Use "15" for task or "15.2" for subtask.';
+					}
+
+					return true;
+				}
+			}
+		]);
+
+		const trimmedTaskId = taskId.trim();
+
+		// Format conversation thread for saving
+		const conversationThread = formatConversationForSaving(conversationHistory);
+
+		// Determine if it's a task or subtask
+		const isSubtask = trimmedTaskId.includes('.');
+
+		// Try to save - first validate the ID exists
+		const tasksPath = path.join(
+			projectRoot,
+			'.taskmaster',
+			'tasks',
+			'tasks.json'
+		);
+
+		if (!fs.existsSync(tasksPath)) {
+			console.log(
+				chalk.red('❌ Tasks file not found. Please run task-master init first.')
+			);
+			return;
+		}
+
+		// Validate ID exists
+		const data = readJSON(tasksPath, projectRoot);
+		if (!data || !data.tasks) {
+			console.log(chalk.red('❌ No valid tasks found.'));
+			return;
+		}
+
+		if (isSubtask) {
+			// Validate subtask exists
+			const [parentId, subtaskId] = trimmedTaskId
+				.split('.')
+				.map((id) => parseInt(id, 10));
+			const parentTask = data.tasks.find((t) => t.id === parentId);
+
+			if (!parentTask) {
+				console.log(chalk.red(`❌ Parent task ${parentId} not found.`));
+				return;
+			}
+
+			if (
+				!parentTask.subtasks ||
+				!parentTask.subtasks.find((st) => st.id === subtaskId)
+			) {
+				console.log(chalk.red(`❌ Subtask ${trimmedTaskId} not found.`));
+				return;
+			}
+
+			// Save to subtask using updateSubtaskById
+			console.log(chalk.blue('💾 Saving research conversation to subtask...'));
+
+			await updateSubtaskById(
+				tasksPath,
+				trimmedTaskId,
+				conversationThread,
+				false, // useResearch = false for simple append
+				context,
+				'text'
+			);
+
+			console.log(
+				chalk.green(
+					`✅ Research conversation saved to subtask ${trimmedTaskId}`
+				)
+			);
+		} else {
+			// Validate task exists
+			const taskIdNum = parseInt(trimmedTaskId, 10);
+			const task = data.tasks.find((t) => t.id === taskIdNum);
+
+			if (!task) {
+				console.log(chalk.red(`❌ Task ${trimmedTaskId} not found.`));
+				return;
+			}
+
+			// Save to task using updateTaskById with append mode
+			console.log(chalk.blue('💾 Saving research conversation to task...'));
+
+			await updateTaskById(
+				tasksPath,
+				taskIdNum,
+				conversationThread,
+				false, // useResearch = false for simple append
+				context,
+				'text',
+				true // appendMode = true
+			);
+
+			console.log(
+				chalk.green(`✅ Research conversation saved to task ${trimmedTaskId}`)
+			);
+		}
+	} catch (error) {
+		console.log(chalk.red(`❌ Error saving conversation: ${error.message}`));
+		logFn.error(`Error saving conversation: ${error.message}`);
+	}
+}
+
+/**
+ * Format conversation history for saving to a task/subtask
+ * @param {Array} conversationHistory - Array of conversation exchanges
+ * @returns {string} Formatted conversation thread
+ */
+function formatConversationForSaving(conversationHistory) {
+	const timestamp = new Date().toISOString();
+	let formatted = `## Research Session - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}\n\n`;
+
+	conversationHistory.forEach((exchange, index) => {
+		if (exchange.type === 'initial') {
+			formatted += `**Initial Query:** ${exchange.question}\n\n`;
+			formatted += `**Response:** ${exchange.answer}\n\n`;
+		} else {
+			formatted += `**Follow-up ${index}:** ${exchange.question}\n\n`;
+			formatted += `**Response:** ${exchange.answer}\n\n`;
+		}
+
+		if (index < conversationHistory.length - 1) {
+			formatted += '---\n\n';
+		}
+	});
+
+	return formatted;
 }
 
 /**

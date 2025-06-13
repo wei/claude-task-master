@@ -380,21 +380,6 @@ async function addTask(
 				displayContextAnalysis(analysisData, prompt, gatheredContext.length);
 			}
 
-			if (outputFormat === 'text') {
-				console.log(
-					boxen(
-						chalk.white.bold('AI Task Generation') +
-							`\n\n${chalk.gray('Analyzing context and generating task details using AI...')}`,
-						{
-							padding: { top: 0, bottom: 1, left: 1, right: 1 },
-							margin: { top: 1, bottom: 0 },
-							borderColor: 'white',
-							borderStyle: 'round'
-						}
-					)
-				);
-			}
-
 			// System Prompt - Enhanced for dependency awareness
 			const systemPrompt =
 				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema. Pay special attention to dependencies between tasks, ensuring the new task correctly references any tasks it depends on.\n\n" +

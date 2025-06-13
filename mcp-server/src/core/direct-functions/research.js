@@ -3,6 +3,7 @@
  * Direct function implementation for AI-powered research queries
  */
 
+import path from 'path';
 import { performResearch } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
@@ -20,6 +21,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.customContext] - Additional custom context text
  * @param {boolean} [args.includeProjectTree=false] - Include project file tree in context
  * @param {string} [args.detailLevel='medium'] - Detail level: 'low', 'medium', 'high'
+ * @param {string} [args.saveTo] - Automatically save to task/subtask ID (e.g., "15" or "15.2")
  * @param {string} [args.projectRoot] - Project root path
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
@@ -34,6 +36,7 @@ export async function researchDirect(args, log, context = {}) {
 		customContext,
 		includeProjectTree = false,
 		detailLevel = 'medium',
+		saveTo,
 		projectRoot
 	} = args;
 	const { session } = context; // Destructure session from context
@@ -124,6 +127,88 @@ export async function researchDirect(args, log, context = {}) {
 			'json', // outputFormat - use 'json' to suppress CLI UI
 			false // allowFollowUp - disable for MCP calls
 		);
+
+		// Auto-save to task/subtask if requested
+		if (saveTo) {
+			try {
+				const isSubtask = saveTo.includes('.');
+
+				// Format research content for saving
+				const researchContent = `## Research Query: ${query.trim()}
+
+**Detail Level:** ${result.detailLevel}
+**Context Size:** ${result.contextSize} characters
+**Timestamp:** ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+### Results
+
+${result.result}`;
+
+				if (isSubtask) {
+					// Save to subtask
+					const { updateSubtaskById } = await import(
+						'../../../../scripts/modules/task-manager/update-subtask-by-id.js'
+					);
+
+					const tasksPath = path.join(
+						projectRoot,
+						'.taskmaster',
+						'tasks',
+						'tasks.json'
+					);
+					await updateSubtaskById(
+						tasksPath,
+						saveTo,
+						researchContent,
+						false, // useResearch = false for simple append
+						{
+							session,
+							mcpLog,
+							commandName: 'research-save',
+							outputType: 'mcp',
+							projectRoot
+						},
+						'json'
+					);
+
+					log.info(`Research saved to subtask ${saveTo}`);
+				} else {
+					// Save to task
+					const updateTaskById = (
+						await import(
+							'../../../../scripts/modules/task-manager/update-task-by-id.js'
+						)
+					).default;
+
+					const taskIdNum = parseInt(saveTo, 10);
+					const tasksPath = path.join(
+						projectRoot,
+						'.taskmaster',
+						'tasks',
+						'tasks.json'
+					);
+					await updateTaskById(
+						tasksPath,
+						taskIdNum,
+						researchContent,
+						false, // useResearch = false for simple append
+						{
+							session,
+							mcpLog,
+							commandName: 'research-save',
+							outputType: 'mcp',
+							projectRoot
+						},
+						'json',
+						true // appendMode = true
+					);
+
+					log.info(`Research saved to task ${saveTo}`);
+				}
+			} catch (saveError) {
+				log.warn(`Error saving research to task/subtask: ${saveError.message}`);
+			}
+		}
 
 		// Restore normal logging
 		disableSilentMode();
