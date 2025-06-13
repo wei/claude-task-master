@@ -1,54 +1,52 @@
 /**
- * tools/remove-subtask.js
- * Tool for removing subtasks from parent tasks
+ * tools/add-tag.js
+ * Tool to create a new tag
  */
 
 import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { removeSubtaskDirect } from '../core/task-master-core.js';
+import { addTagDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
- * Register the removeSubtask tool with the MCP server
+ * Register the addTag tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
-export function registerRemoveSubtaskTool(server) {
+export function registerAddTagTool(server) {
 	server.addTool({
-		name: 'remove_subtask',
-		description: 'Remove a subtask from its parent task',
+		name: 'add_tag',
+		description: 'Create a new tag for organizing tasks in different contexts',
 		parameters: z.object({
-			id: z
-				.string()
-				.describe(
-					"Subtask ID to remove in format 'parentId.subtaskId' (required)"
-				),
-			convert: z
+			name: z.string().describe('Name of the new tag to create'),
+			copyFromCurrent: z
 				.boolean()
 				.optional()
 				.describe(
-					'Convert the subtask to a standalone task instead of deleting it'
+					'Whether to copy tasks from the current tag (default: false)'
 				),
+			copyFromTag: z
+				.string()
+				.optional()
+				.describe('Specific tag to copy tasks from'),
+			description: z
+				.string()
+				.optional()
+				.describe('Optional description for the tag'),
 			file: z
 				.string()
 				.optional()
-				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
-				),
-			skipGenerate: z
-				.boolean()
-				.optional()
-				.describe('Skip regenerating task files'),
+				.describe('Path to the tasks file (default: tasks/tasks.json)'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
+				log.info(`Starting add-tag with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -64,33 +62,29 @@ export function registerRemoveSubtaskTool(server) {
 					);
 				}
 
-				const result = await removeSubtaskDirect(
+				// Call the direct function
+				const result = await addTagDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						convert: args.convert,
-						skipGenerate: args.skipGenerate,
+						name: args.name,
+						copyFromCurrent: args.copyFromCurrent,
+						copyFromTag: args.copyFromTag,
+						description: args.description,
 						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(`Subtask removed successfully: ${result.data.message}`);
-				} else {
-					log.error(`Failed to remove subtask: ${result.error.message}`);
-				}
-
 				return handleApiResult(
 					result,
 					log,
-					'Error removing subtask',
+					'Error creating tag',
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in removeSubtask tool: ${error.message}`);
+				log.error(`Error in add-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

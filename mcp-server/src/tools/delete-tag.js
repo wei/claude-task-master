@@ -1,54 +1,42 @@
 /**
- * tools/remove-subtask.js
- * Tool for removing subtasks from parent tasks
+ * tools/delete-tag.js
+ * Tool to delete an existing tag
  */
 
 import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { removeSubtaskDirect } from '../core/task-master-core.js';
+import { deleteTagDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
- * Register the removeSubtask tool with the MCP server
+ * Register the deleteTag tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
-export function registerRemoveSubtaskTool(server) {
+export function registerDeleteTagTool(server) {
 	server.addTool({
-		name: 'remove_subtask',
-		description: 'Remove a subtask from its parent task',
+		name: 'delete_tag',
+		description: 'Delete an existing tag and all its tasks',
 		parameters: z.object({
-			id: z
-				.string()
-				.describe(
-					"Subtask ID to remove in format 'parentId.subtaskId' (required)"
-				),
-			convert: z
+			name: z.string().describe('Name of the tag to delete'),
+			yes: z
 				.boolean()
 				.optional()
-				.describe(
-					'Convert the subtask to a standalone task instead of deleting it'
-				),
+				.describe('Skip confirmation prompts (default: true for MCP)'),
 			file: z
 				.string()
 				.optional()
-				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
-				),
-			skipGenerate: z
-				.boolean()
-				.optional()
-				.describe('Skip regenerating task files'),
+				.describe('Path to the tasks file (default: tasks/tasks.json)'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
+				log.info(`Starting delete-tag with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -64,33 +52,27 @@ export function registerRemoveSubtaskTool(server) {
 					);
 				}
 
-				const result = await removeSubtaskDirect(
+				// Call the direct function (always skip confirmation for MCP)
+				const result = await deleteTagDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						convert: args.convert,
-						skipGenerate: args.skipGenerate,
+						name: args.name,
+						yes: args.yes !== undefined ? args.yes : true, // Default to true for MCP
 						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(`Subtask removed successfully: ${result.data.message}`);
-				} else {
-					log.error(`Failed to remove subtask: ${result.error.message}`);
-				}
-
 				return handleApiResult(
 					result,
 					log,
-					'Error removing subtask',
+					'Error deleting tag',
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in removeSubtask tool: ${error.message}`);
+				log.error(`Error in delete-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

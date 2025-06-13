@@ -1,54 +1,41 @@
 /**
- * tools/remove-subtask.js
- * Tool for removing subtasks from parent tasks
+ * tools/list-tags.js
+ * Tool to list all available tags
  */
 
 import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { removeSubtaskDirect } from '../core/task-master-core.js';
+import { listTagsDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
- * Register the removeSubtask tool with the MCP server
+ * Register the listTags tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
-export function registerRemoveSubtaskTool(server) {
+export function registerListTagsTool(server) {
 	server.addTool({
-		name: 'remove_subtask',
-		description: 'Remove a subtask from its parent task',
+		name: 'list_tags',
+		description: 'List all available tags with task counts and metadata',
 		parameters: z.object({
-			id: z
-				.string()
-				.describe(
-					"Subtask ID to remove in format 'parentId.subtaskId' (required)"
-				),
-			convert: z
+			showMetadata: z
 				.boolean()
 				.optional()
-				.describe(
-					'Convert the subtask to a standalone task instead of deleting it'
-				),
+				.describe('Whether to include metadata in the output (default: false)'),
 			file: z
 				.string()
 				.optional()
-				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
-				),
-			skipGenerate: z
-				.boolean()
-				.optional()
-				.describe('Skip regenerating task files'),
+				.describe('Path to the tasks file (default: tasks/tasks.json)'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
+				log.info(`Starting list-tags with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -64,33 +51,26 @@ export function registerRemoveSubtaskTool(server) {
 					);
 				}
 
-				const result = await removeSubtaskDirect(
+				// Call the direct function
+				const result = await listTagsDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						convert: args.convert,
-						skipGenerate: args.skipGenerate,
+						showMetadata: args.showMetadata,
 						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(`Subtask removed successfully: ${result.data.message}`);
-				} else {
-					log.error(`Failed to remove subtask: ${result.error.message}`);
-				}
-
 				return handleApiResult(
 					result,
 					log,
-					'Error removing subtask',
+					'Error listing tags',
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in removeSubtask tool: ${error.message}`);
+				log.error(`Error in list-tags tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

@@ -948,6 +948,10 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed task updates'
 		)
+		.option(
+			'--append',
+			'Append timestamped information to task details instead of full update'
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
@@ -1058,7 +1062,9 @@ function registerCommands(programInstance) {
 					taskId,
 					prompt,
 					useResearch,
-					{ projectRoot, tag }
+					{ projectRoot, tag },
+					'text',
+					options.append || false
 				);
 
 				// If the task wasn't updated (e.g., if it was already marked as done)

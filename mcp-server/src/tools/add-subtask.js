@@ -88,9 +88,11 @@ export function registerAddSubtaskTool(server) {
 						details: args.details,
 						status: args.status,
 						dependencies: args.dependencies,
-						skipGenerate: args.skipGenerate
+						skipGenerate: args.skipGenerate,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {

@@ -32,6 +32,12 @@ import { initializeProjectDirect } from './direct-functions/initialize-project.j
 import { modelsDirect } from './direct-functions/models.js';
 import { moveTaskDirect } from './direct-functions/move-task.js';
 import { researchDirect } from './direct-functions/research.js';
+import { addTagDirect } from './direct-functions/add-tag.js';
+import { deleteTagDirect } from './direct-functions/delete-tag.js';
+import { listTagsDirect } from './direct-functions/list-tags.js';
+import { useTagDirect } from './direct-functions/use-tag.js';
+import { renameTagDirect } from './direct-functions/rename-tag.js';
+import { copyTagDirect } from './direct-functions/copy-tag.js';
 
 // Re-export utility functions
 export { findTasksPath } from './utils/path-utils.js';
@@ -64,7 +70,13 @@ export const directFunctions = new Map([
 	['initializeProjectDirect', initializeProjectDirect],
 	['modelsDirect', modelsDirect],
 	['moveTaskDirect', moveTaskDirect],
-	['researchDirect', researchDirect]
+	['researchDirect', researchDirect],
+	['addTagDirect', addTagDirect],
+	['deleteTagDirect', deleteTagDirect],
+	['listTagsDirect', listTagsDirect],
+	['useTagDirect', useTagDirect],
+	['renameTagDirect', renameTagDirect],
+	['copyTagDirect', copyTagDirect]
 ]);
 
 // Re-export all direct function implementations
@@ -95,5 +107,11 @@ export {
 	initializeProjectDirect,
 	modelsDirect,
 	moveTaskDirect,
-	researchDirect
+	researchDirect,
+	addTagDirect,
+	deleteTagDirect,
+	listTagsDirect,
+	useTagDirect,
+	renameTagDirect,
+	copyTagDirect
 };

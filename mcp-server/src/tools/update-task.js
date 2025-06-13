@@ -34,6 +34,12 @@ export function registerUpdateTaskTool(server) {
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
+			append: z
+				.boolean()
+				.optional()
+				.describe(
+					'Append timestamped information to task details instead of full update'
+				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
@@ -67,6 +73,7 @@ export function registerUpdateTaskTool(server) {
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
+						append: args.append,
 						projectRoot: args.projectRoot
 					},
 					log,

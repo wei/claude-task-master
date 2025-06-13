@@ -19,6 +19,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} args.id - Task ID (or subtask ID like "1.2").
  * @param {string} args.prompt - New information/context prompt.
  * @param {boolean} [args.research] - Whether to use research role.
+ * @param {boolean} [args.append] - Whether to append timestamped information instead of full update.
  * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
@@ -27,7 +28,7 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+	const { tasksJsonPath, id, prompt, research, append, projectRoot } = args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -118,7 +119,8 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					commandName: 'update-task',
 					outputType: 'mcp'
 				},
-				'json'
+				'json',
+				append || false
 			);
 
 			// Check if the core function returned null or an object without success

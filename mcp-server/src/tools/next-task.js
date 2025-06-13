@@ -11,8 +11,8 @@ import {
 } from './utils.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
 import {
-	resolveTasksPath,
-	resolveComplexityReportPath
+	findTasksPath,
+	findComplexityReportPath
 } from '../core/utils/path-utils.js';
 
 /**
@@ -40,10 +40,13 @@ export function registerNextTaskTool(server) {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);
 
-				// Resolve the path to tasks.json using new path utilities
+				// Resolve the path to tasks.json
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = resolveTasksPath(args, session);
+					tasksJsonPath = findTasksPath(
+						{ projectRoot: args.projectRoot, file: args.file },
+						log
+					);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -54,7 +57,13 @@ export function registerNextTaskTool(server) {
 				// Resolve the path to complexity report (optional)
 				let complexityReportPath;
 				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
+					complexityReportPath = findComplexityReportPath(
+						{
+							projectRoot: args.projectRoot,
+							complexityReport: args.complexityReport
+						},
+						log
+					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
 					// This is optional, so we don't fail the operation
@@ -64,9 +73,11 @@ export function registerNextTaskTool(server) {
 				const result = await nextTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						reportPath: complexityReportPath
+						reportPath: complexityReportPath,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);

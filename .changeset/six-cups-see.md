@@ -25,6 +25,16 @@ The new tagged system fundamentally changes how tasks are organized:
 - `task-master rename-tag <old> <new>` - Rename tags with automatic current tag reference updates
 - `task-master copy-tag <source> <target> [options]` - Duplicate tag contexts for experimentation
 
+**🤖 Full MCP Integration for Tag Management:**
+
+Task Master's multi-context capabilities are now fully exposed through the MCP server, enabling powerful agentic workflows:
+- **`list_tags`**: List all available tag contexts.
+- **`add_tag`**: Programmatically create new tags.
+- **`delete_tag`**: Remove tag contexts.
+- **`use_tag`**: Switch the agent's active task context.
+- **`rename_tag`**: Rename existing tags.
+- **`copy_tag`**: Duplicate entire task contexts for experimentation.
+
 **Tag Creation Options:**
 - `--copy-from-current` - Copy tasks from currently active tag
 - `--copy-from=<tag>` - Copy tasks from specific tag

@@ -63,9 +63,11 @@ export function registerClearSubtasksTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						all: args.all
+						all: args.all,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {

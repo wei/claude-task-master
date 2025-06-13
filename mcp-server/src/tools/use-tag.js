@@ -1,40 +1,38 @@
 /**
- * tools/generate.js
- * Tool to generate individual task files from tasks.json
+ * tools/use-tag.js
+ * Tool to switch to a different tag context
  */
 
 import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { generateTaskFilesDirect } from '../core/task-master-core.js';
+import { useTagDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import path from 'path';
 
 /**
- * Register the generate tool with the MCP server
+ * Register the useTag tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
-export function registerGenerateTool(server) {
+export function registerUseTagTool(server) {
 	server.addTool({
-		name: 'generate',
-		description:
-			'Generates individual task files in tasks/ directory based on tasks.json',
+		name: 'use_tag',
+		description: 'Switch to a different tag context for task operations',
 		parameters: z.object({
-			file: z.string().optional().describe('Absolute path to the tasks file'),
-			output: z
+			name: z.string().describe('Name of the tag to switch to'),
+			file: z
 				.string()
 				.optional()
-				.describe('Output directory (default: same directory as tasks file)'),
+				.describe('Path to the tasks file (default: tasks/tasks.json)'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
+				log.info(`Starting use-tag with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -50,37 +48,26 @@ export function registerGenerateTool(server) {
 					);
 				}
 
-				const outputDir = args.output
-					? path.resolve(args.projectRoot, args.output)
-					: path.dirname(tasksJsonPath);
-
-				const result = await generateTaskFilesDirect(
+				// Call the direct function
+				const result = await useTagDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						outputDir: outputDir,
+						name: args.name,
 						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(`Successfully generated task files: ${result.data.message}`);
-				} else {
-					log.error(
-						`Failed to generate task files: ${result.error?.message || 'Unknown error'}`
-					);
-				}
-
 				return handleApiResult(
 					result,
 					log,
-					'Error generating task files',
+					'Error switching tag',
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in generate tool: ${error.message}`);
+				log.error(`Error in use-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})
