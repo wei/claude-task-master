@@ -64,17 +64,29 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		log('info', 'Checking for orphaned task files to clean up...');
 		try {
 			const files = fs.readdirSync(outputDir);
-			const taskFilePattern = /^task_(\d+)\.txt$/;
+			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
+			const masterFilePattern = /^task_(\d+)\.txt$/;
+			const taggedFilePattern = new RegExp(`^task_(\\d+)_${targetTag}\\.txt$`);
 
 			const orphanedFiles = files.filter((file) => {
-				const match = file.match(taskFilePattern);
-				if (match) {
-					const fileTaskId = parseInt(match[1], 10);
-					// Important: Only clean up files for tasks that *should* be in the current tag.
-					// This prevents deleting files from other tags.
-					// A more robust cleanup might need to check across all tags.
-					// For now, this is safer than the previous implementation.
-					return !validTaskIds.includes(fileTaskId);
+				let match = null;
+				let fileTaskId = null;
+
+				// Check if file belongs to current tag
+				if (targetTag === 'master') {
+					match = file.match(masterFilePattern);
+					if (match) {
+						fileTaskId = parseInt(match[1], 10);
+						// Only clean up master files when processing master tag
+						return !validTaskIds.includes(fileTaskId);
+					}
+				} else {
+					match = file.match(taggedFilePattern);
+					if (match) {
+						fileTaskId = parseInt(match[1], 10);
+						// Only clean up files for the current tag
+						return !validTaskIds.includes(fileTaskId);
+					}
 				}
 				return false;
 			});
@@ -98,10 +110,13 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		// Generate task files for the target tag
 		log('info', `Generating individual task files for tag '${targetTag}'...`);
 		tasksForGeneration.forEach((task) => {
-			const taskPath = path.join(
-				outputDir,
-				`task_${task.id.toString().padStart(3, '0')}.txt`
-			);
+			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
+			const taskFileName =
+				targetTag === 'master'
+					? `task_${task.id.toString().padStart(3, '0')}.txt`
+					: `task_${task.id.toString().padStart(3, '0')}_${targetTag}.txt`;
+
+			const taskPath = path.join(outputDir, taskFileName);
 
 			let content = `# Task ID: ${task.id}\n`;
 			content += `# Title: ${task.title}\n`;

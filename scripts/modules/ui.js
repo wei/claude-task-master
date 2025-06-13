@@ -901,10 +901,13 @@ function truncateString(str, maxLength) {
 async function displayNextTask(
 	tasksPath,
 	complexityReportPath = null,
-	tag = null
+	context = {}
 ) {
-	// Read the tasks file
-	const data = readJSON(tasksPath, tag);
+	// Extract parameters from context
+	const { projectRoot, tag } = context;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);

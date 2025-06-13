@@ -22,7 +22,8 @@ import {
 	truncate,
 	ensureTagMetadata,
 	performCompleteTagMigration,
-	markMigrationForNotice
+	markMigrationForNotice,
+	getCurrentTag
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
@@ -253,8 +254,9 @@ async function addTask(
 			report('Successfully migrated to tagged format.', 'success');
 		}
 
-		// Use the provided tag, or the current tag, or default to 'master'
-		const targetTag = tag || context.tag || 'master';
+		// Use the provided tag, or the current active tag, or default to 'master'
+		const targetTag =
+			tag || context.tag || getCurrentTag(projectRoot) || 'master';
 
 		// Ensure the target tag exists
 		if (!rawData[targetTag]) {

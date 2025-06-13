@@ -87,6 +87,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
+	const tag = options.tag;
 	// New parameters for task ID filtering
 	const specificIds = options.id
 		? options.id
@@ -126,7 +127,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			originalTaskCount = options._originalTaskCount || tasksData.tasks.length;
 			if (!options._originalTaskCount) {
 				try {
-					originalData = readJSON(tasksPath);
+					originalData = readJSON(tasksPath, projectRoot, tag);
 					if (originalData && originalData.tasks) {
 						originalTaskCount = originalData.tasks.length;
 					}
@@ -135,7 +136,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 		} else {
-			originalData = readJSON(tasksPath);
+			originalData = readJSON(tasksPath, projectRoot, tag);
 			if (
 				!originalData ||
 				!originalData.tasks ||
@@ -278,7 +279,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		const existingAnalysisMap = new Map(); // For quick lookups by task ID
 		try {
 			if (fs.existsSync(outputPath)) {
-				existingReport = readJSON(outputPath);
+				existingReport = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 				reportLog(`Found existing complexity report at ${outputPath}`, 'info');
 
 				if (
@@ -337,7 +338,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: existingReport?.complexityAnalysis || []
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
-			writeJSON(outputPath, emptyReport);
+			fs.writeFileSync(
+				outputPath,
+				JSON.stringify(emptyReport, null, '\t'),
+				'utf8'
+			);
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
 				'success'
@@ -564,7 +569,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: finalComplexityAnalysis
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
-			writeJSON(outputPath, report);
+			fs.writeFileSync(outputPath, JSON.stringify(report, null, '\t'), 'utf8');
 
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,

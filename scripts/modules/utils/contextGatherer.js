@@ -71,6 +71,7 @@ export class ContextGatherer {
 	 * @param {string} [options.customContext] - Additional custom context
 	 * @param {boolean} [options.includeProjectTree] - Include project file tree
 	 * @param {string} [options.format] - Output format: 'research', 'chat', 'system-prompt'
+	 * @param {boolean} [options.includeTokenCounts] - Whether to include token breakdown
 	 * @param {string} [options.semanticQuery] - A query string for semantic task searching.
 	 * @param {number} [options.maxSemanticResults] - Max number of semantic results.
 	 * @param {Array<number>} [options.dependencyTasks] - Array of task IDs to build dependency graphs from.
@@ -83,6 +84,7 @@ export class ContextGatherer {
 			customContext = '',
 			includeProjectTree = false,
 			format = 'research',
+			includeTokenCounts = false,
 			semanticQuery,
 			maxSemanticResults = 10,
 			dependencyTasks = []
@@ -91,6 +93,18 @@ export class ContextGatherer {
 		const contextSections = [];
 		const finalTaskIds = new Set(tasks.map(String));
 		let analysisData = null;
+		let tokenBreakdown = null;
+
+		// Initialize token breakdown if requested
+		if (includeTokenCounts) {
+			tokenBreakdown = {
+				total: 0,
+				customContext: null,
+				tasks: [],
+				files: [],
+				projectTree: null
+			};
+		}
 
 		// Semantic Search
 		if (semanticQuery && this.allTasks.length > 0) {
@@ -118,44 +132,98 @@ export class ContextGatherer {
 
 		// Add custom context first
 		if (customContext && customContext.trim()) {
-			contextSections.push(this._formatCustomContext(customContext, format));
+			const formattedCustomContext = this._formatCustomContext(
+				customContext,
+				format
+			);
+			contextSections.push(formattedCustomContext);
+
+			// Calculate tokens for custom context if requested
+			if (includeTokenCounts) {
+				tokenBreakdown.customContext = {
+					tokens: this.countTokens(formattedCustomContext),
+					characters: formattedCustomContext.length
+				};
+				tokenBreakdown.total += tokenBreakdown.customContext.tokens;
+			}
 		}
 
 		// Gather context for the final list of tasks
 		if (finalTaskIds.size > 0) {
 			const taskContextResult = await this._gatherTaskContext(
 				Array.from(finalTaskIds),
-				format
+				format,
+				includeTokenCounts
 			);
 			if (taskContextResult.context) {
 				contextSections.push(taskContextResult.context);
+
+				// Add task breakdown if token counting is enabled
+				if (includeTokenCounts && taskContextResult.breakdown) {
+					tokenBreakdown.tasks = taskContextResult.breakdown;
+					const taskTokens = taskContextResult.breakdown.reduce(
+						(sum, task) => sum + task.tokens,
+						0
+					);
+					tokenBreakdown.total += taskTokens;
+				}
 			}
 		}
 
 		// Add file context
 		if (files.length > 0) {
-			const fileContextResult = await this._gatherFileContext(files, format);
+			const fileContextResult = await this._gatherFileContext(
+				files,
+				format,
+				includeTokenCounts
+			);
 			if (fileContextResult.context) {
 				contextSections.push(fileContextResult.context);
+
+				// Add file breakdown if token counting is enabled
+				if (includeTokenCounts && fileContextResult.breakdown) {
+					tokenBreakdown.files = fileContextResult.breakdown;
+					const fileTokens = fileContextResult.breakdown.reduce(
+						(sum, file) => sum + file.tokens,
+						0
+					);
+					tokenBreakdown.total += fileTokens;
+				}
 			}
 		}
 
 		// Add project tree context
 		if (includeProjectTree) {
-			const treeContextResult = await this._gatherProjectTreeContext(format);
+			const treeContextResult = await this._gatherProjectTreeContext(
+				format,
+				includeTokenCounts
+			);
 			if (treeContextResult.context) {
 				contextSections.push(treeContextResult.context);
+
+				// Add tree breakdown if token counting is enabled
+				if (includeTokenCounts && treeContextResult.breakdown) {
+					tokenBreakdown.projectTree = treeContextResult.breakdown;
+					tokenBreakdown.total += treeContextResult.breakdown.tokens;
+				}
 			}
 		}
 
 		const finalContext = this._joinContextSections(contextSections, format);
 
-		return {
+		const result = {
 			context: finalContext,
 			analysisData: analysisData,
 			contextSections: contextSections.length,
 			finalTaskIds: Array.from(finalTaskIds)
 		};
+
+		// Only include tokenBreakdown if it was requested
+		if (includeTokenCounts) {
+			result.tokenBreakdown = tokenBreakdown;
+		}
+
+		return result;
 	}
 
 	_performSemanticSearch(query, maxResults) {
