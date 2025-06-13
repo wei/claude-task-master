@@ -2525,7 +2525,6 @@ ${result.result}
 	programInstance
 		.command('remove-task')
 		.description('Remove one or more tasks or subtasks permanently')
-		.description('Remove one or more tasks or subtasks permanently')
 		.option(
 			'-i, --id <ids>',
 			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5", "5.2", or "5,6.1,7")'
@@ -2536,9 +2535,17 @@ ${result.result}
 			TASKMASTER_TASKS_FILE
 		)
 		.option('-y, --yes', 'Skip confirmation prompt', false)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIdsString = options.id;
+			const tag = options.tag;
+
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			if (!taskIdsString) {
 				console.error(chalk.red('Error: Task ID(s) are required'));
@@ -2562,7 +2569,7 @@ ${result.result}
 
 			try {
 				// Read data once for checks and confirmation
-				const data = readJSON(tasksPath);
+				const data = readJSON(tasksPath, projectRoot, tag);
 				if (!data || !data.tasks) {
 					console.error(
 						chalk.red(`Error: No valid tasks found in ${tasksPath}`)
@@ -2702,7 +2709,10 @@ ${result.result}
 				const existingIdsString = existingTasksToRemove
 					.map(({ id }) => id)
 					.join(',');
-				const result = await removeTask(tasksPath, existingIdsString);
+				const result = await removeTask(tasksPath, existingIdsString, {
+					projectRoot,
+					tag
+				});
 
 				stopLoadingIndicator(indicator);
 
