@@ -1346,16 +1346,20 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			console.log(
-				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
-			);
-
 			// Find project root for tag resolution
 			const projectRoot = findProjectRoot();
 			if (!projectRoot) {
 				console.error(chalk.red('Error: Could not find project root.'));
 				process.exit(1);
 			}
+
+			// Resolve tag using standard pattern and show current tag context
+			const resolvedTag = tag || getCurrentTag(projectRoot) || 'master';
+			displayCurrentTagIndicator(resolvedTag);
+
+			console.log(
+				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
+			);
 
 			await setTaskStatus(tasksPath, taskId, status, { projectRoot, tag });
 		});

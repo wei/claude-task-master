@@ -821,9 +821,8 @@ function formatTaskId(id) {
  * @param {Array} tasks - The tasks array
  * @param {string|number} taskId - The task ID to find
  * @param {Object|null} complexityReport - Optional pre-loaded complexity report
- * @returns {Object|null} The task object or null if not found
  * @param {string} [statusFilter] - Optional status to filter subtasks by
- * @returns {{task: Object|null, originalSubtaskCount: number|null}} The task object (potentially with filtered subtasks) and the original subtask count if filtered, or nulls if not found.
+ * @returns {{task: Object|null, originalSubtaskCount: number|null, originalSubtasks: Array|null}} The task object (potentially with filtered subtasks), the original subtask count, and original subtasks array if filtered, or nulls if not found.
  */
 function findTaskById(
 	tasks,
@@ -844,7 +843,7 @@ function findTaskById(
 		const parentTask = tasks.find((t) => t.id === parentId);
 
 		if (!parentTask || !parentTask.subtasks) {
-			return { task: null, originalSubtaskCount: null };
+			return { task: null, originalSubtaskCount: null, originalSubtasks: null };
 		}
 
 		const subtask = parentTask.subtasks.find((st) => st.id === subtaskId);
@@ -863,11 +862,16 @@ function findTaskById(
 			addComplexityToTask(subtask, complexityReport);
 		}
 
-		return { task: subtask || null, originalSubtaskCount: null };
+		return {
+			task: subtask || null,
+			originalSubtaskCount: null,
+			originalSubtasks: null
+		};
 	}
 
 	let taskResult = null;
-	const originalSubtaskCount = null;
+	let originalSubtaskCount = null;
+	let originalSubtasks = null;
 
 	// Find the main task
 	const id = parseInt(taskId, 10);
@@ -875,13 +879,17 @@ function findTaskById(
 
 	// If task not found, return nulls
 	if (!task) {
-		return { task: null, originalSubtaskCount: null };
+		return { task: null, originalSubtaskCount: null, originalSubtasks: null };
 	}
 
 	taskResult = task;
 
 	// If task found and statusFilter provided, filter its subtasks
 	if (statusFilter && task.subtasks && Array.isArray(task.subtasks)) {
+		// Store original subtasks and count before filtering
+		originalSubtasks = [...task.subtasks]; // Clone the original subtasks array
+		originalSubtaskCount = task.subtasks.length;
+
 		// Clone the task to avoid modifying the original array
 		const filteredTask = { ...task };
 		filteredTask.subtasks = task.subtasks.filter(
@@ -898,8 +906,8 @@ function findTaskById(
 		addComplexityToTask(taskResult, complexityReport);
 	}
 
-	// Return the found task and original subtask count
-	return { task: taskResult, originalSubtaskCount };
+	// Return the found task, original subtask count, and original subtasks
+	return { task: taskResult, originalSubtaskCount, originalSubtasks };
 }
 
 /**

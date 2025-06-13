@@ -96,10 +96,30 @@ async function setTaskStatus(
 		const taskIds = taskIdInput.split(',').map((id) => id.trim());
 		const updatedTasks = [];
 
-		// Update each task
+		// Update each task and capture old status for display
 		for (const id of taskIds) {
+			// Capture old status before updating
+			let oldStatus = 'unknown';
+
+			if (id.includes('.')) {
+				// Handle subtask
+				const [parentId, subtaskId] = id
+					.split('.')
+					.map((id) => parseInt(id, 10));
+				const parentTask = data.tasks.find((t) => t.id === parentId);
+				if (parentTask?.subtasks) {
+					const subtask = parentTask.subtasks.find((st) => st.id === subtaskId);
+					oldStatus = subtask?.status || 'pending';
+				}
+			} else {
+				// Handle regular task
+				const taskId = parseInt(id, 10);
+				const task = data.tasks.find((t) => t.id === taskId);
+				oldStatus = task?.status || 'pending';
+			}
+
 			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode);
-			updatedTasks.push(id);
+			updatedTasks.push({ id, oldStatus, newStatus });
 		}
 
 		// Update the raw data structure with the modified tasks
@@ -126,16 +146,15 @@ async function setTaskStatus(
 
 		// Display success message - only in CLI mode
 		if (!isMcpMode) {
-			for (const id of updatedTasks) {
-				const task = findTaskById(data.tasks, id);
-				const taskName = task ? task.title : id;
+			for (const updateInfo of updatedTasks) {
+				const { id, oldStatus, newStatus: updatedStatus } = updateInfo;
 
 				console.log(
 					boxen(
 						chalk.white.bold(`Successfully updated task ${id} status:`) +
 							'\n' +
-							`From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
-							`To:   ${chalk.green(newStatus)}`,
+							`From: ${chalk.yellow(oldStatus)}\n` +
+							`To:   ${chalk.green(updatedStatus)}`,
 						{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 					)
 				);
@@ -145,9 +164,10 @@ async function setTaskStatus(
 		// Return success value for programmatic use
 		return {
 			success: true,
-			updatedTasks: updatedTasks.map((id) => ({
+			updatedTasks: updatedTasks.map(({ id, oldStatus, newStatus }) => ({
 				id,
-				status: newStatus
+				oldStatus,
+				newStatus
 			}))
 		};
 	} catch (error) {
