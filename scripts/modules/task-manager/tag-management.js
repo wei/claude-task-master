@@ -17,6 +17,7 @@ import {
 	truncate
 } from '../utils.js';
 import { displayBanner, getStatusWithColor } from '../ui.js';
+import findNextTask from './find-next-task.js';
 
 /**
  * Create a new tag context
@@ -734,9 +735,13 @@ async function useTag(
 		// Switch to the new tag
 		await switchCurrentTag(projectRoot, tagName);
 
-		// Get task count for the new tag
-		const tasks = getTasksForTag(data, tagName);
+		// Get task count for the new tag - read tasks specifically for this tag
+		const tagData = readJSON(tasksPath, projectRoot, tagName);
+		const tasks = tagData ? tagData.tasks || [] : [];
 		const taskCount = tasks.length;
+
+		// Find the next task to work on in this tag
+		const nextTask = findNextTask(tasks);
 
 		logFn.success(`Successfully switched to tag "${tagName}"`);
 
@@ -746,18 +751,27 @@ async function useTag(
 				previousTag,
 				currentTag: tagName,
 				switched: true,
-				taskCount
+				taskCount,
+				nextTask
 			};
 		}
 
 		// For text output, display success message
 		if (outputFormat === 'text') {
+			let nextTaskInfo = '';
+			if (nextTask) {
+				nextTaskInfo = `\nNext Task: ${chalk.cyan(`#${nextTask.id}`)} - ${chalk.white(nextTask.title)}`;
+			} else {
+				nextTaskInfo = `\nNext Task: ${chalk.gray('No eligible tasks available')}`;
+			}
+
 			console.log(
 				boxen(
 					chalk.green.bold('✓ Tag Switched Successfully') +
 						`\n\nPrevious Tag: ${chalk.cyan(previousTag)}` +
 						`\nCurrent Tag: ${chalk.green.bold(tagName)}` +
-						`\nAvailable Tasks: ${chalk.yellow(taskCount)}`,
+						`\nAvailable Tasks: ${chalk.yellow(taskCount)}` +
+						nextTaskInfo,
 					{
 						padding: 1,
 						borderColor: 'green',
@@ -772,7 +786,8 @@ async function useTag(
 			previousTag,
 			currentTag: tagName,
 			switched: true,
-			taskCount
+			taskCount,
+			nextTask
 		};
 	} catch (error) {
 		logFn.error(`Error switching tag: ${error.message}`);
