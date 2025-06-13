@@ -800,8 +800,7 @@ Refer to [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc) for 
       // Add tags section if missing
       if (!config.tags) {
         config.tags = {
-          enabledGitworkflow: false,
-          autoSwitchTagWithBranch: false
+                  // Git integration settings removed - now manual only
         };
         modified = true;
       }
@@ -824,7 +823,6 @@ Refer to [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc) for 
       const initialState = {
         currentTag: 'master',
         lastSwitched: new Date().toISOString(),
-        branchTagMapping: {},
         migrationNoticeShown: false
       };
       

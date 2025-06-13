@@ -41,10 +41,10 @@ Task Master's **tagged task lists system** provides significant benefits for Git
 - **Zero Disruption**: All existing Git workflows continue unchanged
 - **Backward Compatibility**: Legacy projects work exactly as before
 
-### **Future Enhancements (Part 2)**
-- **Automatic Tag Creation**: Create tags based on git branch names
-- **Branch-Tag Mapping**: Automatically switch tag contexts with branch changes
-- **Git Integration**: Enhanced git branch integration features
+### **Manual Git Integration**
+- **Manual Tag Creation**: Use `--from-branch` option to create tags from current git branch
+- **Manual Context Switching**: Explicitly switch tag contexts as needed for different branches
+- **Simplified Integration**: Focused on manual control rather than automatic workflows
 
 ## **Workflow Overview**
 
@@ -328,10 +328,10 @@ Mention any dependent tasks or follow-up work needed.
 # 2. Tasks in separate tags are completely isolated
 # 3. Use Task Master's move functionality to reorganize if needed
 
-# Future (Part 2): Enhanced git integration
-# - Automatic tag creation based on branch names
-# - Branch-tag mapping for seamless context switching
-# - Git hooks for automated tag management
+# Manual git integration available:
+# - Use `task-master add-tag --from-branch` to create tags from current branch
+# - Manually switch contexts with `task-master use-tag <name>`
+# - Simple, predictable workflow without automatic behavior
 ```
 
 ### **Code Conflicts**
@@ -391,10 +391,10 @@ task-master update-task --id=<id> --prompt="Task cancelled due to..."
 - **Clean Merges**: Reduced likelihood of task-related merge conflicts
 - **Parallel Development**: Multiple developers can work simultaneously without task conflicts
 
-### **Future Git Integration (Part 2)**
-- **Branch-Tag Mapping**: Automatic tag switching based on git branch
-- **Git Hooks**: Automated tag management during branch operations
-- **Enhanced Workflow**: Seamless integration between git branches and task contexts
+### **Manual Git Integration**
+- **Branch-Based Tag Creation**: Use `--from-branch` option to create tags from current git branch
+- **Manual Context Management**: Explicitly switch tag contexts as needed
+- **Predictable Workflow**: Simple, manual control without automatic behavior
 
 ---
 

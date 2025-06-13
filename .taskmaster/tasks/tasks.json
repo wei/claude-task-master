@@ -6592,7 +6592,7 @@
               8
             ],
             "details": "Provide clear instructions and examples for all tag management features, ensuring add-tag command is properly documented with consistent naming.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Review documentation for completeness and clarity; user acceptance testing."
           },
           {
@@ -6748,7 +6748,7 @@
     ],
     "metadata": {
       "created": "2025-06-13T02:49:12.129Z",
-      "updated": "2025-06-13T20:18:22.896Z",
+      "updated": "2025-06-13T23:34:21.222Z",
       "description": "Tasks for master context"
     }
   },
