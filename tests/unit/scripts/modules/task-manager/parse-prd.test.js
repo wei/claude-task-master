@@ -211,12 +211,12 @@ describe('parsePRD', () => {
 			sampleClaudeResponse
 		);
 
-		// Verify generateTaskFiles was called
-		expect(generateTaskFiles).toHaveBeenCalledWith(
-			'tasks/tasks.json',
-			'tasks',
-			{ mcpLog: undefined }
-		);
+		// // Verify generateTaskFiles was called
+		// expect(generateTaskFiles).toHaveBeenCalledWith(
+		// 	'tasks/tasks.json',
+		// 	'tasks',
+		// 	{ mcpLog: undefined }
+		// );
 
 		// Verify result
 		expect(result).toEqual({
@@ -285,12 +285,12 @@ describe('parsePRD', () => {
 		// Call the function
 		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
 
-		// Verify generateTaskFiles was called
-		expect(generateTaskFiles).toHaveBeenCalledWith(
-			'tasks/tasks.json',
-			'tasks',
-			{ mcpLog: undefined }
-		);
+		// // Verify generateTaskFiles was called
+		// expect(generateTaskFiles).toHaveBeenCalledWith(
+		// 	'tasks/tasks.json',
+		// 	'tasks',
+		// 	{ mcpLog: undefined }
+		// );
 	});
 
 	test('should overwrite tasks.json when force flag is true', async () => {

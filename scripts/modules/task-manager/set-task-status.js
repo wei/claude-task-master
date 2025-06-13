@@ -119,10 +119,10 @@ async function setTaskStatus(
 		validateTaskDependencies(data.tasks);
 
 		// Generate individual task files
-		log('info', 'Regenerating task files...');
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-			mcpLog: options.mcpLog
-		});
+		// log('info', 'Regenerating task files...');
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+		// 	mcpLog: options.mcpLog
+		// });
 
 		// Display success message - only in CLI mode
 		if (!isMcpMode) {

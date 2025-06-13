@@ -24,7 +24,7 @@ async function moveTask(
 	tasksPath,
 	sourceId,
 	destinationId,
-	generateFiles = true,
+	generateFiles = false,
 	options = {}
 ) {
 	// Check if we have comma-separated IDs (batch move)

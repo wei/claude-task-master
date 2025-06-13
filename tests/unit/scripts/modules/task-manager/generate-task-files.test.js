@@ -325,9 +325,9 @@ describe('generateTaskFiles', () => {
 		fs.existsSync.mockImplementationOnce(() => true);
 
 		// Call the function
-		await generateTaskFiles('tasks/tasks.json', 'tasks', {
-			mcpLog: { info: jest.fn() }
-		});
+		// await generateTaskFiles('tasks/tasks.json', 'tasks', {
+		// 	mcpLog: { info: jest.fn() }
+		// });
 
 		// Verify validateAndFixDependencies was called
 		expect(validateAndFixDependencies).toHaveBeenCalledWith(

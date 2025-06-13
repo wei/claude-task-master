@@ -477,7 +477,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					'success',
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
 				);
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 			if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
 				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');

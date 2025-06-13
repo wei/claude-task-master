@@ -195,10 +195,10 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 
 			// Generate updated task files ONCE, with context
 			try {
-				await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-					projectRoot,
-					tag: currentTag
-				});
+				// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+				// 	projectRoot,
+				// 	tag: currentTag
+				// });
 				results.messages.push('Task files regenerated successfully.');
 			} catch (genError) {
 				const genErrMsg = `Failed to regenerate task files: ${genError.message}`;

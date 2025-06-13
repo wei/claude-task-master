@@ -339,7 +339,7 @@ Guidelines:
 		);
 
 		// Generate markdown task files after writing tasks.json
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 
 		// Handle CLI output (e.g., success message)
 		if (outputFormat === 'text') {

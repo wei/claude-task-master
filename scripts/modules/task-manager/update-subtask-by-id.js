@@ -337,7 +337,7 @@ Output Requirements:
 		}
 
 		report('success', `Successfully updated subtask ${subtaskId}`);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		if (outputFormat === 'text') {
 			if (loadingIndicator) {

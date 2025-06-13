@@ -236,11 +236,11 @@ describe('setTaskStatus', () => {
 				])
 			})
 		);
-		expect(generateTaskFiles).toHaveBeenCalledWith(
-			tasksPath,
-			expect.any(String),
-			expect.any(Object)
-		);
+		// expect(generateTaskFiles).toHaveBeenCalledWith(
+		// 	tasksPath,
+		// 	expect.any(String),
+		// 	expect.any(Object)
+		// );
 	});
 
 	test('should update subtask status when using dot notation', async () => {

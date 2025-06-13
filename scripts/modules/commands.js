@@ -1972,10 +1972,18 @@ ${result.result}
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
+			const tag = options.tag;
+
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			if (!taskId || !dependencyId) {
 				console.error(
@@ -1993,7 +2001,10 @@ ${result.result}
 				? dependencyId
 				: parseInt(dependencyId, 10);
 
-			await addDependency(tasksPath, formattedTaskId, formattedDependencyId);
+			await addDependency(tasksPath, formattedTaskId, formattedDependencyId, {
+				projectRoot,
+				tag
+			});
 		});
 
 	// remove-dependency command
@@ -2007,10 +2018,18 @@ ${result.result}
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
+			const tag = options.tag;
+
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			if (!taskId || !dependencyId) {
 				console.error(
@@ -2028,7 +2047,15 @@ ${result.result}
 				? dependencyId
 				: parseInt(dependencyId, 10);
 
-			await removeDependency(tasksPath, formattedTaskId, formattedDependencyId);
+			await removeDependency(
+				tasksPath,
+				formattedTaskId,
+				formattedDependencyId,
+				{
+					projectRoot,
+					tag
+				}
+			);
 		});
 
 	// validate-dependencies command
@@ -2042,8 +2069,18 @@ ${result.result}
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			await validateDependenciesCommand(options.file || TASKMASTER_TASKS_FILE);
+			const tag = options.tag;
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
+			await validateDependenciesCommand(options.file || TASKMASTER_TASKS_FILE, {
+				context: { projectRoot, tag }
+			});
 		});
 
 	// fix-dependencies command
@@ -2055,8 +2092,18 @@ ${result.result}
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			await fixDependenciesCommand(options.file || TASKMASTER_TASKS_FILE);
+			const tag = options.tag;
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
+			await fixDependenciesCommand(options.file || TASKMASTER_TASKS_FILE, {
+				context: { projectRoot, tag }
+			});
 		});
 
 	// complexity-report command
@@ -2275,11 +2322,19 @@ ${result.result}
 			'Convert the subtask to a standalone task instead of deleting it'
 		)
 		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
 			const generateFiles = !options.skipGenerate;
+			const tag = options.tag;
+
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			if (!subtaskIds) {
 				console.error(
@@ -2318,7 +2373,8 @@ ${result.result}
 						tasksPath,
 						subtaskId,
 						convertToTask,
-						generateFiles
+						generateFiles,
+						{ projectRoot, tag }
 					);
 
 					if (convertToTask && result) {

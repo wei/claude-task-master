@@ -10,7 +10,6 @@
         "priority": "high",
         "details": "Create the foundational data structure including:\n- JSON schema for tasks.json\n- Task model with all required fields (id, title, description, status, dependencies, priority, details, testStrategy, subtasks)\n- Validation functions for the task model\n- Basic file system operations for reading/writing tasks.json\n- Error handling for file operations",
         "testStrategy": "Verify that the tasks.json structure can be created, read, and validated. Test with sample data to ensure all fields are properly handled and that validation correctly identifies invalid structures.",
-        "subtasks": [],
         "previousStatus": "in-progress"
       },
       {
@@ -18,13 +17,10 @@
         "title": "Develop Command Line Interface Foundation",
         "description": "Create the basic CLI structure using Commander.js with command parsing and help documentation.",
         "status": "done",
-        "dependencies": [
-          1
-        ],
+        "dependencies": [],
         "priority": "high",
         "details": "Implement the CLI foundation including:\n- Set up Commander.js for command parsing\n- Create help documentation for all commands\n- Implement colorized console output for better readability\n- Add logging system with configurable levels\n- Handle global options (--help, --version, --file, --quiet, --debug, --json)",
-        "testStrategy": "Test each command with various parameters to ensure proper parsing. Verify help documentation is comprehensive and accurate. Test logging at different verbosity levels.",
-        "subtasks": []
+        "testStrategy": "Test each command with various parameters to ensure proper parsing. Verify help documentation is comprehensive and accurate. Test logging at different verbosity levels."
       },
       {
         "id": 3,
@@ -36,8 +32,7 @@
         ],
         "priority": "high",
         "details": "Implement the following task operations:\n- List tasks with filtering options\n- Create new tasks with required fields\n- Update existing task properties\n- Delete tasks\n- Change task status (pending/done/deferred)\n- Handle dependencies between tasks\n- Manage task priorities",
-        "testStrategy": "Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file.",
-        "subtasks": []
+        "testStrategy": "Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file."
       },
       {
         "id": 4,
@@ -2417,8 +2412,7 @@
             "title": "Format Plan in XML",
             "description": "Format the generated implementation plan within XML tags. Each step in the plan should be represented as an XML element with appropriate attributes.",
             "dependencies": [
-              2,
-              "40.2"
+              2
             ],
             "details": "Define the XML schema for the implementation plan. Implement a function to convert the AI-generated plan into the defined XML format. Ensure proper XML syntax and validation.",
             "status": "pending"
@@ -6698,6 +6692,15 @@
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 103
+          },
+          {
+            "id": 20,
+            "title": "Implement Tag-Aware Task File Generation and Naming Convention",
+            "description": "**Goal:** Make task file generation tag-aware to prevent file deletion across different tag contexts.\n\n**Plan:**\n1.  **Disable Automatic Regeneration:** Modify all commands that currently regenerate task files automatically (e.g., `add-task`, `remove-task`, `add-subtask`) to stop this behavior. This is a temporary measure to prevent data loss.\n2.  **Refactor `generate-task-files.js`:** Update the core generation logic to be fully tag-aware.\n3.  **Implement New Filename Convention:** Change the task file naming scheme to include the tag name as a suffix. The new format will be `task_[ID]_[TAG].txt`. For example: `task_001_master.txt` and `task_001_gezo.txt`. This will prevent filename collisions and allow task files from different tags to coexist peacefully.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 103
           }
         ]
       },
@@ -6732,26 +6735,6 @@
       "created": "2025-06-13T02:49:12.129Z",
       "updated": "2025-06-13T04:12:48.834Z",
       "description": "Tasks for master context"
-    }
-  },
-  "gezo": {
-    "tasks": [
-      {
-        "id": 1,
-        "title": "Implement Cross-Tag Testing Framework",
-        "description": "Create a testing framework that can execute and validate tasks across different tags or environments to ensure consistent behavior and compatibility.",
-        "details": "Develop a comprehensive testing system that can handle task execution across multiple tags/environments. This includes: 1) Creating a tag-aware test runner that can identify and categorize tasks by their associated tags, 2) Implementing test isolation mechanisms to prevent cross-contamination between different tagged environments, 3) Building configuration management to handle different settings per tag (development, staging, production, feature branches), 4) Creating test data management strategies that work across tags, 5) Implementing result comparison and validation logic to ensure tasks behave consistently across different tags, 6) Adding logging and reporting capabilities to track test execution across tags, 7) Creating utilities for setup and teardown of tag-specific test environments, and 8) Implementing parallel execution capabilities to run tests across multiple tags simultaneously while maintaining isolation.",
-        "testStrategy": "Verify the framework by: 1) Creating sample tasks with different tags and confirming they execute in isolation, 2) Testing configuration switching between tags and validating environment-specific settings are applied correctly, 3) Running identical test suites across multiple tags and comparing results for consistency, 4) Verifying parallel execution works without interference between tagged environments, 5) Testing error handling and cleanup when tests fail in specific tag contexts, 6) Validating logging captures tag-specific information correctly, 7) Confirming test data isolation prevents data leakage between tags, and 8) Performance testing to ensure the overhead of tag management doesn't significantly impact test execution time.",
-        "status": "pending",
-        "dependencies": [],
-        "priority": "medium",
-        "subtasks": []
-      }
-    ],
-    "metadata": {
-      "created": "2025-06-13T04:19:20.029Z",
-      "updated": "2025-06-13T04:25:03.833Z",
-      "description": "Tag created on 6/13/2025"
     }
   }
 }

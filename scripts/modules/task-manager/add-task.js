@@ -575,7 +575,7 @@ async function addTask(
 		report('Generating task files...', 'info');
 		report('DEBUG: Calling generateTaskFiles...', 'debug');
 		// Pass mcpLog if available to generateTaskFiles
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 		report('DEBUG: generateTaskFiles finished.', 'debug');
 
 		// Show success message - only for text output (CLI)

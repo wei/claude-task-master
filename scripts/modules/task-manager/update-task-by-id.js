@@ -524,7 +524,7 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			// --- Write File and Generate (Unchanged) ---
 			writeJSON(tasksPath, data);
 			report('success', `Successfully updated task ${taskId}`);
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 			// --- End Write File ---
 
 			// --- Display CLI Telemetry ---
