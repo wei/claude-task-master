@@ -566,10 +566,10 @@ async function tags(
 			tagList.push({
 				name: tagName,
 				isCurrent: tagName === currentTag,
-				taskCount: tasks.length,
 				completedTasks: tasks.filter(
 					(t) => t.status === 'done' || t.status === 'completed'
 				).length,
+				tasks: tasks || [],
 				created: metadata.created || 'Unknown',
 				description: metadata.description || 'No description'
 			});
@@ -634,7 +634,7 @@ async function tags(
 				row.push(tagDisplay);
 
 				if (showTaskCounts) {
-					row.push(chalk.white(tag.taskCount.toString()));
+					row.push(chalk.white(tag.tasks.length.toString()));
 					row.push(chalk.green(tag.completedTasks.toString()));
 				}
 
@@ -1034,8 +1034,7 @@ async function copyTag(
 					`Copy of "${sourceName}" created on ${new Date().toLocaleDateString()}`,
 				copiedFrom: {
 					tag: sourceName,
-					date: new Date().toISOString(),
-					taskCount: sourceTasks.length
+					date: new Date().toISOString()
 				}
 			}
 		};
@@ -1061,7 +1060,6 @@ async function copyTag(
 				sourceName,
 				targetName,
 				copied: true,
-				taskCount: sourceTasks.length,
 				description:
 					description ||
 					`Copy of "${sourceName}" created on ${new Date().toLocaleDateString()}`
@@ -1091,7 +1089,6 @@ async function copyTag(
 			sourceName,
 			targetName,
 			copied: true,
-			taskCount: sourceTasks.length,
 			description:
 				description ||
 				`Copy of "${sourceName}" created on ${new Date().toLocaleDateString()}`

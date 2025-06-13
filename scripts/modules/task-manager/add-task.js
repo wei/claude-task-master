@@ -226,12 +226,18 @@ async function addTask(
 		}
 
 		// Handle legacy format migration using utilities
-		if (rawData && Array.isArray(rawData.tasks)) {
-			report('Migrating legacy tasks.json format to tagged format...', 'info');
-			const legacyTasks = rawData.tasks;
+		if (rawData && Array.isArray(rawData.tasks) && !rawData._rawTaggedData) {
+			report('Legacy format detected. Migrating to tagged format...', 'info');
+
+			// This is legacy format - migrate it to tagged format
 			rawData = {
 				master: {
-					tasks: legacyTasks
+					tasks: rawData.tasks,
+					metadata: rawData.metadata || {
+						created: new Date().toISOString(),
+						updated: new Date().toISOString(),
+						description: 'Tasks for master context'
+					}
 				}
 			};
 			// Ensure proper metadata using utility

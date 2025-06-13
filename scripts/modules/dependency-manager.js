@@ -1120,9 +1120,16 @@ function ensureAtLeastOneIndependentSubtask(tasksData) {
  * This function is designed to be called after any task modification
  * @param {Object} tasksData - The tasks data object with tasks array
  * @param {string} tasksPath - Optional path to save the changes
+ * @param {string} projectRoot - Optional project root for tag context
+ * @param {string} tag - Optional tag for tag context
  * @returns {boolean} - True if any changes were made
  */
-function validateAndFixDependencies(tasksData, tasksPath = null) {
+function validateAndFixDependencies(
+	tasksData,
+	tasksPath = null,
+	projectRoot = null,
+	tag = null
+) {
 	if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
 		log('error', 'Invalid tasks data');
 		return false;
@@ -1209,7 +1216,7 @@ function validateAndFixDependencies(tasksData, tasksPath = null) {
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
 		try {
-			writeJSON(tasksPath, tasksData);
+			writeJSON(tasksPath, tasksData, projectRoot, tag);
 			log('debug', 'Saved dependency fixes to tasks.json');
 		} catch (error) {
 			log('error', 'Failed to save dependency fixes to tasks.json', error);

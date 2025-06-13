@@ -11,7 +11,7 @@ import { getDebugFlag } from '../config-manager.js';
  * Generate individual task files from tasks.json
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} outputDir - Output directory for task files
- * @param {Object} options - Additional options (mcpLog for MCP mode)
+ * @param {Object} options - Additional options (mcpLog for MCP mode, projectRoot, tag)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
 function generateTaskFiles(tasksPath, outputDir, options = {}) {
@@ -19,7 +19,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, options.projectRoot, options.tag);
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}
@@ -33,7 +33,12 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 		// Validate and fix dependencies before generating files
 		log('info', `Validating and fixing dependencies`);
-		validateAndFixDependencies(data, tasksPath);
+		validateAndFixDependencies(
+			data,
+			tasksPath,
+			options.projectRoot,
+			options.tag
+		);
 
 		// Get valid task IDs from tasks.json
 		const validTaskIds = data.tasks.map((task) => task.id);

@@ -2095,11 +2095,19 @@ ${result.result}
 		)
 		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
 		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const parentId = options.parent;
 			const existingTaskId = options.taskId;
 			const generateFiles = !options.skipGenerate;
+			const tag = options.tag;
 
 			if (!parentId) {
 				console.error(
@@ -2133,7 +2141,8 @@ ${result.result}
 						parentId,
 						existingTaskId,
 						null,
-						generateFiles
+						generateFiles,
+						{ projectRoot, tag }
 					);
 					console.log(
 						chalk.green(
@@ -2159,7 +2168,8 @@ ${result.result}
 						parentId,
 						null,
 						newSubtaskData,
-						generateFiles
+						generateFiles,
+						{ projectRoot, tag }
 					);
 					console.log(
 						chalk.green(
@@ -3791,7 +3801,9 @@ async function runCLI(argv = process.argv) {
 					// Migration has occurred, check if we've shown the notice
 					let stateData = { migrationNoticeShown: false };
 					if (fs.existsSync(statePath)) {
-						stateData = readJSON(statePath) || stateData;
+						// Read state.json directly without tag resolution since it's not a tagged file
+						const rawStateData = fs.readFileSync(statePath, 'utf8');
+						stateData = JSON.parse(rawStateData) || stateData;
 					}
 
 					if (!stateData.migrationNoticeShown) {
@@ -3799,7 +3811,8 @@ async function runCLI(argv = process.argv) {
 
 						// Mark as shown
 						stateData.migrationNoticeShown = true;
-						writeJSON(statePath, stateData);
+						// Write state.json directly without tag resolution since it's not a tagged file
+						fs.writeFileSync(statePath, JSON.stringify(stateData, null, 2));
 					}
 				}
 			}

@@ -194,6 +194,29 @@ function log(level, ...args) {
 }
 
 /**
+ * Checks if the data object has a tagged structure (contains tag objects with tasks arrays)
+ * @param {Object} data - The data object to check
+ * @returns {boolean} True if the data has a tagged structure
+ */
+function hasTaggedStructure(data) {
+	if (!data || typeof data !== 'object') {
+		return false;
+	}
+
+	// Check if any top-level properties are objects with tasks arrays
+	for (const key in data) {
+		if (
+			data.hasOwnProperty(key) &&
+			typeof data[key] === 'object' &&
+			Array.isArray(data[key].tasks)
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * Reads and parses a JSON file
  * @param {string} filepath - Path to the JSON file
  * @param {string} [projectRoot] - Optional project root for tag resolution (used by MCP)
@@ -243,7 +266,12 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 	}
 
 	// Check if this is legacy format that needs migration
-	if (Array.isArray(data.tasks)) {
+	// Only migrate if we have tasks at the ROOT level AND no tag-like structure
+	if (
+		Array.isArray(data.tasks) &&
+		!data._rawTaggedData &&
+		!hasTaggedStructure(data)
+	) {
 		if (isDebug) {
 			console.log(`File is in legacy format, performing migration...`);
 		}
@@ -523,13 +551,11 @@ function createStateJson(statePath) {
 
 /**
  * Marks in state.json that migration occurred and notice should be shown
- * @param {string} tasksJsonPath - Path to the tasks.json file that was migrated
+ * @param {string} tasksJsonPath - Path to the tasks.json file
  */
 function markMigrationForNotice(tasksJsonPath) {
 	try {
-		const projectRoot =
-			findProjectRoot(path.dirname(tasksJsonPath)) ||
-			path.dirname(tasksJsonPath);
+		const projectRoot = path.dirname(path.dirname(tasksJsonPath));
 		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
 
 		// Ensure state.json exists
@@ -541,8 +567,8 @@ function markMigrationForNotice(tasksJsonPath) {
 		try {
 			const rawState = fs.readFileSync(statePath, 'utf8');
 			const stateData = JSON.parse(rawState) || {};
-			if (stateData.migrationNoticeShown !== false) {
-				// Set to false to trigger notice display
+			// Only set to false if it's not already set (i.e., first time migration)
+			if (stateData.migrationNoticeShown === undefined) {
 				stateData.migrationNoticeShown = false;
 				fs.writeFileSync(statePath, JSON.stringify(stateData, null, 2), 'utf8');
 			}
@@ -563,43 +589,51 @@ function markMigrationForNotice(tasksJsonPath) {
 }
 
 /**
- * Writes data to a JSON file
+ * Writes and saves a JSON file. Handles tagged task lists properly.
  * @param {string} filepath - Path to the JSON file
- * @param {Object} data - Data to write
+ * @param {Object} data - Data to write (can be resolved tag data or raw tagged data)
+ * @param {string} projectRoot - Optional project root for tag context
+ * @param {string} tag - Optional tag for tag context
  */
-function writeJSON(filepath, data) {
-	// GUARD: Prevent circular dependency during config loading
-	let isDebug = false; // Default fallback
-	try {
-		// Only try to get debug flag if we're not in the middle of config loading
-		isDebug = getDebugFlag();
-	} catch (error) {
-		// If getDebugFlag() fails (likely due to circular dependency),
-		// use default false and continue
-		isDebug = false;
-	}
+function writeJSON(filepath, data, projectRoot = null, tag = null) {
+	const isDebug = process.env.TASKMASTER_DEBUG === 'true';
 
 	try {
-		const dir = path.dirname(filepath);
-		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir, { recursive: true });
+		let finalData = data;
+
+		// If we have _rawTaggedData, this means we're working with resolved tag data
+		// and need to merge it back into the full tagged structure
+		if (data && data._rawTaggedData && projectRoot) {
+			const resolvedTag = tag || getCurrentTag(projectRoot);
+
+			// Get the original tagged data
+			const originalTaggedData = data._rawTaggedData;
+
+			// Create a clean copy of the current resolved data (without internal properties)
+			const { _rawTaggedData, tag: _, ...cleanResolvedData } = data;
+
+			// Update the specific tag with the resolved data
+			finalData = {
+				...originalTaggedData,
+				[resolvedTag]: cleanResolvedData
+			};
+
+			if (isDebug) {
+				console.log(
+					`writeJSON: Merging resolved data back into tag '${resolvedTag}'`
+				);
+			}
 		}
 
-		// Clean the data before writing - remove internal properties that should not be persisted
-		let cleanData = data;
-		if (data && typeof data === 'object') {
-			// First, filter out top-level internal properties
-			if (data._rawTaggedData !== undefined || data.tag !== undefined) {
-				const { _rawTaggedData, tag, ...cleanedData } = data;
-				cleanData = cleanedData;
-			}
+		// Clean up any internal properties that shouldn't be persisted
+		let cleanData = finalData;
+		if (cleanData && typeof cleanData === 'object') {
+			// Remove any _rawTaggedData or tag properties from root level
+			const { _rawTaggedData, tag: tagProp, ...rootCleanData } = cleanData;
+			cleanData = rootCleanData;
 
-			// For tagged task data, also clean up any rogue properties in tag objects
-			if (
-				filepath.includes('tasks.json') &&
-				cleanData &&
-				typeof cleanData === 'object'
-			) {
+			// Additional cleanup for tag objects
+			if (typeof cleanData === 'object' && !Array.isArray(cleanData)) {
 				const finalCleanData = {};
 				for (const [key, value] of Object.entries(cleanData)) {
 					if (
@@ -628,11 +662,13 @@ function writeJSON(filepath, data) {
 		}
 
 		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
+
+		if (isDebug) {
+			console.log(`writeJSON: Successfully wrote to ${filepath}`);
+		}
 	} catch (error) {
 		log('error', `Error writing JSON file ${filepath}:`, error.message);
 		if (isDebug) {
-			// Use dynamic debug flag
-			// Use log utility for debug output too
 			log('error', 'Full error details:', error);
 		}
 	}
