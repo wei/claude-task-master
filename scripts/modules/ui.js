@@ -62,15 +62,15 @@ function displayTaggedTasksFYI(data) {
  * Display a small, non-intrusive indicator showing the current tag context
  * @param {string} tagName - The tag name to display
  * @param {Object} options - Display options
- * @param {boolean} [options.skipIfMaster=true] - Don't show indicator if tag is 'master'
+ * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
  * @param {boolean} [options.dim=false] - Use dimmed styling
  */
 function displayCurrentTagIndicator(tag, options = {}) {
 	if (isSilentMode()) return;
 
-	const { skipIfMaster = true, dim = false } = options;
+	const { skipIfMaster = false, dim = false } = options;
 
-	// Skip display for master tag by default (since it's the default context)
+	// Skip display for master tag only if explicitly requested
 	if (skipIfMaster && tag === 'master') return;
 
 	// Create a small, tasteful tag indicator
