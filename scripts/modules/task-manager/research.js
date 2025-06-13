@@ -34,6 +34,7 @@ import {
  * @param {boolean} [options.includeProjectTree] - Include project file tree
  * @param {string} [options.detailLevel] - Detail level: 'low', 'medium', 'high'
  * @param {string} [options.projectRoot] - Project root directory
+ * @param {boolean} [options.saveToFile] - Whether to save results to file (MCP mode)
  * @param {Object} [context] - Execution context
  * @param {Object} [context.session] - MCP session object
  * @param {Object} [context.mcpLog] - MCP logger object
@@ -56,7 +57,8 @@ async function performResearch(
 		customContext = '',
 		includeProjectTree = false,
 		detailLevel = 'medium',
-		projectRoot: providedProjectRoot
+		projectRoot: providedProjectRoot,
+		saveToFile = false
 	} = options;
 
 	const {
@@ -273,6 +275,41 @@ async function performResearch(
 					researchResult
 				);
 			}
+		}
+
+		// Handle MCP save-to-file request
+		if (saveToFile && isMCP) {
+			const conversationHistory = [
+				{
+					question: query,
+					answer: researchResult,
+					type: 'initial',
+					timestamp: new Date().toISOString()
+				}
+			];
+
+			const savedFilePath = await handleSaveToFile(
+				conversationHistory,
+				projectRoot,
+				context,
+				logFn
+			);
+
+			// Add saved file path to return data
+			return {
+				query,
+				result: researchResult,
+				contextSize: gatheredContext.length,
+				contextTokens: tokenBreakdown.total,
+				tokenBreakdown,
+				systemPromptTokens,
+				userPromptTokens,
+				totalInputTokens,
+				detailLevel,
+				telemetryData,
+				tagInfo,
+				savedFilePath
+			};
 		}
 
 		logFn.success('Research query completed successfully');
@@ -631,15 +668,27 @@ async function handleFollowUpQuestions(
 					message: 'What would you like to do next?',
 					choices: [
 						{ name: 'Ask a follow-up question', value: 'followup' },
+						{ name: 'Save to file', value: 'savefile' },
 						{ name: 'Save to task/subtask', value: 'save' },
 						{ name: 'Quit', value: 'quit' }
 					],
-					pageSize: 3
+					pageSize: 4
 				}
 			]);
 
 			if (action === 'quit') {
 				break;
+			}
+
+			if (action === 'savefile') {
+				// Handle save to file functionality
+				await handleSaveToFile(
+					conversationHistory,
+					projectRoot,
+					context,
+					logFn
+				);
+				continue;
 			}
 
 			if (action === 'save') {
@@ -854,6 +903,122 @@ async function handleSaveToTask(
 		console.log(chalk.red(`❌ Error saving conversation: ${error.message}`));
 		logFn.error(`Error saving conversation: ${error.message}`);
 	}
+}
+
+/**
+ * Handle saving conversation to a file in .taskmaster/docs/research/
+ * @param {Array} conversationHistory - Array of conversation exchanges
+ * @param {string} projectRoot - Project root directory
+ * @param {Object} context - Execution context
+ * @param {Object} logFn - Logger function
+ * @returns {Promise<string>} Path to saved file
+ */
+async function handleSaveToFile(
+	conversationHistory,
+	projectRoot,
+	context,
+	logFn
+) {
+	try {
+		// Create research directory if it doesn't exist
+		const researchDir = path.join(
+			projectRoot,
+			'.taskmaster',
+			'docs',
+			'research'
+		);
+		if (!fs.existsSync(researchDir)) {
+			fs.mkdirSync(researchDir, { recursive: true });
+		}
+
+		// Generate filename from first query and timestamp
+		const firstQuery = conversationHistory[0]?.question || 'research-query';
+		const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+		// Create a slug from the query (remove special chars, limit length)
+		const querySlug = firstQuery
+			.toLowerCase()
+			.replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+			.replace(/\s+/g, '-') // Replace spaces with hyphens
+			.replace(/-+/g, '-') // Replace multiple hyphens with single
+			.substring(0, 50) // Limit length
+			.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+
+		const filename = `${timestamp}_${querySlug}.md`;
+		const filePath = path.join(researchDir, filename);
+
+		// Format conversation for file
+		const fileContent = formatConversationForFile(
+			conversationHistory,
+			firstQuery
+		);
+
+		// Write file
+		fs.writeFileSync(filePath, fileContent, 'utf8');
+
+		const relativePath = path.relative(projectRoot, filePath);
+		console.log(
+			chalk.green(`✅ Research saved to: ${chalk.cyan(relativePath)}`)
+		);
+
+		logFn.success(`Research conversation saved to ${relativePath}`);
+
+		return filePath;
+	} catch (error) {
+		console.log(chalk.red(`❌ Error saving research file: ${error.message}`));
+		logFn.error(`Error saving research file: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
+ * Format conversation history for saving to a file
+ * @param {Array} conversationHistory - Array of conversation exchanges
+ * @param {string} initialQuery - The initial query for metadata
+ * @returns {string} Formatted file content
+ */
+function formatConversationForFile(conversationHistory, initialQuery) {
+	const timestamp = new Date().toISOString();
+	const date = new Date().toLocaleDateString();
+	const time = new Date().toLocaleTimeString();
+
+	// Create metadata header
+	let content = `---
+title: Research Session
+query: "${initialQuery}"
+date: ${date}
+time: ${time}
+timestamp: ${timestamp}
+exchanges: ${conversationHistory.length}
+---
+
+# Research Session
+
+**Query:** ${initialQuery}  
+**Date:** ${date} ${time}  
+**Exchanges:** ${conversationHistory.length}
+
+---
+
+`;
+
+	// Add each conversation exchange
+	conversationHistory.forEach((exchange, index) => {
+		if (exchange.type === 'initial') {
+			content += `## Initial Query\n\n**Question:** ${exchange.question}\n\n**Response:**\n\n${exchange.answer}\n\n`;
+		} else {
+			content += `## Follow-up ${index}\n\n**Question:** ${exchange.question}\n\n**Response:**\n\n${exchange.answer}\n\n`;
+		}
+
+		if (index < conversationHistory.length - 1) {
+			content += '---\n\n';
+		}
+	});
+
+	// Add footer
+	content += `\n---\n\n*Generated by Task Master Research Command*  \n*Timestamp: ${timestamp}*\n`;
+
+	return content;
 }
 
 /**

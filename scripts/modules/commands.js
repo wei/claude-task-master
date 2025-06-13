@@ -1644,6 +1644,10 @@ function registerCommands(programInstance) {
 			'--save-to <id>',
 			'Automatically save research results to specified task/subtask ID (e.g., "15" or "15.2")'
 		)
+		.option(
+			'--save-to-file <file>',
+			'Save research results to the specified file'
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
 			// Parameter validation
@@ -1842,6 +1846,7 @@ function registerCommands(programInstance) {
 					includeProjectTree: validatedParams.includeProjectTree,
 					detailLevel: validatedParams.detailLevel,
 					projectRoot: validatedParams.projectRoot,
+					saveToFile: validatedParams.saveFile,
 					tag: tag
 				};
 
@@ -3734,19 +3739,26 @@ Examples:
 					process.exit(1);
 				}
 
-				const createOptions = {
-					copyFromCurrent: options.copyFromCurrent || false,
-					copyFromTag: options.copyFrom,
-					description: options.description
-				};
-
 				const context = {
 					projectRoot,
 					commandName: 'add-tag',
 					outputType: 'cli'
 				};
 
+				// Regular tag creation
+				const createOptions = {
+					copyFromCurrent: options.copyFromCurrent || false,
+					copyFromTag: options.copyFrom,
+					description: options.description
+				};
+
 				await createTag(tasksPath, tagName, createOptions, context, 'text');
+
+				// Handle auto-switch if requested
+				if (options.autoSwitch) {
+					const { useTag } = await import('./task-manager/tag-management.js');
+					await useTag(tasksPath, tagName, {}, context, 'text');
+				}
 			} catch (error) {
 				console.error(chalk.red(`Error creating tag: ${error.message}`));
 				showAddTagHelp();

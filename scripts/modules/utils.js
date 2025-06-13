@@ -298,6 +298,19 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Perform complete migration (config.json, state.json)
 			performCompleteTagMigration(filepath);
 
+			// Check and auto-switch git tags if enabled (after migration)
+			// This needs to run synchronously BEFORE tag resolution
+			if (projectRoot) {
+				try {
+					// Import git utilities synchronously
+					const gitUtils = require('./utils/git-utils.js');
+					// Run git integration synchronously
+					gitUtils.checkAndAutoSwitchGitTagSync(projectRoot, filepath);
+				} catch (error) {
+					// Silent fail - don't break normal operations
+				}
+			}
+
 			// Mark for migration notice
 			markMigrationForNotice(filepath);
 		} catch (writeError) {
@@ -343,6 +356,19 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 		// Store reference to the raw tagged data for functions that need it
 		const originalTaggedData = JSON.parse(JSON.stringify(data));
+
+		// Check and auto-switch git tags if enabled (for existing tagged format)
+		// This needs to run synchronously BEFORE tag resolution
+		if (projectRoot) {
+			try {
+				// Import git utilities synchronously
+				const gitUtils = require('./utils/git-utils.js');
+				// Run git integration synchronously
+				gitUtils.checkAndAutoSwitchGitTagSync(projectRoot, filepath);
+			} catch (error) {
+				// Silent fail - don't break normal operations
+			}
+		}
 
 		try {
 			// Default to master tag if anything goes wrong

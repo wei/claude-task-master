@@ -32,7 +32,7 @@
     "defaultTag": "master"
   },
   "tags": {
-    "enabledGitworkflow": false,
-    "autoSwitchTagWithBranch": false
+    "enabledGitworkflow": true,
+    "autoSwitchTagWithBranch": true
   }
 }

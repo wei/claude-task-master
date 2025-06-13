@@ -1,6 +1,8 @@
 {
-  "currentTag": "master",
-  "lastSwitched": "2025-06-13T15:17:22.946Z",
-  "branchTagMapping": {},
+  "currentTag": "v017-adds",
+  "lastSwitched": "2025-06-13T17:56:13.380Z",
+  "branchTagMapping": {
+    "v017-adds": "v017-adds"
+  },
   "migrationNoticeShown": true
 }

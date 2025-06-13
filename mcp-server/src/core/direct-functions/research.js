@@ -22,6 +22,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.includeProjectTree=false] - Include project file tree in context
  * @param {string} [args.detailLevel='medium'] - Detail level: 'low', 'medium', 'high'
  * @param {string} [args.saveTo] - Automatically save to task/subtask ID (e.g., "15" or "15.2")
+ * @param {boolean} [args.saveToFile=false] - Save research results to .taskmaster/docs/research/ directory
  * @param {string} [args.projectRoot] - Project root path
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
@@ -37,6 +38,7 @@ export async function researchDirect(args, log, context = {}) {
 		includeProjectTree = false,
 		detailLevel = 'medium',
 		saveTo,
+		saveToFile = false,
 		projectRoot
 	} = args;
 	const { session } = context; // Destructure session from context
@@ -108,7 +110,8 @@ export async function researchDirect(args, log, context = {}) {
 			customContext: customContext || '',
 			includeProjectTree,
 			detailLevel,
-			projectRoot
+			projectRoot,
+			saveToFile
 		};
 
 		// Prepare context for the research function
@@ -226,7 +229,8 @@ ${result.result}`;
 				totalInputTokens: result.totalInputTokens,
 				detailLevel: result.detailLevel,
 				telemetryData: result.telemetryData,
-				tagInfo: result.tagInfo
+				tagInfo: result.tagInfo,
+				savedFilePath: result.savedFilePath
 			}
 		};
 	} catch (error) {

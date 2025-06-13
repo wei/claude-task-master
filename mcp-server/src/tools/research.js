@@ -53,6 +53,12 @@ export function registerResearchTool(server) {
 				.describe(
 					'Automatically save research results to specified task/subtask ID (e.g., "15" or "15.2")'
 				),
+			saveToFile: z
+				.boolean()
+				.optional()
+				.describe(
+					'Save research results to .taskmaster/docs/research/ directory (default: false)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -73,6 +79,7 @@ export function registerResearchTool(server) {
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
 						saveTo: args.saveTo,
+						saveToFile: args.saveToFile || false,
 						projectRoot: args.projectRoot
 					},
 					log,
