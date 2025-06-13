@@ -18,7 +18,9 @@ import {
 	readJSON,
 	writeJSON,
 	findProjectRoot,
-	getCurrentTag
+	getCurrentTag,
+	detectCamelCaseFlags,
+	toKebabCase
 } from './utils.js';
 import {
 	parsePRD,
@@ -72,7 +74,8 @@ import {
 import {
 	COMPLEXITY_REPORT_FILE,
 	PRD_FILE,
-	TASKMASTER_TASKS_FILE
+	TASKMASTER_TASKS_FILE,
+	TASKMASTER_CONFIG_FILE
 } from '../../src/constants/paths.js';
 
 import {
@@ -90,7 +93,8 @@ import {
 	displayApiKeyStatus,
 	displayAiUsageSummary,
 	displayMultipleTasksSummary,
-	displayTaggedTasksFYI
+	displayTaggedTasksFYI,
+	displayCurrentTagIndicator
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -845,11 +849,19 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed task updates'
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
+			const tag = options.tag;
+
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			// Check if there's an 'id' option which is a common mistake (instead of 'from')
 			if (
@@ -896,13 +908,13 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			// Call core updateTasks, passing empty context for CLI
+			// Call core updateTasks, passing context for CLI
 			await updateTasks(
 				tasksPath,
 				fromId,
 				prompt,
 				useResearch,
-				{} // Pass empty context
+				{ projectRoot, tag } // Pass context with projectRoot and tag
 			);
 		});
 
@@ -1292,10 +1304,12 @@ function registerCommands(programInstance) {
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const status = options.status;
+			const tag = options.tag;
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
@@ -1323,7 +1337,7 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			await setTaskStatus(tasksPath, taskId, status, { projectRoot });
+			await setTaskStatus(tasksPath, taskId, status, { projectRoot, tag });
 		});
 
 	// list command
@@ -1355,6 +1369,9 @@ function registerCommands(programInstance) {
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+
+			// Show current tag context
+			displayCurrentTagIndicator(tag);
 
 			console.log(chalk.blue(`Listing tasks from: ${tasksPath}`));
 			if (statusFilter) {
@@ -1409,6 +1426,9 @@ function registerCommands(programInstance) {
 			}
 			const tasksPath = path.resolve(projectRoot, options.file); // Resolve tasks path
 			const tag = options.tag;
+
+			// Show current tag context
+			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
 
 			if (options.all) {
 				// --- Handle expand --all ---
@@ -1517,6 +1537,9 @@ function registerCommands(programInstance) {
 
 			// Use the provided tag, or the current active tag, or default to 'master'
 			const targetTag = tag || getCurrentTag(projectRoot) || 'master';
+
+			// Show current tag context
+			displayCurrentTagIndicator(targetTag);
 
 			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
 			const outputPath =
@@ -1674,6 +1697,9 @@ function registerCommands(programInstance) {
 			const tasksPath =
 				options.file || path.join(projectRoot, 'tasks', 'tasks.json');
 
+			// Show current tag context
+			displayCurrentTagIndicator(tag);
+
 			// Validate tasks file exists if task IDs are specified
 			if (taskIds.length > 0) {
 				try {
@@ -1826,6 +1852,9 @@ ${result.result}
 				process.exit(1);
 			}
 
+			// Show current tag context
+			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+
 			if (!taskIds && !all) {
 				console.error(
 					chalk.red(
@@ -1913,6 +1942,11 @@ ${result.result}
 				console.error(chalk.red('Error: Could not find project root.'));
 				process.exit(1);
 			}
+
+			// Show current tag context
+			displayCurrentTagIndicator(
+				options.tag || getCurrentTag(projectRoot) || 'master'
+			);
 
 			let manualTaskData = null;
 			if (isManualCreation) {
@@ -2004,6 +2038,9 @@ ${result.result}
 				process.exit(1);
 			}
 
+			// Show current tag context
+			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+
 			await displayNextTask(tasksPath, reportPath, { projectRoot, tag });
 		});
 
@@ -2040,6 +2077,9 @@ ${result.result}
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
 			const tag = options.tag;
+
+			// Show current tag context
+			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -3247,10 +3287,12 @@ Examples:
 			'--to <id>',
 			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const sourceId = options.from;
 			const destinationId = options.to;
+			const tag = options.tag;
 
 			if (!sourceId || !destinationId) {
 				console.error(
@@ -3328,7 +3370,7 @@ Examples:
 								fromId,
 								toId,
 								i === sourceIds.length - 1,
-								{ projectRoot }
+								{ projectRoot, tag }
 							);
 							console.log(
 								chalk.green(
@@ -3358,7 +3400,7 @@ Examples:
 						sourceId,
 						destinationId,
 						true,
-						{ projectRoot }
+						{ projectRoot, tag }
 					);
 					console.log(
 						chalk.green(
