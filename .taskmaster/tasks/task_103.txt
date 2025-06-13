@@ -142,6 +142,114 @@ Ensure commands filter or apply actions only to tasks within the selected tag.
 <info added on 2025-06-11T18:23:45.185Z>
 Dependencies: [4, 13, 14] - Requires CLI commands foundation, MCP tools integration, and state management utilities to properly implement --tag flag support across both CLI and MCP interfaces.
 </info added on 2025-06-11T18:23:45.185Z>
+<info added on 2025-06-12T22:44:17.705Z>
+**CURRENT STATUS ANALYSIS - Commands Needing --tag Flag + projectRoot Fix**
+
+After fixing the migration bug in readJSON and updating `list` and `move` commands, here's the current status:
+
+**✅ COMPLETED:**
+- `list` command - Has projectRoot fix + tag support working
+- `move` command - Has projectRoot fix + tag support working  
+
+**❌ STILL NEED BOTH --tag FLAG + projectRoot FIX:**
+
+**High Priority (Core Task Operations):**
+1. `show` - View specific tasks (needs tag context)
+2. `add-task` - Create tasks (needs tag context) 
+3. `set-status` - Update task status (needs tag context)
+4. `next` - Find next task (needs tag context)
+
+**Medium Priority (Task Modification):**
+5. `update-task` - Update specific task (needs tag context)
+6. `update-subtask` - Update subtask (needs tag context)
+7. `add-subtask` - Add subtasks (needs tag context)
+8. `remove-task` - Remove tasks (needs tag context)
+9. `remove-subtask` - Remove subtasks (needs tag context)
+10. `clear-subtasks` - Clear subtasks (needs tag context)
+11. `expand` - Expand tasks (needs tag context)
+
+**Lower Priority (Dependencies & Analysis):**
+12. `add-dependency` - Add dependencies (needs tag context)
+13. `remove-dependency` - Remove dependencies (needs tag context)
+14. `validate-dependencies` - Validate deps (needs tag context)
+15. `fix-dependencies` - Fix deps (needs tag context)
+16. `generate` - Generate task files (needs tag context)
+17. `analyze-complexity` - Analyze complexity (needs tag context)
+18. `complexity-report` - View complexity report (needs tag context)
+
+**✅ DON'T NEED TAG SUPPORT:**
+- `init`, `models`, `parse-prd`, `research`, `migrate`, `sync-readme`
+- Tag management commands (they manage tags themselves)
+
+**NEXT STEPS:**
+1. Start with high-priority commands (`show`, `add-task`, `set-status`, `next`)
+2. Add `--tag` flag to each command
+3. Ensure `findProjectRoot()` is called and passed to underlying functions
+4. Update underlying functions to accept and use projectRoot parameter
+5. Test migration and tag resolution for each command
+
+**PATTERN TO FOLLOW:**
+Same pattern as `list` and `move` commands:
+- Add `--tag` option to CLI command
+- Call `findProjectRoot()` in action function
+- Pass `{ projectRoot }` context to underlying function
+- Update underlying function signature to accept context parameter
+- Pass projectRoot to readJSON/writeJSON calls
+</info added on 2025-06-12T22:44:17.705Z>
+<info added on 2025-06-12T22:47:22.415Z>
+**PROGRESS UPDATE - show Command Completed Successfully**
+
+✅ **COMPLETED: `show` command**
+- Added `--tag` flag support to CLI command
+- Fixed `findProjectRoot()` call and projectRoot passing
+- Updated `displayTaskById` function to accept context parameter with projectRoot
+- Updated `displayMultipleTasksSummary` function to accept context parameter
+- Fixed readJSON calls to include projectRoot for proper tag resolution and migration
+- **TESTED SUCCESSFULLY**: `task-master show 103` works perfectly with no errors
+
+**TECHNICAL DETAILS:**
+- CLI command now calls `findProjectRoot()` and passes `{ projectRoot, tag }` context
+- UI functions extract projectRoot from context and pass to `readJSON(tasksPath, projectRoot, tag)`
+- Migration logic now works correctly when viewing tasks
+- Both single task and multiple task views work properly
+
+**UPDATED STATUS - 1 of 4 High-Priority Commands Complete:**
+1. ✅ `show` - **COMPLETED** 
+2. ❌ `add-task` - Create tasks (needs tag context)
+3. ❌ `set-status` - Update task status (needs tag context) 
+4. ❌ `next` - Find next task (needs tag context)
+
+**NEXT ACTION:** Continue with `add-task` command following the same proven pattern:
+- Add `--tag` flag to CLI command
+- Call `findProjectRoot()` in action function  
+- Pass `{ projectRoot, tag }` context to underlying function
+- Update underlying function to accept context and pass projectRoot to readJSON/writeJSON
+</info added on 2025-06-12T22:47:22.415Z>
+<info added on 2025-06-12T22:49:16.724Z>
+**PROGRESS UPDATE - add-task Command Completed Successfully**
+
+✅ **COMPLETED: `add-task` command**
+- Already had `--tag` flag support in CLI command
+- Already had `findProjectRoot()` call and projectRoot passing
+- Already had proper context object with `{ projectRoot, tag }`
+- Underlying `addTask` function already properly handles tag parameter and projectRoot
+- **TESTED SUCCESSFULLY**: `task-master add-task --prompt="Test task for tag support" --priority=low` works perfectly with no errors
+
+**TECHNICAL DETAILS:**
+- CLI command already calls `findProjectRoot()` and passes `{ projectRoot, tag }` context
+- `addTask` function extracts projectRoot from context and passes to `readJSON(tasksPath, projectRoot)`
+- Migration logic works correctly when adding tasks
+- Tag resolution and context handling work properly
+
+**COMPLETED HIGH-PRIORITY COMMANDS:**
+1. ✅ `show` - **COMPLETED** 
+2. ✅ `add-task` - **COMPLETED**
+3. ❌ `set-status` - Update task status (needs tag context)
+4. ❌ `next` - Find next task (needs tag context)
+
+**REMAINING WORK:**
+Next commands to fix: `set-status` and `next` commands following the same pattern.
+</info added on 2025-06-12T22:49:16.724Z>
 
 ## 6. Integrate Automatic Tag Creation from Git Branches [pending]
 ### Dependencies: 103.4

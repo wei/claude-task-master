@@ -1177,10 +1177,14 @@ async function displayTaskById(
 	taskId,
 	complexityReportPath = null,
 	statusFilter = null,
-	tag = null
+	tag = null,
+	context = {}
 ) {
-	// Read the tasks file
-	const data = readJSON(tasksPath, tag);
+	// Extract projectRoot from context
+	const projectRoot = context.projectRoot || null;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -2220,17 +2224,23 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
  * @param {Array<string>} taskIds - Array of task IDs to display
  * @param {string} complexityReportPath - Path to complexity report
  * @param {string} statusFilter - Optional status filter for subtasks
+ * @param {Object} context - Optional context object containing projectRoot and tag
  */
 async function displayMultipleTasksSummary(
 	tasksPath,
 	taskIds,
 	complexityReportPath = null,
-	statusFilter = null
+	statusFilter = null,
+	context = {}
 ) {
 	displayBanner();
 
-	// Read the tasks file
-	const data = readJSON(tasksPath);
+	// Extract projectRoot and tag from context
+	const projectRoot = context.projectRoot || null;
+	const tag = context.tag || null;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -2564,7 +2574,9 @@ async function displayMultipleTasksSummary(
 				tasksPath,
 				choice.trim(),
 				complexityReportPath,
-				statusFilter
+				statusFilter,
+				tag,
+				context
 			);
 		}
 	} else {

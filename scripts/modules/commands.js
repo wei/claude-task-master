@@ -1776,6 +1776,7 @@ ${result.result}
 			'-r, --research',
 			'Whether to use research capabilities for task creation'
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const isManualCreation = options.title && options.description;
 
@@ -1800,6 +1801,10 @@ ${result.result}
 
 			// Correctly determine projectRoot
 			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			let manualTaskData = null;
 			if (isManualCreation) {
@@ -1835,6 +1840,7 @@ ${result.result}
 
 			const context = {
 				projectRoot,
+				tag: options.tag,
 				commandName: 'add-task',
 				outputType: 'cli'
 			};
@@ -1907,9 +1913,17 @@ ${result.result}
 			'Path to the complexity report file',
 			COMPLEXITY_REPORT_FILE
 		)
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (taskId, options) => {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
+			const tag = options.tag;
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -1931,11 +1945,19 @@ ${result.result}
 					tasksPath,
 					taskIds,
 					reportPath,
-					statusFilter
+					statusFilter,
+					{ projectRoot, tag }
 				);
 			} else {
 				// Single task - use detailed view
-				await displayTaskById(tasksPath, taskIds[0], reportPath, statusFilter);
+				await displayTaskById(
+					tasksPath,
+					taskIds[0],
+					reportPath,
+					statusFilter,
+					tag,
+					{ projectRoot }
+				);
 			}
 		});
 
