@@ -78,8 +78,32 @@ async function createTag(
 			throw new Error(`Could not read tasks file at ${tasksPath}`);
 		}
 
-		// Use raw tagged data for tag operations
-		const rawData = data._rawTaggedData || data;
+		// Use raw tagged data for tag operations - ensure we get the actual tagged structure
+		let rawData;
+		if (data._rawTaggedData) {
+			// If we have _rawTaggedData, use it (this is the clean tagged structure)
+			rawData = data._rawTaggedData;
+		} else if (data.tasks && !data.master) {
+			// This is legacy format - create a master tag structure
+			rawData = {
+				master: {
+					tasks: data.tasks,
+					metadata: data.metadata || {
+						created: new Date().toISOString(),
+						updated: new Date().toISOString(),
+						description: 'Tasks live here by default'
+					}
+				}
+			};
+		} else {
+			// This is already in tagged format, use it directly but exclude internal fields
+			rawData = {};
+			for (const [key, value] of Object.entries(data)) {
+				if (key !== '_rawTaggedData' && key !== 'tag') {
+					rawData[key] = value;
+				}
+			}
+		}
 
 		// Check if tag already exists
 		if (rawData[tagName]) {
@@ -106,6 +130,7 @@ async function createTag(
 			tasks: [...sourceTasks], // Create a copy of the tasks array
 			metadata: {
 				created: new Date().toISOString(),
+				updated: new Date().toISOString(),
 				description:
 					description || `Tag created on ${new Date().toLocaleDateString()}`
 			}
@@ -227,8 +252,32 @@ async function deleteTag(
 			throw new Error(`Could not read tasks file at ${tasksPath}`);
 		}
 
-		// Use raw tagged data for tag operations
-		const rawData = data._rawTaggedData || data;
+		// Use raw tagged data for tag operations - ensure we get the actual tagged structure
+		let rawData;
+		if (data._rawTaggedData) {
+			// If we have _rawTaggedData, use it (this is the clean tagged structure)
+			rawData = data._rawTaggedData;
+		} else if (data.tasks && !data.master) {
+			// This is legacy format - create a master tag structure
+			rawData = {
+				master: {
+					tasks: data.tasks,
+					metadata: data.metadata || {
+						created: new Date().toISOString(),
+						updated: new Date().toISOString(),
+						description: 'Tasks live here by default'
+					}
+				}
+			};
+		} else {
+			// This is already in tagged format, use it directly but exclude internal fields
+			rawData = {};
+			for (const [key, value] of Object.entries(data)) {
+				if (key !== '_rawTaggedData' && key !== 'tag') {
+					rawData[key] = value;
+				}
+			}
+		}
 
 		// Check if tag exists
 		if (!rawData[tagName]) {
@@ -979,6 +1028,7 @@ async function copyTag(
 			tasks: JSON.parse(JSON.stringify(sourceTasks)), // Deep copy tasks
 			metadata: {
 				created: new Date().toISOString(),
+				updated: new Date().toISOString(),
 				description:
 					description ||
 					`Copy of "${sourceName}" created on ${new Date().toLocaleDateString()}`,

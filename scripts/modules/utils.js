@@ -587,14 +587,44 @@ function writeJSON(filepath, data) {
 
 		// Clean the data before writing - remove internal properties that should not be persisted
 		let cleanData = data;
-		if (
-			data &&
-			typeof data === 'object' &&
-			(data._rawTaggedData !== undefined || data.tag !== undefined)
-		) {
-			// Create a clean copy without internal properties using destructuring
-			const { _rawTaggedData, tag, ...cleanedData } = data;
-			cleanData = cleanedData;
+		if (data && typeof data === 'object') {
+			// First, filter out top-level internal properties
+			if (data._rawTaggedData !== undefined || data.tag !== undefined) {
+				const { _rawTaggedData, tag, ...cleanedData } = data;
+				cleanData = cleanedData;
+			}
+
+			// For tagged task data, also clean up any rogue properties in tag objects
+			if (
+				filepath.includes('tasks.json') &&
+				cleanData &&
+				typeof cleanData === 'object'
+			) {
+				const finalCleanData = {};
+				for (const [key, value] of Object.entries(cleanData)) {
+					if (
+						value &&
+						typeof value === 'object' &&
+						Array.isArray(value.tasks)
+					) {
+						// This is a tag object - clean up any rogue root-level properties
+						const { created, description, ...cleanTagData } = value;
+
+						// Only keep the description if there's no metadata.description
+						if (
+							description &&
+							(!cleanTagData.metadata || !cleanTagData.metadata.description)
+						) {
+							cleanTagData.description = description;
+						}
+
+						finalCleanData[key] = cleanTagData;
+					} else {
+						finalCleanData[key] = value;
+					}
+				}
+				cleanData = finalCleanData;
+			}
 		}
 
 		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
