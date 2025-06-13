@@ -3701,7 +3701,10 @@ Examples:
 	programInstance
 		.command('add-tag')
 		.description('Create a new tag context for organizing tasks')
-		.argument('<tagName>', 'Name of the new tag to create')
+		.argument(
+			'[tagName]',
+			'Name of the new tag to create (optional when using --from-branch)'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -3740,6 +3743,19 @@ Examples:
 							'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
 						)
 					);
+					process.exit(1);
+				}
+
+				// Validate that either tagName is provided or --from-branch is used
+				if (!tagName && !options.fromBranch) {
+					console.error(
+						chalk.red(
+							'Error: Either tagName argument or --from-branch option is required.'
+						)
+					);
+					console.log(chalk.yellow('Usage examples:'));
+					console.log(chalk.cyan('  task-master add-tag my-tag'));
+					console.log(chalk.cyan('  task-master add-tag --from-branch'));
 					process.exit(1);
 				}
 
