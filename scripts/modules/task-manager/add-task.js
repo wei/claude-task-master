@@ -265,20 +265,27 @@ async function addTask(
 			throw new Error(`Tag "${targetTag}" not found.`);
 		}
 
-		// Ensure the target tag has a metadata object
+		// Ensure the target tag has a tasks array and metadata object
+		if (!rawData[targetTag].tasks) {
+			rawData[targetTag].tasks = [];
+		}
 		if (!rawData[targetTag].metadata) {
 			rawData[targetTag].metadata = {
 				created: new Date().toISOString(),
+				updated: new Date().toISOString(),
 				description: ``
 			};
 		}
 
-		// Get a flat list of ALL tasks across ALL tags to calculate new ID and validate dependencies
+		// Get a flat list of ALL tasks across ALL tags to validate dependencies
 		const allTasks = getAllTasks(rawData);
 
-		// Find the highest task ID across all tags to determine the next ID
+		// Find the highest task ID *within the target tag* to determine the next ID
+		const tasksInTargetTag = rawData[targetTag].tasks;
 		const highestId =
-			allTasks.length > 0 ? Math.max(...allTasks.map((t) => t.id)) : 0;
+			tasksInTargetTag.length > 0
+				? Math.max(...tasksInTargetTag.map((t) => t.id))
+				: 0;
 		const newTaskId = highestId + 1;
 
 		// Only show UI box for CLI mode

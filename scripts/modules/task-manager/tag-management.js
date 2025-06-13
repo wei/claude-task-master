@@ -650,18 +650,18 @@ async function tags(
 				table.push(row);
 			});
 
-			console.log(
-				boxen(
-					chalk.white.bold('Available Tags') +
-						`\n\nCurrent Tag: ${chalk.green.bold(currentTag)}`,
-					{
-						padding: { top: 0, bottom: 1, left: 1, right: 1 },
-						borderColor: 'blue',
-						borderStyle: 'round',
-						margin: { top: 1, bottom: 0 }
-					}
-				)
-			);
+			// console.log(
+			// 	boxen(
+			// 		chalk.white.bold('Available Tags') +
+			// 			`\n\nCurrent Tag: ${chalk.green.bold(currentTag)}`,
+			// 		{
+			// 			padding: { top: 0, bottom: 1, left: 1, right: 1 },
+			// 			borderColor: 'blue',
+			// 			borderStyle: 'round',
+			// 			margin: { top: 1, bottom: 0 }
+			// 		}
+			// 	)
+			// );
 
 			console.log(table.toString());
 		}
