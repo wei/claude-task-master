@@ -3544,7 +3544,7 @@ Examples:
 
 				try {
 					// Read tasks data once to validate destination IDs
-					const tasksData = readJSON(tasksPath);
+					const tasksData = readJSON(tasksPath, projectRoot, tag);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)

@@ -25,7 +25,6 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag, isApiKeySet } from '../config-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
