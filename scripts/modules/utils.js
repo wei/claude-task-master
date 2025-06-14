@@ -615,9 +615,38 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 	try {
 		let finalData = data;
 
+		// If data represents resolved tag data but lost _rawTaggedData (edge-case observed in MCP path)
+		if (
+			!data._rawTaggedData &&
+			projectRoot &&
+			Array.isArray(data.tasks) &&
+			!hasTaggedStructure(data)
+		) {
+			const resolvedTag = tag || getCurrentTag(projectRoot);
+
+			if (isDebug) {
+				console.log(
+					`writeJSON: Detected resolved tag data missing _rawTaggedData. Re-reading raw data to prevent data loss for tag '${resolvedTag}'.`
+				);
+			}
+
+			// Re-read the full file to get the complete tagged structure
+			const rawFullData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+
+			// Merge the updated data into the full structure
+			finalData = {
+				...rawFullData,
+				[resolvedTag]: {
+					// Preserve existing tag metadata if it exists, otherwise use what's passed
+					...(rawFullData[resolvedTag]?.metadata || {}),
+					...(data.metadata ? { metadata: data.metadata } : {}),
+					tasks: data.tasks // The updated tasks array is the source of truth here
+				}
+			};
+		}
 		// If we have _rawTaggedData, this means we're working with resolved tag data
 		// and need to merge it back into the full tagged structure
-		if (data && data._rawTaggedData && projectRoot) {
+		else if (data && data._rawTaggedData && projectRoot) {
 			const resolvedTag = tag || getCurrentTag(projectRoot);
 
 			// Get the original tagged data

@@ -331,7 +331,7 @@ Output Requirements:
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, projectRoot);
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: writeJSON call completed.');
 		}

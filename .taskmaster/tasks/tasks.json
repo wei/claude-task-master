@@ -6482,7 +6482,7 @@
         "id": 103,
         "title": "Implement Tagged Task Lists System for Multi-Context Task Management",
         "description": "Develop a comprehensive tagged task lists system enabling users to organize, filter, and manage tasks across multiple contexts (e.g., personal, branch, version) with full backward compatibility.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           3,
           11,
@@ -6603,7 +6603,7 @@
               8,
               9
             ],
-            "details": "Ensure all features work as intended and meet quality standards, with specific focus on add-tag command functionality.",
+            "details": "Ensure all features work as intended and meet quality standards, with specific focus on add-tag command functionality.\n<info added on 2025-06-13T23:48:22.721Z>\nStarting MCP integration implementation for tag management:\n\nPhase 1: Creating direct functions for tag management\n- Examining existing tag management functions in scripts/modules/task-manager/tag-management.js\n- Need to create 6 direct functions: add-tag, delete-tag, list-tags, use-tag, rename-tag, copy-tag\n- Following existing patterns from other direct functions for consistency\n</info added on 2025-06-13T23:48:22.721Z>",
             "status": "done",
             "testStrategy": "Execute test cases covering all user scenarios, including edge cases and error handling."
           },
@@ -6681,7 +6681,7 @@
             "id": 17,
             "title": "Implement Task Template Importing from External .json Files",
             "description": "Implement a mechanism to import tasks from external .json files, treating them as task templates. This allows users to add new .json files to the .taskmaster/tasks folder. The system should read these files, extract tasks under a specific tag, and merge them into the main tasks.json. The 'master' tag from template files must be ignored to prevent conflicts, and the primary tasks.json file will always take precedence over imported tags.",
-            "details": "Key implementation steps: 1. Develop a file watcher or a manual import command to detect and process new .json files in the tasks directory. 2. Implement logic to read an external json file, identify the tag key, and extract the array of tasks. 3. Handle potential conflicts: if an imported tag already exists in the main tasks.json, the existing tasks should be preserved and new ones appended, or the import should be skipped based on a defined precedence rule. 4. Ignore any 'master' key in template files to protect the integrity of the main task list. 5. Update task ID sequencing to ensure imported tasks are assigned unique IDs that don't conflict with existing tasks.",
+            "details": "Key implementation steps: 1. Develop a file watcher or a manual import command to detect and process new .json files in the tasks directory. 2. Implement logic to read an external json file, identify the tag key, and extract the array of tasks. 3. Handle potential conflicts: if an imported tag already exists in the main tasks.json, the existing tasks should be preserved and new ones appended, or the import should be skipped based on a defined precedence rule. 4. Ignore any 'master' key in template files to protect the integrity of the main task list. 5. Update task ID sequencing to ensure imported tasks are assigned unique IDs that don't conflict with existing tasks.\n<info added on 2025-06-13T23:39:39.385Z>\n**UPDATED IMPLEMENTATION PLAN - Silent Task Template Discovery**\n\n**Core Architecture Changes**:\n- Replace manual import workflow with automatic file discovery during tag operations\n- Implement file pattern matching for `tasks_*.json` files in tasks directory\n- Create seamless tag resolution system that checks external files when tags not found in main tasks.json\n\n**Silent Discovery Mechanism**:\n- Scan for `tasks_*.json` files during any tag-related operation (list-tags, use-tag, etc.)\n- Extract tag names from filenames and validate against internal tag keys\n- Build dynamic tag registry combining main tasks.json tags with discovered external tags\n- Apply precedence rule: main tasks.json tags override external files with same tag name\n\n**File Naming and Structure Convention**:\n- External files follow pattern: `tasks_[tagname].json` where tagname must match internal tag key\n- Files contain same structure as main tasks.json but only the specific tag section is used\n- Master key in external files is ignored to prevent conflicts with main task list\n\n**Key Implementation Updates**:\n- Enhance `getAvailableTags()` to include filesystem scan and merge results\n- Modify tag resolution logic to check external files as fallback when tag missing from main file\n- Update `listTags()` to display external tags with visual indicator (e.g., \"[ext]\" suffix)\n- Implement read-only access for external tags - all task modifications route to main tasks.json\n- Add error handling for malformed external files without breaking core functionality\n\n**User Experience Flow**:\n- Users drop `tasks_projectname.json` files into tasks directory\n- Tags become immediately available via `task-master use-tag projectname`\n- No manual import commands or configuration required\n- External tags appear in tag listings alongside main tags\n\n**Benefits Over Manual Import**:\n- Zero-friction workflow for adding new task contexts\n- Supports team collaboration through shared task template files\n- Enables multi-project task management without cluttering main tasks.json\n- Maintains clean separation between permanent tasks and temporary project contexts\n</info added on 2025-06-13T23:39:39.385Z>\n<info added on 2025-06-13T23:55:04.512Z>\n**Tag Preservation Bug Fix Testing**\n\nConducted testing to verify the fix for the tag preservation bug where tag structures were being lost during operations. The fix ensures that:\n\n- Tag hierarchies and relationships are maintained during file discovery operations\n- External tag files preserve their internal structure when accessed through the silent discovery mechanism\n- Main tasks.json tag integrity is protected during external file scanning\n- Tag metadata and associations remain intact across read operations\n- No data corruption occurs when switching between main and external tag contexts\n\nTesting confirmed that tag structures now persist correctly without loss of organizational data or task relationships within tagged contexts.\n</info added on 2025-06-13T23:55:04.512Z>\n<info added on 2025-06-13T23:55:42.394Z>\n**MCP Server Update-Subtask Tool Testing**\n\nPerformed testing of the MCP server's update-subtask tool to verify it maintains tag structure integrity during subtask modifications. The test confirms that:\n\n- Tag hierarchies remain intact when subtasks are updated through the MCP interface\n- External tag file references are preserved during update operations\n- Silent discovery mechanism continues to function correctly after subtask modifications\n- No tag disappearance occurs when using the MCP server tools for task management\n- Tag preservation fixes remain effective across different update pathways including MCP server operations\n\nThis validates that the tag structure preservation improvements work consistently across both direct CLI operations and MCP server-mediated task updates.\n</info added on 2025-06-13T23:55:42.394Z>",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 103
@@ -6747,17 +6747,9 @@
       }
     ],
     "metadata": {
-      "created": "2025-06-13T02:49:12.129Z",
-      "updated": "2025-06-13T23:34:21.222Z",
-      "description": "Tasks for master context"
-    }
-  },
-  "v017-adds": {
-    "tasks": [],
-    "metadata": {
-      "created": "2025-06-13T22:24:34.115Z",
-      "updated": "2025-06-13T22:24:34.115Z",
-      "description": "Automatically created from git branch \"v017-adds\""
+      "created": "2025-06-13T23:52:56.848Z",
+      "updated": "2025-06-13T23:52:56.848Z",
+      "description": "Main tag for the taskmaster project"
     }
   }
 }
