@@ -207,9 +207,12 @@ async function addTask(
 			rawData = rawData._rawTaggedData;
 		}
 
-		// If file doesn't exist or is invalid, create a new structure
+		// If file doesn't exist or is invalid, create a new structure in memory
 		if (!rawData) {
-			report('tasks.json not found or invalid. Creating a new one.', 'info');
+			report(
+				'tasks.json not found or invalid. Initializing new structure.',
+				'info'
+			);
 			rawData = {
 				master: {
 					tasks: [],
@@ -219,11 +222,7 @@ async function addTask(
 					}
 				}
 			};
-			writeJSON(tasksPath, rawData);
-			report(
-				'Created new tasks.json file with a default "master" tag.',
-				'info'
-			);
+			// Do not write the file here; it will be written later with the new task.
 		}
 
 		// Handle legacy format migration using utilities
@@ -245,7 +244,7 @@ async function addTask(
 			ensureTagMetadata(rawData.master, {
 				description: 'Tasks for master context'
 			});
-			writeJSON(tasksPath, rawData);
+			// Do not write the file here; it will be written later with the new task.
 
 			// Perform complete migration (config.json, state.json)
 			performCompleteTagMigration(tasksPath);
@@ -562,7 +561,10 @@ async function addTask(
 		report('Generating task files...', 'info');
 		report('DEBUG: Calling generateTaskFiles...', 'debug');
 		// Pass mcpLog if available to generateTaskFiles
-		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+			projectRoot,
+			tag: targetTag
+		});
 		report('DEBUG: generateTaskFiles finished.', 'debug');
 
 		// Show success message - only for text output (CLI)

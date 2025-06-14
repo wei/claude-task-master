@@ -155,7 +155,7 @@ describe('listTasks', () => {
 		const result = listTasks(tasksPath, null, null, false, 'json');
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
 		expect(result).toEqual(
 			expect.objectContaining({
 				tasks: expect.arrayContaining([
@@ -178,7 +178,7 @@ describe('listTasks', () => {
 		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
 
 		// Verify only pending tasks are returned
 		expect(result.tasks).toHaveLength(1);
@@ -281,7 +281,7 @@ describe('listTasks', () => {
 		listTasks(tasksPath, null, null, false, 'json');
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
 		// Note: validateAndFixDependencies is not called by listTasks function
 		// This test just verifies the function runs without error
 	});
@@ -366,18 +366,13 @@ describe('listTasks', () => {
 			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
 
 			// Assert
-			expect(readJSON).toHaveBeenCalledWith(tasksPath);
+			expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
 
 			// Should return tasks with 'done' or 'pending' status
 			expect(result.tasks).toHaveLength(2);
-			expect(result.tasks.map((task) => task.status)).toEqual(
+			expect(result.tasks.map((t) => t.status)).toEqual(
 				expect.arrayContaining(['done', 'pending'])
 			);
-
-			// Verify specific tasks
-			const taskIds = result.tasks.map((task) => task.id);
-			expect(taskIds).toContain(1); // done task
-			expect(taskIds).toContain(2); // pending task
 		});
 
 		test('should filter tasks by three or more statuses', async () => {

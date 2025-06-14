@@ -164,10 +164,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 		// Tracking subtasks count before expansion
 		const subtasksCountBefore = task.subtasks ? task.subtasks.length : 0;
 
-		// Create a backup of the tasks.json file
-		const backupPath = path.join(path.dirname(tasksPath), 'tasks.json.bak');
-		fs.copyFileSync(tasksPath, backupPath);
-
 		// Directly modify the data instead of calling the CLI function
 		if (!task.subtasks) {
 			task.subtasks = [];
