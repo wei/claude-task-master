@@ -1,11 +1,13 @@
 /**
  * tools/next-task.js
  * Tool to find the next task to work on based on dependencies and status
+ * Tool to find the next task to work on based on dependencies and status
  */
 
 import { z } from 'zod';
 import {
 	createErrorResponse,
+	handleApiResult,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
@@ -16,6 +18,7 @@ import {
 } from '../core/utils/path-utils.js';
 
 /**
+ * Register the nextTask tool with the MCP server
  * Register the nextTask tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
@@ -55,6 +58,7 @@ export function registerNextTaskTool(server) {
 				}
 
 				// Resolve the path to complexity report (optional)
+				// Resolve the path to complexity report (optional)
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
@@ -68,7 +72,10 @@ export function registerNextTaskTool(server) {
 					log.error(`Error finding complexity report: ${error.message}`);
 					// This is optional, so we don't fail the operation
 					complexityReportPath = null;
+					// This is optional, so we don't fail the operation
+					complexityReportPath = null;
 				}
+
 
 				const result = await nextTaskDirect(
 					{
@@ -89,6 +96,7 @@ export function registerNextTaskTool(server) {
 					args.projectRoot
 				);
 			} catch (error) {
+				log.error(`Error finding next task: ${error.message}`);
 				log.error(`Error finding next task: ${error.message}`);
 				return createErrorResponse(error.message);
 			}

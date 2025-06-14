@@ -305,6 +305,7 @@ function getProjectRootFromSession(session, log) {
  * @returns {Object} - Standardized MCP response object
  */
 async function handleApiResult(
+async function handleApiResult(
 	result,
 	log,
 	errorPrefix = 'API error',
@@ -329,9 +330,12 @@ async function handleApiResult(
 		: result.data;
 
 	log.info('Successfully completed operation');
+	log.info('Successfully completed operation');
 
 	// Create the response payload including version info and tag info
 	const responsePayload = {
+		data: processedData,
+		version: versionInfo
 		data: processedData,
 		version: versionInfo
 	};
@@ -436,6 +440,8 @@ function executeTaskMasterCommand(
  * @param {Object} options.log - The logger instance.
  * @returns {Promise<Object>} - An object containing the result.
  *                              Format: { success: boolean, data?: any, error?: { code: string, message: string } }
+ * @returns {Promise<Object>} - An object containing the result.
+ *                              Format: { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Check cache first
@@ -443,6 +449,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 
 	if (cachedResult !== undefined) {
 		log.info(`Cache hit for key: ${cacheKey}`);
+		return cachedResult;
 		return cachedResult;
 	}
 
@@ -452,8 +459,10 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	const result = await actionFn();
 
 	// If the action was successful, cache the result
+	// If the action was successful, cache the result
 	if (result.success && result.data !== undefined) {
 		log.info(`Action successful. Caching result for key: ${cacheKey}`);
+		contextManager.setCachedData(cacheKey, result);
 		contextManager.setCachedData(cacheKey, result);
 	} else if (!result.success) {
 		log.warn(
@@ -465,6 +474,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 		);
 	}
 
+	return result;
 	return result;
 }
 

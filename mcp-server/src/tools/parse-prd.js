@@ -8,8 +8,15 @@ import {
 	handleApiResult,
 	withNormalizedProjectRoot,
 	createErrorResponse
+	withNormalizedProjectRoot,
+	createErrorResponse
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
+import {
+	PRD_FILE,
+	TASKMASTER_DOCS_DIR,
+	TASKMASTER_TASKS_FILE
+} from '../../../src/constants/paths.js';
 import {
 	PRD_FILE,
 	TASKMASTER_DOCS_DIR,
@@ -24,12 +31,23 @@ export function registerParsePRDTool(server) {
 	server.addTool({
 		name: 'parse_prd',
 		description: `Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's ${TASKMASTER_DOCS_DIR} directory.`,
+		description: `Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's ${TASKMASTER_DOCS_DIR} directory.`,
 		parameters: z.object({
 			input: z
 				.string()
 				.optional()
 				.default(PRD_FILE)
+				.default(PRD_FILE)
 				.describe('Absolute path to the PRD document file (.txt, .md, etc.)'),
+			projectRoot: z
+				.string()
+				.describe('The directory of the project. Must be an absolute path.'),
+			output: z
+				.string()
+				.optional()
+				.describe(
+					`Output path for tasks.json file (default: ${TASKMASTER_TASKS_FILE})`
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.'),
@@ -55,7 +73,12 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe(
 					'Enable Taskmaster to use the research role for potentially more informed task generation. Requires appropriate API key.'
+					'Enable Taskmaster to use the research role for potentially more informed task generation. Requires appropriate API key.'
 				),
+			append: z
+				.boolean()
+				.optional()
+				.describe('Append generated tasks to existing file.')
 			append: z
 				.boolean()
 				.optional()
@@ -72,6 +95,8 @@ export function registerParsePRDTool(server) {
 					args.projectRoot
 				);
 			} catch (error) {
+				log.error(`Error in parse_prd: ${error.message}`);
+				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
 				log.error(`Error in parse_prd: ${error.message}`);
 				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
 			}

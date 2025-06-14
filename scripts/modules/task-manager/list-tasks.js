@@ -213,6 +213,78 @@ function listTasks(
 		// Find next task to work on, passing the complexity report
 		const nextItem = findNextTask(data.tasks, complexityReport);
 
+		// Calculate dependency statistics (moved up to be available for all output formats)
+		const completedTaskIds = new Set(
+			data.tasks
+				.filter((t) => t.status === 'done' || t.status === 'completed')
+				.map((t) => t.id)
+		);
+
+		const tasksWithNoDeps = data.tasks.filter(
+			(t) =>
+				t.status !== 'done' &&
+				t.status !== 'completed' &&
+				(!t.dependencies || t.dependencies.length === 0)
+		).length;
+
+		const tasksWithAllDepsSatisfied = data.tasks.filter(
+			(t) =>
+				t.status !== 'done' &&
+				t.status !== 'completed' &&
+				t.dependencies &&
+				t.dependencies.length > 0 &&
+				t.dependencies.every((depId) => completedTaskIds.has(depId))
+		).length;
+
+		const tasksWithUnsatisfiedDeps = data.tasks.filter(
+			(t) =>
+				t.status !== 'done' &&
+				t.status !== 'completed' &&
+				t.dependencies &&
+				t.dependencies.length > 0 &&
+				!t.dependencies.every((depId) => completedTaskIds.has(depId))
+		).length;
+
+		// Calculate total tasks ready to work on (no deps + satisfied deps)
+		const tasksReadyToWork = tasksWithNoDeps + tasksWithAllDepsSatisfied;
+
+		// Calculate most depended-on tasks
+		const dependencyCount = {};
+		data.tasks.forEach((task) => {
+			if (task.dependencies && task.dependencies.length > 0) {
+				task.dependencies.forEach((depId) => {
+					dependencyCount[depId] = (dependencyCount[depId] || 0) + 1;
+				});
+			}
+		});
+
+		// Find the most depended-on task
+		let mostDependedOnTaskId = null;
+		let maxDependents = 0;
+
+		for (const [taskId, count] of Object.entries(dependencyCount)) {
+			if (count > maxDependents) {
+				maxDependents = count;
+				mostDependedOnTaskId = parseInt(taskId);
+			}
+		}
+
+		// Get the most depended-on task
+		const mostDependedOnTask =
+			mostDependedOnTaskId !== null
+				? data.tasks.find((t) => t.id === mostDependedOnTaskId)
+				: null;
+
+		// Calculate average dependencies per task
+		const totalDependencies = data.tasks.reduce(
+			(sum, task) => sum + (task.dependencies ? task.dependencies.length : 0),
+			0
+		);
+		const avgDependenciesPerTask = totalDependencies / data.tasks.length;
+
+		// Find next task to work on, passing the complexity report
+		const nextItem = findNextTask(data.tasks, complexityReport);
+
 		// For JSON output, return structured data
 		if (outputFormat === 'json') {
 			// *** Modification: Remove 'details' field for JSON output ***
@@ -815,6 +887,234 @@ function getWorkItemDescription(item, allTasks) {
 		const task = allTasks.find((t) => String(t.id) === String(item.id));
 		return task?.description || 'No description available.';
 	}
+}
+
+/**
+ * Generate markdown-formatted output for README files
+ * @param {Object} data - Full tasks data
+ * @param {Array} filteredTasks - Filtered tasks array
+ * @param {Object} stats - Statistics object
+ * @returns {string} - Formatted markdown string
+ */
+function generateMarkdownOutput(data, filteredTasks, stats) {
+	const {
+		totalTasks,
+		completedTasks,
+		completionPercentage,
+		doneCount,
+		inProgressCount,
+		pendingCount,
+		blockedCount,
+		deferredCount,
+		cancelledCount,
+		totalSubtasks,
+		completedSubtasks,
+		subtaskCompletionPercentage,
+		inProgressSubtasks,
+		pendingSubtasks,
+		blockedSubtasks,
+		deferredSubtasks,
+		cancelledSubtasks,
+		tasksWithNoDeps,
+		tasksReadyToWork,
+		tasksWithUnsatisfiedDeps,
+		mostDependedOnTask,
+		mostDependedOnTaskId,
+		maxDependents,
+		avgDependenciesPerTask,
+		complexityReport,
+		withSubtasks,
+		nextItem
+	} = stats;
+
+	let markdown = '';
+
+	// Create progress bars for markdown (using Unicode block characters)
+	const createMarkdownProgressBar = (percentage, width = 20) => {
+		const filled = Math.round((percentage / 100) * width);
+		const empty = width - filled;
+		return '█'.repeat(filled) + '░'.repeat(empty);
+	};
+
+	// Dashboard section
+	markdown += '```\n';
+	markdown +=
+		'╭─────────────────────────────────────────────────────────╮╭─────────────────────────────────────────────────────────╮\n';
+	markdown +=
+		'│                                                         ││                                                         │\n';
+	markdown +=
+		'│   Project Dashboard                                     ││   Dependency Status & Next Task                         │\n';
+	markdown += `│   Tasks Progress: ${createMarkdownProgressBar(completionPercentage, 20)} ${Math.round(completionPercentage)}%    ││   Dependency Metrics:                                   │\n`;
+	markdown += `│   ${Math.round(completionPercentage)}%                                                   ││   • Tasks with no dependencies: ${tasksWithNoDeps}                      │\n`;
+	markdown += `│   Done: ${doneCount}  In Progress: ${inProgressCount}  Pending: ${pendingCount}  Blocked: ${blockedCount}     ││   • Tasks ready to work on: ${tasksReadyToWork}                          │\n`;
+	markdown += `│   Deferred: ${deferredCount}  Cancelled: ${cancelledCount}                             ││   • Tasks blocked by dependencies: ${tasksWithUnsatisfiedDeps}                    │\n`;
+	markdown += `│                                                         ││   • Most depended-on task: #${mostDependedOnTaskId} (${maxDependents} dependents)           │\n`;
+	markdown += `│   Subtasks Progress: ${createMarkdownProgressBar(subtaskCompletionPercentage, 20)}     ││   • Avg dependencies per task: ${avgDependenciesPerTask.toFixed(1)}                      │\n`;
+	markdown += `│   ${Math.round(subtaskCompletionPercentage)}% ${Math.round(subtaskCompletionPercentage)}%                                               ││                                                         │\n`;
+	markdown += `│   Completed: ${completedSubtasks}/${totalSubtasks}  In Progress: ${inProgressSubtasks}  Pending: ${pendingSubtasks}      ││   Next Task to Work On:                                 │\n`;
+
+	const nextTaskTitle = nextItem
+		? nextItem.title.length > 40
+			? nextItem.title.substring(0, 37) + '...'
+			: nextItem.title
+		: 'No task available';
+
+	markdown += `│   Blocked: ${blockedSubtasks}  Deferred: ${deferredSubtasks}  Cancelled: ${cancelledSubtasks}                 ││   ID: ${nextItem ? nextItem.id : 'N/A'} - ${nextTaskTitle}     │\n`;
+	markdown += `│                                                         ││   Priority: ${nextItem ? nextItem.priority || 'medium' : ''}  Dependencies: ${nextItem && nextItem.dependencies && nextItem.dependencies.length > 0 ? 'Some' : 'None'}                    │\n`;
+	markdown += `│   Priority Breakdown:                                   ││   Complexity: ${nextItem && nextItem.complexityScore ? '● ' + nextItem.complexityScore : 'N/A'}                                       │\n`;
+	markdown += `│   • High priority: ${data.tasks.filter((t) => t.priority === 'high').length}                                   │╰─────────────────────────────────────────────────────────╯\n`;
+	markdown += `│   • Medium priority: ${data.tasks.filter((t) => t.priority === 'medium').length}                                 │\n`;
+	markdown += `│   • Low priority: ${data.tasks.filter((t) => t.priority === 'low').length}                                     │\n`;
+	markdown += '│                                                         │\n';
+	markdown += '╰─────────────────────────────────────────────────────────╯\n';
+
+	// Tasks table
+	markdown +=
+		'┌───────────┬──────────────────────────────────────┬─────────────────┬──────────────┬───────────────────────┬───────────┐\n';
+	markdown +=
+		'│ ID        │ Title                                │ Status          │ Priority     │ Dependencies          │ Complexi… │\n';
+	markdown +=
+		'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
+
+	// Helper function to format status with symbols
+	const getStatusSymbol = (status) => {
+		switch (status) {
+			case 'done':
+			case 'completed':
+				return '✓ done';
+			case 'in-progress':
+				return '► in-progress';
+			case 'pending':
+				return '○ pending';
+			case 'blocked':
+				return '⭕ blocked';
+			case 'deferred':
+				return 'x deferred';
+			case 'cancelled':
+				return 'x cancelled';
+			case 'review':
+				return '? review';
+			default:
+				return status || 'pending';
+		}
+	};
+
+	// Helper function to format dependencies without color codes
+	const formatDependenciesForMarkdown = (deps, allTasks) => {
+		if (!deps || deps.length === 0) return 'None';
+		return deps
+			.map((depId) => {
+				const depTask = allTasks.find((t) => t.id === depId);
+				return depTask ? depId.toString() : depId.toString();
+			})
+			.join(', ');
+	};
+
+	// Process all tasks
+	filteredTasks.forEach((task) => {
+		const taskTitle = task.title; // No truncation for README
+		const statusSymbol = getStatusSymbol(task.status);
+		const priority = task.priority || 'medium';
+		const deps = formatDependenciesForMarkdown(task.dependencies, data.tasks);
+		const complexity = task.complexityScore
+			? `● ${task.complexityScore}`
+			: 'N/A';
+
+		markdown += `│ ${task.id.toString().padEnd(9)} │ ${taskTitle.substring(0, 36).padEnd(36)} │ ${statusSymbol.padEnd(15)} │ ${priority.padEnd(12)} │ ${deps.substring(0, 21).padEnd(21)} │ ${complexity.padEnd(9)} │\n`;
+
+		// Add subtasks if requested
+		if (withSubtasks && task.subtasks && task.subtasks.length > 0) {
+			task.subtasks.forEach((subtask) => {
+				const subtaskTitle = `└─ ${subtask.title}`; // No truncation
+				const subtaskStatus = getStatusSymbol(subtask.status);
+				const subtaskDeps = formatDependenciesForMarkdown(
+					subtask.dependencies,
+					data.tasks
+				);
+				const subtaskComplexity = subtask.complexityScore
+					? subtask.complexityScore.toString()
+					: 'N/A';
+
+				markdown +=
+					'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
+				markdown += `│ ${task.id}.${subtask.id}${' '.padEnd(6)} │ ${subtaskTitle.substring(0, 36).padEnd(36)} │ ${subtaskStatus.padEnd(15)} │ -            │ ${subtaskDeps.substring(0, 21).padEnd(21)} │ ${subtaskComplexity.padEnd(9)} │\n`;
+			});
+		}
+
+		markdown +=
+			'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
+	});
+
+	// Close the table
+	markdown = markdown.slice(
+		0,
+		-1 *
+			'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n'
+				.length
+	);
+	markdown +=
+		'└───────────┴──────────────────────────────────────┴─────────────────┴──────────────┴───────────────────────┴───────────┘\n';
+	markdown += '```\n\n';
+
+	// Next task recommendation
+	if (nextItem) {
+		markdown +=
+			'╭────────────────────────────────────────────── ⚡ RECOMMENDED NEXT TASK ⚡ ──────────────────────────────────────────────╮\n';
+		markdown +=
+			'│                                                                                                                         │\n';
+		markdown += `│  🔥 Next Task to Work On: #${nextItem.id} - ${nextItem.title}                                  │\n`;
+		markdown +=
+			'│                                                                                                                         │\n';
+		markdown += `│  Priority: ${nextItem.priority || 'medium'}   Status: ${getStatusSymbol(nextItem.status)}                                                                                     │\n`;
+		markdown += `│  Dependencies: ${nextItem.dependencies && nextItem.dependencies.length > 0 ? formatDependenciesForMarkdown(nextItem.dependencies, data.tasks) : 'None'}                                                                                                     │\n`;
+		markdown +=
+			'│                                                                                                                         │\n';
+		markdown += `│  Description: ${getWorkItemDescription(nextItem, data.tasks)}     │\n`;
+		markdown +=
+			'│                                                                                                                         │\n';
+
+		// Add subtasks if they exist
+		const parentTask = data.tasks.find((t) => t.id === nextItem.id);
+		if (parentTask && parentTask.subtasks && parentTask.subtasks.length > 0) {
+			markdown +=
+				'│  Subtasks:                                                                                              │\n';
+			parentTask.subtasks.forEach((subtask) => {
+				markdown += `│  ${nextItem.id}.${subtask.id} [${subtask.status || 'pending'}] ${subtask.title}                                         │\n`;
+			});
+			markdown +=
+				'│                                                                                                                         │\n';
+		}
+
+		markdown += `│  Start working: task-master set-status --id=${nextItem.id} --status=in-progress                                                     │\n`;
+		markdown += `│  View details: task-master show ${nextItem.id}                                                                      │\n`;
+		markdown +=
+			'│                                                                                                                         │\n';
+		markdown +=
+			'╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n\n';
+	}
+
+	// Suggested next steps
+	markdown += '\n';
+	markdown +=
+		'╭──────────────────────────────────────────────────────────────────────────────────────╮\n';
+	markdown +=
+		'│                                                                                      │\n';
+	markdown +=
+		'│   Suggested Next Steps:                                                              │\n';
+	markdown +=
+		'│                                                                                      │\n';
+	markdown +=
+		'│   1. Run task-master next to see what to work on next                                │\n';
+	markdown +=
+		'│   2. Run task-master expand --id=<id> to break down a task into subtasks             │\n';
+	markdown +=
+		'│   3. Run task-master set-status --id=<id> --status=done to mark a task as complete   │\n';
+	markdown +=
+		'│                                                                                      │\n';
+	markdown +=
+		'╰──────────────────────────────────────────────────────────────────────────────────────╯\n';
+
+	return markdown;
 }
 
 /**

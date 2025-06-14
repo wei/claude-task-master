@@ -3,8 +3,11 @@
 Taskmaster uses two primary methods for configuration:
 
 1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
+1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
 
     - This JSON file stores most configuration settings, including AI model selections, parameters, logging levels, and project defaults.
+    - **Location:** This file is created in the `.taskmaster/` directory when you run the `task-master models --setup` interactive setup or initialize a new project with `task-master init`.
+    - **Migration:** Existing projects with `.taskmasterconfig` in the root will continue to work, but should be migrated to the new structure using `task-master migrate`.
     - **Location:** This file is created in the `.taskmaster/` directory when you run the `task-master models --setup` interactive setup or initialize a new project with `task-master init`.
     - **Migration:** Existing projects with `.taskmasterconfig` in the root will continue to work, but should be migrated to the new structure using `task-master migrate`.
     - **Management:** Use the `task-master models --setup` command (or `models` MCP tool) to interactively create and manage this file. You can also set specific models directly using `task-master models --set-<role>=<model_id>`, adding `--ollama` or `--openrouter` flags for custom models. Manual editing is possible but not recommended unless you understand the structure.
@@ -48,6 +51,35 @@ Taskmaster uses two primary methods for configuration:
       }
       ```
 
+2.  **Legacy `.taskmasterconfig` File (Backward Compatibility)**
+
+    - For projects that haven't migrated to the new structure yet.
+    - **Location:** Project root directory.
+    - **Migration:** Use `task-master migrate` to move this to `.taskmaster/config.json`.
+    - **Deprecation:** While still supported, you'll see warnings encouraging migration to the new structure.
+
+## Environment Variables (`.env` file or MCP `env` block - For API Keys Only)
+
+- Used **exclusively** for sensitive API keys and specific endpoint URLs.
+- **Location:**
+  - For CLI usage: Create a `.env` file in your project root.
+  - For MCP/Cursor usage: Configure keys in the `env` section of your `.cursor/mcp.json` file.
+- **Required API Keys (Depending on configured providers):**
+  - `ANTHROPIC_API_KEY`: Your Anthropic API key.
+  - `PERPLEXITY_API_KEY`: Your Perplexity API key.
+  - `OPENAI_API_KEY`: Your OpenAI API key.
+  - `GOOGLE_API_KEY`: Your Google API key (also used for Vertex AI provider).
+  - `MISTRAL_API_KEY`: Your Mistral API key.
+  - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
+  - `OPENROUTER_API_KEY`: Your OpenRouter API key.
+  - `XAI_API_KEY`: Your X-AI API key.
+- **Optional Endpoint Overrides:**
+  - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
+  - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
+  - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
+  - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
+  - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
+  - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 2.  **Legacy `.taskmasterconfig` File (Backward Compatibility)**
 
     - For projects that haven't migrated to the new structure yet.
@@ -144,6 +176,9 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 ### Configuration Errors
 
+- If Task Master reports errors about missing configuration or cannot find the config file, run `task-master models --setup` in your project root to create or repair the file.
+- For new projects, config will be created at `.taskmaster/config.json`. For legacy projects, you may want to use `task-master migrate` to move to the new structure.
+- Ensure API keys are correctly placed in your `.env` file (for CLI) or `.cursor/mcp.json` (for MCP) and are valid for the providers selected in your config file.
 - If Task Master reports errors about missing configuration or cannot find the config file, run `task-master models --setup` in your project root to create or repair the file.
 - For new projects, config will be created at `.taskmaster/config.json`. For legacy projects, you may want to use `task-master migrate` to move to the new structure.
 - Ensure API keys are correctly placed in your `.env` file (for CLI) or `.cursor/mcp.json` (for MCP) and are valid for the providers selected in your config file.

@@ -42,6 +42,8 @@ import {
 	taskExists,
 	moveTask,
 	migrateProject
+	moveTask,
+	migrateProject
 } from './task-manager.js';
 
 import {
@@ -109,6 +111,8 @@ import {
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
+import { syncTasksToReadme } from './sync-readme.js';
+
 import { syncTasksToReadme } from './sync-readme.js';
 
 /**
@@ -328,6 +332,7 @@ async function runInteractiveSetup(projectRoot) {
 		commonPrefix.push(customBedrockOption);
 
 		const prefixLength = commonPrefix.length; // Initial prefix length
+		const prefixLength = commonPrefix.length; // Initial prefix length
 
 		if (allowNone) {
 			choices = [
@@ -521,6 +526,7 @@ async function runInteractiveSetup(projectRoot) {
 				console.error(
 					chalk.red(
 						'Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.'
+						'Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.'
 					)
 				);
 				setupSuccess = false;
@@ -679,6 +685,7 @@ function registerCommands(programInstance) {
 			'Path to the PRD file (alternative to positional argument)'
 		)
 		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
+		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
 		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
 		.option(
@@ -693,6 +700,7 @@ function registerCommands(programInstance) {
 		.action(async (file, options) => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
+			const defaultPrdPath = PRD_FILE;
 			const defaultPrdPath = PRD_FILE;
 			const numTasks = parseInt(options.numTasks, 10);
 			const outputPath = options.output;
@@ -778,10 +786,12 @@ function registerCommands(programInstance) {
 					console.log(
 						chalk.yellow(
 							`No PRD file specified and default PRD file not found at ${PRD_FILE}.`
+							`No PRD file specified and default PRD file not found at ${PRD_FILE}.`
 						)
 					);
 					console.log(
 						boxen(
+							`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${PRD_FILE} by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
 							`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${PRD_FILE} by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
 							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 						)
@@ -842,6 +852,11 @@ function registerCommands(programInstance) {
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'--from <id>',
 			'Task ID to start updating from (tasks with ID >= this value will be updated)',
 			'1'
@@ -856,6 +871,7 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
@@ -939,6 +955,11 @@ function registerCommands(programInstance) {
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-i, --id <id>', 'Task ID to update (required)')
 		.option(
 			'-p, --prompt <text>',
@@ -983,6 +1004,7 @@ function registerCommands(programInstance) {
 				// Parse the task ID and validate it's a number
 				const taskId = parseInt(options.id, 10);
 				if (Number.isNaN(taskId) || taskId <= 0) {
+				if (Number.isNaN(taskId) || taskId <= 0) {
 					console.error(
 						chalk.red(
 							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`
@@ -1018,6 +1040,7 @@ function registerCommands(programInstance) {
 					console.error(
 						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
 					);
+					if (tasksPath === TASKMASTER_TASKS_FILE) {
 					if (tasksPath === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
@@ -1117,6 +1140,11 @@ function registerCommands(programInstance) {
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'-i, --id <id>',
 			'Subtask ID to update in format "parentId.subtaskId" (required)'
 		)
@@ -1191,6 +1219,7 @@ function registerCommands(programInstance) {
 					console.error(
 						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
 					);
+					if (tasksPath === TASKMASTER_TASKS_FILE) {
 					if (tasksPath === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
@@ -1296,6 +1325,7 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const outputDir = options.output;
 			const tag = options.tag;
 
@@ -1332,6 +1362,7 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const status = options.status;
@@ -1380,8 +1411,14 @@ function registerCommands(programInstance) {
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'-r, --report <report>',
 			'Path to the complexity report file',
+			COMPLEXITY_REPORT_FILE
 			COMPLEXITY_REPORT_FILE
 		)
 		.option('-s, --status <status>', 'Filter by status')
@@ -1445,6 +1482,7 @@ function registerCommands(programInstance) {
 		.option(
 			'--file <file>',
 			'Path to the tasks file (relative to project root)',
+			TASKMASTER_TASKS_FILE // Allow file override
 			TASKMASTER_TASKS_FILE // Allow file override
 		) // Allow file override
 		.option('--tag <tag>', 'Specify tag context for task operations')
@@ -1526,6 +1564,7 @@ function registerCommands(programInstance) {
 			'-o, --output <file>',
 			'Output file path for the report',
 			COMPLEXITY_REPORT_FILE
+			COMPLEXITY_REPORT_FILE
 		)
 		.option(
 			'-m, --model <model>',
@@ -1535,6 +1574,11 @@ function registerCommands(programInstance) {
 			'-t, --threshold <number>',
 			'Minimum complexity score to recommend expansion (1-10)',
 			'5'
+		)
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
 		)
 		.option(
 			'-f, --file <file>',
@@ -1970,12 +2014,18 @@ ${result.result}
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'-i, --id <ids>',
 			'Task IDs (comma-separated) to clear subtasks from'
 		)
 		.option('--all', 'Clear subtasks from all tasks')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIds = options.id;
 			const all = options.all;
@@ -2023,6 +2073,11 @@ ${result.result}
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'-p, --prompt <prompt>',
 			'Description of the task to add (required if not using manual fields)'
 		)
@@ -2062,6 +2117,14 @@ ${result.result}
 				process.exit(1);
 			}
 
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					`❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file at ${TASKMASTER_TASKS_FILE}`
+				);
+				process.exit(1);
+			}
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 
 			if (!fs.existsSync(tasksPath)) {
@@ -2157,12 +2220,19 @@ ${result.result}
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'-r, --report <report>',
 			'Path to the complexity report file',
+			COMPLEXITY_REPORT_FILE
 			COMPLEXITY_REPORT_FILE
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
 			const tag = options.tag;
@@ -2200,6 +2270,7 @@ ${result.result}
 			'-r, --report <report>',
 			'Path to the complexity report file',
 			COMPLEXITY_REPORT_FILE
+			COMPLEXITY_REPORT_FILE
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (taskId, options) => {
@@ -2221,6 +2292,7 @@ ${result.result}
 				process.exit(1);
 			}
 
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
 
@@ -2265,6 +2337,7 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
@@ -2316,6 +2389,7 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
@@ -2425,6 +2499,7 @@ ${result.result}
 			'-f, --file <file>',
 			'Path to the report file',
 			COMPLEXITY_REPORT_FILE
+			COMPLEXITY_REPORT_FILE
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
@@ -2453,6 +2528,11 @@ ${result.result}
 	programInstance
 		.command('add-subtask')
 		.description('Add a subtask to an existing task')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -2634,6 +2714,7 @@ ${result.result}
 		console.log(
 			boxen(
 				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --skip-generate           Skip regenerating task files\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`,
+				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --skip-generate           Skip regenerating task files\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`,
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -2643,6 +2724,11 @@ ${result.result}
 	programInstance
 		.command('remove-subtask')
 		.description('Remove a subtask from its parent task')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -2659,6 +2745,7 @@ ${result.result}
 		.option('--skip-generate', 'Skip regenerating task files')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
@@ -2787,6 +2874,9 @@ ${result.result}
 					'\n' +
 					'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
 					'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
+					'  -f, --file <file>   Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n' +
 					'  -f, --file <file>   Path to the tasks file (default: "' +
 					TASKMASTER_TASKS_FILE +
 					'")\n' +
@@ -2959,9 +3049,15 @@ ${result.result}
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIdsString = options.id;
 
@@ -3480,6 +3576,11 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
 			'--from <id>',
 			'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
 		)
@@ -3489,6 +3590,7 @@ Examples:
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const sourceId = options.from;
 			const destinationId = options.to;
@@ -4289,6 +4391,7 @@ async function runCLI(argv = process.argv) {
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
 		// This means the ConfigurationError might be thrown here if configuration file is missing.
+		// This means the ConfigurationError might be thrown here if configuration file is missing.
 		const programInstance = setupCLI();
 		await programInstance.parseAsync(argv);
 
@@ -4348,7 +4451,10 @@ async function runCLI(argv = process.argv) {
 						'\n\n' +
 						chalk.white('Taskmaster now uses a ') +
 						chalk.yellow.bold('configuration file') +
+						chalk.white('Taskmaster now uses a ') +
+						chalk.yellow.bold('configuration file') +
 						chalk.white(
+							' in your project for AI model choices and settings.\n\n' +
 							' in your project for AI model choices and settings.\n\n' +
 								'This file appears to be '
 						) +
@@ -4361,6 +4467,7 @@ async function runCLI(argv = process.argv) {
 						chalk.white.bold('Key Points:') +
 						'\n' +
 						chalk.white('*   ') +
+						chalk.yellow.bold('Configuration file') +
 						chalk.yellow.bold('Configuration file') +
 						chalk.white(
 							': Stores your AI model settings (do not manually edit)\n'

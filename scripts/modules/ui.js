@@ -28,6 +28,10 @@ import {
 	TASKMASTER_CONFIG_FILE,
 	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
+import {
+	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_TASKS_FILE
+} from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
