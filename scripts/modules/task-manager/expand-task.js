@@ -421,10 +421,7 @@ async function expandTask(
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
-	const projectRoot =
-		contextProjectRoot ||
-		findProjectRoot() ||
-		path.dirname(path.dirname(tasksPath));
+	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
 
 	// Use mcpLog if available, otherwise use the default console log wrapper
 	const logger = mcpLog || {
