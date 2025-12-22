@@ -1,8 +1,8 @@
 {
-  "mode": "exit",
+  "mode": "pre",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.39.0",
+    "task-master-ai": "0.40.0-rc.0",
     "@tm/cli": "",
     "docs": "0.0.15",
     "extension": "0.26.0",
@@ -15,9 +15,12 @@
     "@tm/profiles": ""
   },
   "changesets": [
+    "afraid-rocks-add",
     "floppy-books-feel",
     "frank-ears-remain",
     "gold-tigers-tap",
-    "list-watch-compact"
+    "list-watch-compact",
+    "new-grapes-accept",
+    "violet-colts-sip"
   ]
 }

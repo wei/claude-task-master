@@ -1,5 +1,18 @@
 # task-master-ai
 
+## 0.40.0-rc.1
+
+### Patch Changes
+
+- [#1523](https://github.com/eyaltoledano/claude-task-master/pull/1523) [`fc1a79f`](https://github.com/eyaltoledano/claude-task-master/commit/fc1a79f2565b0d8c24f009aec2c473a335262ae2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Codex cli Validate reasoning effort against model capabilities
+  - Add provider-level reasoning effort validation for OpenAI models
+  - Automatically cap unsupported effort levels (e.g., 'xhigh' on gpt-5.1 and gpt-5 becomes 'high')
+
+- [#1523](https://github.com/eyaltoledano/claude-task-master/pull/1523) [`fc1a79f`](https://github.com/eyaltoledano/claude-task-master/commit/fc1a79f2565b0d8c24f009aec2c473a335262ae2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve json schemas for ai-related commands making it more compatible with openai models
+  - Fixes #1541 #1542
+
+- [#1542](https://github.com/eyaltoledano/claude-task-master/pull/1542) [`b817d6f`](https://github.com/eyaltoledano/claude-task-master/commit/b817d6f9f278c84785ec468f9b305e70c47266f6) Thanks [@mdimitrovg](https://github.com/mdimitrovg)! - Fixed vertex-ai authentication when using service account and vertex location env variable.
+
 ## 0.40.0-rc.0
 
 ### Minor Changes
