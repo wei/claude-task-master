@@ -115,7 +115,7 @@ Task Master uses tiered tool loading to optimize context window usage:
 |------|-------|----------|
 | `core` | 7 | Minimal daily workflow tools (default) |
 | `standard` | 14 | Common task management |
-| `all` | 44+ | Full suite with research, autopilot, dependencies |
+| `all` | 42+ | Full suite with research, autopilot, dependencies |
 
 **Core tools (7):** `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
 
