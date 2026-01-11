@@ -118,7 +118,7 @@ export const coreTools = [
 ];
 
 /**
- * Standard tools array containing the 15 most commonly used tools
+ * Standard tools array containing the 14 most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [

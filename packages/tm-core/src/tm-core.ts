@@ -9,6 +9,7 @@ import { ConfigDomain } from './modules/config/config-domain.js';
 import { ConfigManager } from './modules/config/managers/config-manager.js';
 import { GitDomain } from './modules/git/git-domain.js';
 import { IntegrationDomain } from './modules/integration/integration-domain.js';
+import { LoopDomain } from './modules/loop/loop-domain.js';
 import { TasksDomain } from './modules/tasks/tasks-domain.js';
 import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
 
@@ -87,6 +88,7 @@ export class TmCore {
 	private _git!: GitDomain;
 	private _config!: ConfigDomain;
 	private _integration!: IntegrationDomain;
+	private _loop!: LoopDomain;
 
 	// Public readonly getters
 	get tasks(): TasksDomain {
@@ -106,6 +108,9 @@ export class TmCore {
 	}
 	get integration(): IntegrationDomain {
 		return this._integration;
+	}
+	get loop(): LoopDomain {
+		return this._loop;
 	}
 	get logger(): Logger {
 		return this._logger;
@@ -176,6 +181,7 @@ export class TmCore {
 			this._git = new GitDomain(this._projectPath);
 			this._config = new ConfigDomain(this._configManager);
 			this._integration = new IntegrationDomain(this._configManager);
+			this._loop = new LoopDomain(this._configManager);
 
 			// Initialize domains that need async setup
 			await this._tasks.initialize();
