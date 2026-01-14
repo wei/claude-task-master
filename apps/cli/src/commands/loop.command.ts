@@ -22,6 +22,7 @@ export interface LoopCommandOptions {
 	progressFile?: string;
 	tag?: string;
 	project?: string;
+	sandbox?: boolean;
 }
 
 export class LoopCommand extends Command {
@@ -47,6 +48,7 @@ export class LoopCommand extends Command {
 				'--project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
+			.option('--sandbox', 'Run Claude in Docker sandbox mode')
 			.action((options: LoopCommandOptions) => this.execute(options));
 	}
 
@@ -80,11 +82,17 @@ export class LoopCommand extends Command {
 				storageType: this.tmCore.tasks.getStorageType()
 			});
 
-			this.handleSandboxAuth();
+			// Only check sandbox auth when --sandbox flag is used
+			if (options.sandbox) {
+				this.handleSandboxAuth();
+			}
 
 			console.log(chalk.cyan('Starting Task Master Loop...'));
 			console.log(chalk.dim(`Preset: ${prompt}`));
 			console.log(chalk.dim(`Max iterations: ${iterations}`));
+			console.log(
+				chalk.dim(`Mode: ${options.sandbox ? 'Docker sandbox' : 'Claude CLI'}`)
+			);
 
 			// Show next task only for default preset (other presets don't use Task Master tasks)
 			if (prompt === 'default') {
@@ -105,7 +113,8 @@ export class LoopCommand extends Command {
 				iterations,
 				prompt,
 				progressFile,
-				tag: options.tag
+				tag: options.tag,
+				sandbox: options.sandbox
 			};
 
 			const result = await this.tmCore.loop.run(config);

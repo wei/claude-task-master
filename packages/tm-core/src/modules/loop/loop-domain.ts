@@ -188,7 +188,8 @@ export class LoopDomain {
 				partial.progressFile ??
 				path.join(this.projectRoot, '.taskmaster', 'progress.txt'),
 			sleepSeconds: partial.sleepSeconds ?? 5,
-			tag: partial.tag
+			tag: partial.tag,
+			sandbox: partial.sandbox ?? false
 		};
 	}
 }

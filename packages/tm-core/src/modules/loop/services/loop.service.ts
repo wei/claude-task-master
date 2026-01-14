@@ -3,7 +3,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
 import type {
@@ -80,7 +80,11 @@ export class LoopService {
 			console.log(`━━━ Iteration ${i} of ${config.iterations} ━━━`);
 
 			const prompt = await this.buildPrompt(config, i);
-			const iteration = this.executeIteration(prompt, i);
+			const iteration = this.executeIteration(
+				prompt,
+				i,
+				config.sandbox ?? false
+			);
 			iterations.push(iteration);
 
 			// Check for early exit conditions
@@ -135,9 +139,11 @@ export class LoopService {
 	private async initProgressFile(config: LoopConfig): Promise<void> {
 		await mkdir(path.dirname(config.progressFile), { recursive: true });
 		const tagLine = config.tag ? `# Tag: ${config.tag}\n` : '';
-		await writeFile(
+		// Append to existing progress file instead of overwriting
+		await appendFile(
 			config.progressFile,
-			`# Task Master Loop Progress
+			`
+# Task Master Loop Progress
 # Started: ${new Date().toISOString()}
 # Preset: ${config.prompt}
 # Max Iterations: ${config.iterations}
@@ -217,20 +223,23 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 
 	private executeIteration(
 		prompt: string,
-		iterationNum: number
+		iterationNum: number,
+		sandbox: boolean
 	): LoopIteration {
 		const startTime = Date.now();
 
-		const result = spawnSync(
-			'docker',
-			['sandbox', 'run', 'claude', '-p', prompt],
-			{
-				cwd: this.projectRoot,
-				encoding: 'utf-8',
-				maxBuffer: 50 * 1024 * 1024, // 50MB buffer
-				stdio: ['inherit', 'pipe', 'pipe']
-			}
-		);
+		// Use docker sandbox or plain claude based on config
+		const command = sandbox ? 'docker' : 'claude';
+		const args = sandbox
+			? ['sandbox', 'run', 'claude', '-p', prompt]
+			: ['-p', prompt, '--allowedTools', 'Edit,Write,Bash,Read,Glob,Grep'];
+
+		const result = spawnSync(command, args, {
+			cwd: this.projectRoot,
+			encoding: 'utf-8',
+			maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+			stdio: ['inherit', 'pipe', 'pipe']
+		});
 
 		const output = (result.stdout || '') + (result.stderr || '');
 
