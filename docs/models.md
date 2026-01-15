@@ -1,4 +1,4 @@
-# Available Models as of December 18, 2025
+# Available Models as of January 15, 2026
 
 ## Main Models
 
@@ -15,10 +15,9 @@
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | claude-code | haiku                                          | 0.45      | 0          | 0           |
-| codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5.1                                        | 0.76      | 0          | 0           |
+| codex-cli   | gpt-5.2-codex                                  | 0.82      | 0          | 0           |
 | codex-cli   | gpt-5.1-codex-max                              | 0.78      | 0          | 0           |
+| codex-cli   | gpt-5.1-codex-mini                             | 0.72      | 0          | 0           |
 | codex-cli   | gpt-5.2                                        | 0.8       | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-3-flash-preview                         | —         | 0          | 0           |
@@ -132,10 +131,9 @@
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
 | claude-code | haiku                                        | 0.45      | 0          | 0           |
-| codex-cli   | gpt-5                                        | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5-codex                                  | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5.1                                      | 0.76      | 0          | 0           |
+| codex-cli   | gpt-5.2-codex                                | 0.82      | 0          | 0           |
 | codex-cli   | gpt-5.1-codex-max                            | 0.78      | 0          | 0           |
+| codex-cli   | gpt-5.1-codex-mini                           | 0.72      | 0          | 0           |
 | codex-cli   | gpt-5.2                                      | 0.8       | 0          | 0           |
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-3-flash-preview                       | —         | 0          | 0           |
@@ -191,10 +189,9 @@
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | claude-code | haiku                                          | 0.45      | 0          | 0           |
-| codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
-| codex-cli   | gpt-5.1                                        | 0.76      | 0          | 0           |
+| codex-cli   | gpt-5.2-codex                                  | 0.82      | 0          | 0           |
 | codex-cli   | gpt-5.1-codex-max                              | 0.78      | 0          | 0           |
+| codex-cli   | gpt-5.1-codex-mini                             | 0.72      | 0          | 0           |
 | codex-cli   | gpt-5.2                                        | 0.8       | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-3-flash-preview                         | —         | 0          | 0           |
