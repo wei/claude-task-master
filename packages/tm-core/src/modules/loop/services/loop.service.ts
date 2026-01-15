@@ -1,9 +1,9 @@
 /**
- * @fileoverview Loop Service - Orchestrates running Claude Code in Docker sandbox iterations
+ * @fileoverview Loop Service - Orchestrates running Claude Code iterations (sandbox or CLI mode)
  */
 
 import { spawnSync } from 'node:child_process';
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
 import type {
@@ -34,7 +34,7 @@ export class LoopService {
 	}
 
 	/** Check if Docker sandbox auth is ready */
-	checkSandboxAuth(): boolean {
+	checkSandboxAuth(): { ready: boolean; error?: string } {
 		const result = spawnSync(
 			'docker',
 			['sandbox', 'run', 'claude', '-p', 'Say OK'],
@@ -42,16 +42,29 @@ export class LoopService {
 				cwd: this.projectRoot,
 				timeout: 30000,
 				encoding: 'utf-8',
-				stdio: ['inherit', 'pipe', 'pipe'] // stdin from terminal, capture stdout/stderr
+				stdio: ['inherit', 'pipe', 'pipe']
 			}
 		);
+
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') {
+				return {
+					ready: false,
+					error:
+						'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+				};
+			}
+			return { ready: false, error: `Docker error: ${result.error.message}` };
+		}
+
 		const output = (result.stdout || '') + (result.stderr || '');
-		return output.toLowerCase().includes('ok');
+		return { ready: output.toLowerCase().includes('ok') };
 	}
 
 	/** Run interactive Docker sandbox session for user authentication */
-	runInteractiveAuth(): void {
-		spawnSync(
+	runInteractiveAuth(): { success: boolean; error?: string } {
+		const result = spawnSync(
 			'docker',
 			[
 				'sandbox',
@@ -64,6 +77,34 @@ export class LoopService {
 				stdio: 'inherit'
 			}
 		);
+
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') {
+				return {
+					success: false,
+					error:
+						'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+				};
+			}
+			return { success: false, error: `Docker error: ${result.error.message}` };
+		}
+
+		if (result.status === null) {
+			return {
+				success: false,
+				error: 'Docker terminated abnormally (no exit code)'
+			};
+		}
+
+		if (result.status !== 0) {
+			return {
+				success: false,
+				error: `Docker exited with code ${result.status}`
+			};
+		}
+
+		return { success: true };
 	}
 
 	/** Run a loop with the given configuration */
@@ -80,7 +121,11 @@ export class LoopService {
 			console.log(`━━━ Iteration ${i} of ${config.iterations} ━━━`);
 
 			const prompt = await this.buildPrompt(config, i);
-			const iteration = this.executeIteration(prompt, i);
+			const iteration = this.executeIteration(
+				prompt,
+				i,
+				config.sandbox ?? false
+			);
 			iterations.push(iteration);
 
 			// Check for early exit conditions
@@ -135,9 +180,11 @@ export class LoopService {
 	private async initProgressFile(config: LoopConfig): Promise<void> {
 		await mkdir(path.dirname(config.progressFile), { recursive: true });
 		const tagLine = config.tag ? `# Tag: ${config.tag}\n` : '';
-		await writeFile(
+		// Append to existing progress file instead of overwriting
+		await appendFile(
 			config.progressFile,
-			`# Task Master Loop Progress
+			`
+# Task Master Loop Progress
 # Started: ${new Date().toISOString()}
 # Preset: ${config.prompt}
 # Max Iterations: ${config.iterations}
@@ -217,30 +264,64 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 
 	private executeIteration(
 		prompt: string,
-		iterationNum: number
+		iterationNum: number,
+		sandbox: boolean
 	): LoopIteration {
 		const startTime = Date.now();
 
-		const result = spawnSync(
-			'docker',
-			['sandbox', 'run', 'claude', '-p', prompt],
-			{
-				cwd: this.projectRoot,
-				encoding: 'utf-8',
-				maxBuffer: 50 * 1024 * 1024, // 50MB buffer
-				stdio: ['inherit', 'pipe', 'pipe']
+		// Use docker sandbox or plain claude based on config
+		const command = sandbox ? 'docker' : 'claude';
+		const args = sandbox
+			? ['sandbox', 'run', 'claude', '-p', prompt]
+			: ['-p', prompt, '--dangerously-skip-permissions'];
+
+		const result = spawnSync(command, args, {
+			cwd: this.projectRoot,
+			encoding: 'utf-8',
+			maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+			stdio: ['inherit', 'pipe', 'pipe']
+		});
+
+		// Check for spawn-level errors (command not found, permission denied, etc.)
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			let errorMessage: string;
+
+			if (code === 'ENOENT') {
+				errorMessage = sandbox
+					? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+					: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
+			} else if (code === 'EACCES') {
+				errorMessage = `Permission denied executing '${command}'`;
+			} else {
+				errorMessage = `Failed to execute '${command}': ${result.error.message}`;
 			}
-		);
+
+			console.error(`[Loop Error] ${errorMessage}`);
+			return {
+				iteration: iterationNum,
+				status: 'error',
+				duration: Date.now() - startTime,
+				message: errorMessage
+			};
+		}
 
 		const output = (result.stdout || '') + (result.stderr || '');
 
 		// Print output to console (spawnSync with pipe captures but doesn't display)
 		if (output) console.log(output);
 
-		const { status, message } = this.parseCompletion(
-			output,
-			result.status ?? 1
-		);
+		// Handle null status (spawn failed but no error object - shouldn't happen but be safe)
+		if (result.status === null) {
+			return {
+				iteration: iterationNum,
+				status: 'error',
+				duration: Date.now() - startTime,
+				message: 'Command terminated abnormally (no exit code)'
+			};
+		}
+
+		const { status, message } = this.parseCompletion(output, result.status);
 		return {
 			iteration: iterationNum,
 			status,

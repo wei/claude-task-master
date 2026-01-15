@@ -26,6 +26,8 @@ export interface LoopConfig {
 	sleepSeconds: number;
 	/** Tag context to operate on (optional) */
 	tag?: string;
+	/** Run Claude in Docker sandbox mode (default: false) */
+	sandbox?: boolean;
 }
 
 /**

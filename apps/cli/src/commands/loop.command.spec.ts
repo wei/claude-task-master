@@ -77,8 +77,8 @@ describe('LoopCommand', () => {
 		mockTmCore = {
 			loop: {
 				run: mockLoopRun,
-				checkSandboxAuth: vi.fn().mockReturnValue(true),
-				runInteractiveAuth: vi.fn(),
+				checkSandboxAuth: vi.fn().mockReturnValue({ ready: true }),
+				runInteractiveAuth: vi.fn().mockReturnValue({ success: true }),
 				resolveIterations: vi.fn().mockImplementation((opts) => {
 					// Mirror the real implementation logic for accurate testing
 					if (opts.userIterations !== undefined) return opts.userIterations;
@@ -389,25 +389,77 @@ describe('LoopCommand', () => {
 			);
 		});
 
-		it('should check sandbox auth before running', async () => {
+		it('should check sandbox auth when --sandbox flag is provided', async () => {
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
+			mockTmCore.loop.checkSandboxAuth.mockReturnValue({ ready: true });
 
 			const execute = (loopCommand as any).execute.bind(loopCommand);
-			await execute({});
+			await execute({ sandbox: true });
 
 			expect(mockTmCore.loop.checkSandboxAuth).toHaveBeenCalled();
 		});
 
-		it('should run interactive auth when sandbox not ready', async () => {
-			mockTmCore.loop.checkSandboxAuth.mockReturnValue(false);
+		it('should not check sandbox auth when --sandbox flag is not provided', async () => {
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
 
 			const execute = (loopCommand as any).execute.bind(loopCommand);
 			await execute({});
 
+			expect(mockTmCore.loop.checkSandboxAuth).not.toHaveBeenCalled();
+		});
+
+		it('should run interactive auth when sandbox not ready', async () => {
+			mockTmCore.loop.checkSandboxAuth.mockReturnValue({ ready: false });
+			mockTmCore.loop.runInteractiveAuth.mockReturnValue({ success: true });
+			const result = createMockResult();
+			mockLoopRun.mockResolvedValue(result);
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+			await execute({ sandbox: true });
+
 			expect(mockTmCore.loop.runInteractiveAuth).toHaveBeenCalled();
+		});
+
+		it('should throw error when sandbox auth has error', async () => {
+			mockTmCore.loop.checkSandboxAuth.mockReturnValue({
+				error: 'Sandbox auth failed'
+			});
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+
+			try {
+				await execute({ sandbox: true });
+			} catch {
+				// Expected - processExitSpy mock throws to simulate process.exit
+			}
+
+			expect(displayError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Sandbox auth failed' }),
+				{ skipExit: true }
+			);
+		});
+
+		it('should throw error when interactive auth fails', async () => {
+			mockTmCore.loop.checkSandboxAuth.mockReturnValue({ ready: false });
+			mockTmCore.loop.runInteractiveAuth.mockReturnValue({
+				success: false,
+				error: 'Auth failed'
+			});
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+
+			try {
+				await execute({ sandbox: true });
+			} catch {
+				// Expected - processExitSpy mock throws to simulate process.exit
+			}
+
+			expect(displayError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Auth failed' }),
+				{ skipExit: true }
+			);
 		});
 
 		it('should show next task before starting loop', async () => {

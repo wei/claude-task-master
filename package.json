@@ -20,6 +20,9 @@
 		"turbo:dev": "turbo dev",
 		"turbo:build": "turbo build",
 		"turbo:typecheck": "turbo typecheck",
+		"turbo:test": "turbo test",
+		"turbo:test:unit": "turbo test:unit",
+		"turbo:test:integration": "turbo test:integration",
 		"build:build-config": "npm run build -w @tm/build-config",
 		"test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/.bin/jest",
 		"test:unit": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=unit",
@@ -117,7 +120,8 @@
 		"turndown": "^7.2.2",
 		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
-		"zod": "^4.1.12"
+		"zod": "^4.1.12",
+		"proper-lockfile": "^4.1.2"
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^2.0.59",
