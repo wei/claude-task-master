@@ -155,7 +155,8 @@ export type {
 	LoopPreset,
 	LoopConfig,
 	LoopIteration,
-	LoopResult
+	LoopResult,
+	LoopOutputCallbacks
 } from './modules/loop/index.js';
 export { LoopDomain, PRESET_NAMES } from './modules/loop/index.js';
 
