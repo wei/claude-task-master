@@ -49,6 +49,9 @@ export type {
 // Storage adapters - FileStorage for direct local file access
 export { FileStorage } from './modules/storage/index.js';
 
+// File operations - for atomic file modifications
+export { FileOperations } from './modules/storage/adapters/file-storage/file-operations.js';
+
 // Constants
 export * from './common/constants/index.js';
 
@@ -152,7 +155,8 @@ export type {
 	LoopPreset,
 	LoopConfig,
 	LoopIteration,
-	LoopResult
+	LoopResult,
+	LoopOutputCallbacks
 } from './modules/loop/index.js';
 export { LoopDomain, PRESET_NAMES } from './modules/loop/index.js';
 
